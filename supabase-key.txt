@@ -1,3 +1,0 @@
-Cole a "service_role key" do Supabase aqui.
-A chave deve começar com "eyJhbGci..."
-Pode ser encontrada em: https://supabase.com/dashboard/project/egshoetebauoxyeklfqi/settings/api 
