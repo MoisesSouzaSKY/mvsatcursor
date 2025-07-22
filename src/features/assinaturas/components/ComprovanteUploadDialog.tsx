@@ -131,12 +131,58 @@ export const ComprovanteUploadDialog = ({
       
       console.log('📁 Nome do arquivo:', fileName);
 
-      // Upload usando Firebase Storage
-      const storageRef = ref(storage, `comprovantes/${fileName}`);
-      const uploadResult = await uploadBytes(storageRef, selectedFile);
-      const downloadURL = await getDownloadURL(uploadResult.ref);
+      // NOVA ABORDAGEM: Usar API REST do Firebase Storage
+      try {
+        console.log('🔄 Tentativa 1: Upload via API REST do Firebase Storage...');
+        
+        // Obter token de autenticação
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) {
+          throw new Error('Token de autenticação não disponível');
+        }
 
-      console.log('Upload realizado com sucesso:', downloadURL);
+        // Converter arquivo para base64
+        const base64File = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(selectedFile);
+        });
+
+        // Fazer upload via API REST
+        const uploadUrl = `https://firebasestorage.googleapis.com/v0/b/mvsatimportado.appspot.com/o?name=comprovantes%2F${encodeURIComponent(fileName)}`;
+        
+        const response = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': selectedFile.type,
+          },
+          body: selectedFile
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const uploadResult = await response.json();
+        console.log('✅ Upload via API REST bem-sucedido:', uploadResult);
+
+        // Obter URL de download
+        const downloadURL = `https://firebasestorage.googleapis.com/v0/b/mvsatimportado.appspot.com/o/comprovantes%2F${encodeURIComponent(fileName)}?alt=media`;
+
+        console.log('Upload realizado com sucesso:', downloadURL);
+
+      } catch (restError) {
+        console.warn('⚠️ Upload via API REST falhou:', restError);
+        console.log('🔄 Tentativa 2: Upload via SDK do Firebase...');
+
+        // Fallback: tentar com o SDK original
+        const storageRef = ref(storage, `comprovantes/${fileName}`);
+        const uploadResult = await uploadBytes(storageRef, selectedFile);
+        const downloadURL = await getDownloadURL(uploadResult.ref);
+
+        console.log('✅ Upload via SDK bem-sucedido:', downloadURL);
+      }
 
       // Marcar fatura como paga 
       await updateFatura(faturaId, { 
@@ -208,25 +254,22 @@ export const ComprovanteUploadDialog = ({
                 </Button>
               </div>
               
-              <div className="flex items-center gap-3">
-                {preview ? (
-                  <img 
-                    src={preview} 
-                    alt="Preview" 
-                    className="w-16 h-16 object-cover rounded border"
-                  />
-                ) : (
-                  <div className="w-16 h-16 bg-muted rounded border flex items-center justify-center">
-                    {selectedFile.type.includes('pdf') ? (
-                      <File className="h-8 w-8 text-red-500" />
-                    ) : (
-                      <FileImage className="h-8 w-8 text-gray-500" />
-                    )}
-                  </div>
-                )}
-                
-                <div>
-                  <p className="text-sm font-medium">{selectedFile.name}</p>
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  {preview ? (
+                    <img src={preview} alt="Preview" className="h-12 w-12 object-cover rounded" />
+                  ) : (
+                    <div className="h-12 w-12 bg-muted rounded flex items-center justify-center">
+                      {selectedFile.type.includes('pdf') ? (
+                        <File className="h-6 w-6 text-red-500" />
+                      ) : (
+                        <FileImage className="h-6 w-6 text-muted-foreground" />
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{selectedFile.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                   </p>
@@ -242,9 +285,13 @@ export const ComprovanteUploadDialog = ({
             <Button 
               onClick={handleUpload} 
               disabled={!selectedFile || uploading}
+              className="bg-green-600 hover:bg-green-700"
             >
               {uploading ? (
-                <>Enviando...</>
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  Enviando...
+                </>
               ) : (
                 <>
                   <Upload className="h-4 w-4 mr-2" />

@@ -124,12 +124,51 @@ export const ComprovanteUploadMesAtualDialog = ({
       
       console.log('📁 Nome do arquivo:', fileName);
 
-      // Upload usando Firebase Storage
-      const storageRef = ref(storage, `comprovantes/${fileName}`);
-      const uploadResult = await uploadBytes(storageRef, selectedFile);
-      const downloadURL = await getDownloadURL(uploadResult.ref);
+      // NOVA ABORDAGEM: Usar API REST do Firebase Storage
+      try {
+        console.log('🔄 Tentativa 1: Upload via API REST do Firebase Storage...');
+        
+        // Obter token de autenticação
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) {
+          throw new Error('Token de autenticação não disponível');
+        }
 
-      console.log('Upload realizado com sucesso:', downloadURL);
+        // Fazer upload via API REST
+        const uploadUrl = `https://firebasestorage.googleapis.com/v0/b/mvsatimportado.appspot.com/o?name=comprovantes%2F${encodeURIComponent(fileName)}`;
+        
+        const response = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': selectedFile.type,
+          },
+          body: selectedFile
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const uploadResult = await response.json();
+        console.log('✅ Upload via API REST bem-sucedido:', uploadResult);
+
+        // Obter URL de download
+        const downloadURL = `https://firebasestorage.googleapis.com/v0/b/mvsatimportado.appspot.com/o/comprovantes%2F${encodeURIComponent(fileName)}?alt=media`;
+
+        console.log('Upload realizado com sucesso:', downloadURL);
+
+      } catch (restError) {
+        console.warn('⚠️ Upload via API REST falhou:', restError);
+        console.log('🔄 Tentativa 2: Upload via SDK do Firebase...');
+
+        // Fallback: tentar com o SDK original
+        const storageRef = ref(storage, `comprovantes/${fileName}`);
+        const uploadResult = await uploadBytes(storageRef, selectedFile);
+        const downloadURL = await getDownloadURL(uploadResult.ref);
+
+        console.log('✅ Upload via SDK bem-sucedido:', downloadURL);
+      }
 
       const formaFinal = formaPagamento === 'outros' ? outrasFormas : formaPagamento;
       // Automaticamente dar baixa na fatura após upload
