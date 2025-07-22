@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Criar Usuário Administrador</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      color: #4285F4;
+    }
+    .success {
+      color: green;
+      font-weight: bold;
+    }
+    .error {
+      color: red;
+      font-weight: bold;
+    }
+    button {
+      background-color: #4285F4;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #3367D6;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    .steps {
+      margin-top: 20px;
+      border: 1px solid #ddd;
+      padding: 15px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Criar Usuário Administrador no Firebase</h1>
+  
+  <div class="steps">
+    <h2>Instruções:</h2>
+    <ol>
+      <li>Abra o Console do Firebase: <a href="https://console.firebase.google.com/project/mvsatimportado" target="_blank">https://console.firebase.google.com/project/mvsatimportado</a></li>
+      <li>Abra o Console do navegador (F12 ou Ctrl+Shift+I)</li>
+      <li>Cole o conteúdo deste arquivo HTML no console</li>
+      <li>Clique no botão "Criar Usuário Administrador"</li>
+    </ol>
+  </div>
+
+  <div style="margin-top: 20px;">
+    <button onclick="createAdminUser()">Criar Usuário Administrador</button>
+  </div>
+
+  <div id="result" style="margin-top: 20px;"></div>
+
+  <script>
+    // Configuração do Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyBXQvXy_RO0KLsEOkzKWfBDPwZSdGDPXrE",
+      authDomain: "mvsatimportado.firebaseapp.com",
+      projectId: "mvsatimportado",
+      storageBucket: "mvsatimportado.appspot.com",
+      messagingSenderId: "486956839447",
+      appId: "1:486956839447:web:c7d5e6d5f5f5f5f5f5f5f5"
+    };
+
+    // Inicializar Firebase
+    firebase.initializeApp(firebaseConfig);
+
+    // Dados do usuário administrador
+    const adminUser = {
+      email: 'moisestimesky@gmail.com',
+      password: 'B12e57D8@',
+      displayName: 'Administrador'
+    };
+
+    async function createAdminUser() {
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = '<p>Criando usuário administrador...</p>';
+
+      try {
+        // Verificar se já existe um usuário com este email
+        try {
+          const signInMethods = await firebase.auth().fetchSignInMethodsForEmail(adminUser.email);
+          if (signInMethods && signInMethods.length > 0) {
+            resultDiv.innerHTML += '<p class="error">Usuário já existe! Tentando fazer login para obter o UID...</p>';
+            
+            try {
+              // Tentar fazer login para obter o UID
+              const userCredential = await firebase.auth().signInWithEmailAndPassword(adminUser.email, adminUser.password);
+              const uid = userCredential.user.uid;
+              resultDiv.innerHTML += `<p class="success">Login bem-sucedido! UID do usuário: ${uid}</p>`;
+              
+              // Criar documento de perfil no Firestore
+              await createUserProfile(uid);
+              
+              // Fazer logout
+              await firebase.auth().signOut();
+              resultDiv.innerHTML += '<p class="success">Logout realizado com sucesso!</p>';
+              
+              return;
+            } catch (loginError) {
+              resultDiv.innerHTML += `<p class="error">Erro ao fazer login: ${loginError.message}</p>`;
+              resultDiv.innerHTML += '<p>Você pode redefinir a senha do usuário no console do Firebase.</p>';
+              return;
+            }
+          }
+        } catch (checkError) {
+          resultDiv.innerHTML += `<p class="error">Erro ao verificar usuário existente: ${checkError.message}</p>`;
+        }
+        
+        // Criar novo usuário
+        const userCredential = await firebase.auth().createUserWithEmailAndPassword(adminUser.email, adminUser.password);
+        const user = userCredential.user;
+        
+        // Atualizar o perfil do usuário
+        await user.updateProfile({
+          displayName: adminUser.displayName
+        });
+        
+        resultDiv.innerHTML += `<p class="success">Usuário criado com sucesso!</p>`;
+        resultDiv.innerHTML += `<p>UID: ${user.uid}</p>`;
+        resultDiv.innerHTML += `<p>Email: ${user.email}</p>`;
+        
+        // Criar documento de perfil no Firestore
+        await createUserProfile(user.uid);
+        
+        // Fazer logout
+        await firebase.auth().signOut();
+        resultDiv.innerHTML += '<p class="success">Logout realizado com sucesso!</p>';
+        
+      } catch (error) {
+        resultDiv.innerHTML += `<p class="error">Erro: ${error.message}</p>`;
+      }
+    }
+    
+    async function createUserProfile(uid) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML += '<p>Criando perfil no Firestore...</p>';
+      
+      try {
+        // Criar documento de perfil no Firestore
+        await firebase.firestore().collection('profiles').doc(uid).set({
+          email: adminUser.email,
+          displayName: adminUser.displayName,
+          isAdmin: true,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        resultDiv.innerHTML += '<p class="success">Perfil criado com sucesso no Firestore!</p>';
+      } catch (error) {
+        resultDiv.innerHTML += `<p class="error">Erro ao criar perfil: ${error.message}</p>`;
+      }
+    }
+  </script>
+</body>
+</html> 

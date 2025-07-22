@@ -1,0 +1,36 @@
+[
+  {
+    "id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "nome": "augusto",
+    "email": "au@gmail.com",
+    "telefone": "(11) 98989-6563",
+    "cargo": "gerente",
+    "salario": null,
+    "data_admissao": "1995-01-01",
+    "status": "ativo",
+    "created_at": "2025-07-10T03:58:04.307798+00:00",
+    "updated_at": "2025-07-11T13:23:29.569325+00:00",
+    "login_sistema": "augusto225",
+    "senha_sistema": "220196",
+    "ativo_sistema": true,
+    "is_admin": false
+  },
+  {
+    "id": "441fe23c-ba26-4321-a594-bbdcc4c1f83c",
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "nome": "indio ",
+    "email": "indioteste@gmail.com",
+    "telefone": "(11) 23232-3232",
+    "cargo": "so ver",
+    "salario": null,
+    "data_admissao": "2025-01-01",
+    "status": "ativo",
+    "created_at": "2025-07-12T19:12:34.568554+00:00",
+    "updated_at": "2025-07-12T19:12:34.568554+00:00",
+    "login_sistema": "indio",
+    "senha_sistema": "123",
+    "ativo_sistema": true,
+    "is_admin": false
+  }
+]

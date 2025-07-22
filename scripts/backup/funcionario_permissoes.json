@@ -1,0 +1,233 @@
+[
+  {
+    "id": "3e963e55-bfd1-484d-afbf-74f481127866",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "clientes",
+    "permissao": "manage",
+    "ativo": false,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T04:34:13.774732+00:00",
+    "updated_at": "2025-07-11T14:10:17.464567+00:00"
+  },
+  {
+    "id": "b354edf9-30c0-4667-9722-ab63ffd2e067",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "clientes",
+    "permissao": "read",
+    "ativo": true,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T03:58:27.38889+00:00",
+    "updated_at": "2025-07-10T03:58:27.38889+00:00"
+  },
+  {
+    "id": "75bc2e7a-00c4-457a-9ed3-639df636f48e",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "clientes",
+    "permissao": "create",
+    "ativo": true,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T03:58:28.066273+00:00",
+    "updated_at": "2025-07-10T03:58:28.066273+00:00"
+  },
+  {
+    "id": "16821b17-7385-4e80-8f1f-36b004ab52bc",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "clientes",
+    "permissao": "update",
+    "ativo": true,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T03:58:28.768673+00:00",
+    "updated_at": "2025-07-10T03:58:28.768673+00:00"
+  },
+  {
+    "id": "cb17ce88-1a88-40e9-a952-b8cbb9117f44",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "equipamentos",
+    "permissao": "read",
+    "ativo": true,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T03:58:29.920735+00:00",
+    "updated_at": "2025-07-10T03:58:29.920735+00:00"
+  },
+  {
+    "id": "7bc32e1a-ba92-4585-8808-443885c7f54a",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "cobrancas",
+    "permissao": "read",
+    "ativo": true,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T03:58:30.991129+00:00",
+    "updated_at": "2025-07-10T03:58:30.991129+00:00"
+  },
+  {
+    "id": "56118ffe-0c67-4d98-8e5c-ce4adf1df13c",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "assinaturas",
+    "permissao": "read",
+    "ativo": true,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T03:58:31.442159+00:00",
+    "updated_at": "2025-07-10T03:58:31.442159+00:00"
+  },
+  {
+    "id": "790475b9-d0e9-4e84-9aa1-9cc7c097bb05",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "cobrancas",
+    "permissao": "create",
+    "ativo": true,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T03:58:34.207612+00:00",
+    "updated_at": "2025-07-10T03:58:34.207612+00:00"
+  },
+  {
+    "id": "fc777419-dc02-4fa9-9b7e-34046577c710",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "equipamentos",
+    "permissao": "create",
+    "ativo": true,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T03:58:35.483635+00:00",
+    "updated_at": "2025-07-10T03:58:35.483635+00:00"
+  },
+  {
+    "id": "b4c58466-0b67-48eb-81a9-441c14017abf",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "assinaturas",
+    "permissao": "create",
+    "ativo": true,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T03:58:36.155194+00:00",
+    "updated_at": "2025-07-10T03:58:36.155194+00:00"
+  },
+  {
+    "id": "99cfd9d3-3568-454a-b33e-c8b6b2fdc9a0",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "assinaturas",
+    "permissao": "update",
+    "ativo": true,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T03:58:36.574899+00:00",
+    "updated_at": "2025-07-10T03:58:36.574899+00:00"
+  },
+  {
+    "id": "cea6c28c-5cd4-4d17-97e0-842049767b20",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "equipamentos",
+    "permissao": "update",
+    "ativo": true,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T03:58:37.517711+00:00",
+    "updated_at": "2025-07-10T03:58:37.517711+00:00"
+  },
+  {
+    "id": "971ee138-8f5e-4ea2-b080-e57331b8148a",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "cobrancas",
+    "permissao": "update",
+    "ativo": true,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T03:58:38.130535+00:00",
+    "updated_at": "2025-07-10T03:58:38.130535+00:00"
+  },
+  {
+    "id": "722df9ea-3f46-4329-b855-b9d0ed3fc4f0",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "funcionarios",
+    "permissao": "create",
+    "ativo": false,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T03:58:33.703624+00:00",
+    "updated_at": "2025-07-10T03:58:40.190329+00:00"
+  },
+  {
+    "id": "468fb551-fe56-49cb-a6d6-a0e86d836324",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "funcionarios",
+    "permissao": "read",
+    "ativo": false,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T03:58:32.264876+00:00",
+    "updated_at": "2025-07-10T03:58:41.101458+00:00"
+  },
+  {
+    "id": "4ebb8b5e-2d9f-46ad-a373-7a27d8e4eaf2",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "funcionarios",
+    "permissao": "update",
+    "ativo": false,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T03:58:38.6286+00:00",
+    "updated_at": "2025-07-10T03:58:41.798092+00:00"
+  },
+  {
+    "id": "5042100c-f4b4-412d-8a05-4e72444aef03",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "relatorios",
+    "permissao": "create",
+    "ativo": false,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T03:58:33.312377+00:00",
+    "updated_at": "2025-07-10T03:58:42.495978+00:00"
+  },
+  {
+    "id": "160d36a0-7694-45ad-b1a7-f6ecb3e8fe54",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "relatorios",
+    "permissao": "read",
+    "ativo": true,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T03:58:32.74437+00:00",
+    "updated_at": "2025-07-11T14:10:07.93581+00:00"
+  },
+  {
+    "id": "d8f51204-3919-4171-bd34-f18dcdd7ce58",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "assinaturas",
+    "permissao": "manage",
+    "ativo": false,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T04:34:15.223197+00:00",
+    "updated_at": "2025-07-11T14:10:15.221981+00:00"
+  },
+  {
+    "id": "5d9c48b3-0348-49c8-a18a-f94b8f0e5035",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "cobrancas",
+    "permissao": "manage",
+    "ativo": false,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T04:34:16.186531+00:00",
+    "updated_at": "2025-07-11T14:10:15.998486+00:00"
+  },
+  {
+    "id": "f2ff0b11-2c1a-458d-b174-f498fa9f9d41",
+    "funcionario_id": "5229ddc4-2c17-49fe-8b24-68550d3cb6a1",
+    "modulo": "equipamentos",
+    "permissao": "manage",
+    "ativo": false,
+    "criado_por": null,
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "created_at": "2025-07-10T04:34:14.038996+00:00",
+    "updated_at": "2025-07-11T14:10:16.763868+00:00"
+  }
+]

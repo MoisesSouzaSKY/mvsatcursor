@@ -1,0 +1,58 @@
+[
+  {
+    "id": "52c58251-d54f-4db2-9452-743bb2cf8776",
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "cliente_id": null,
+    "plano": "SKY TOP",
+    "valor": 100,
+    "data_inicio": "2025-07-09",
+    "data_fim": null,
+    "status": "ativa",
+    "observacoes": "{\"nome_completo\":\"Carlos Henrique de Souza Rosa\",\"cpf\":\"94137692220\",\"rg\":\"4800595\",\"email\":\"moisestimesky@gmail.com\",\"telefone\":\"91982454964\",\"data_nascimento\":\"1986-09-17\",\"endereco_completo\":\"Jose marques da rocha, 3457, Buenos Aires, Teresina, Piaui, 64009185\",\"estado\":\"Piaui\",\"cidade\":\"Teresina\",\"bairro\":\"Buenos Aires\",\"rua\":\"Jose marques da rocha\",\"numero\":\"3457\",\"cep\":\"64009185\",\"ponto_referencia\":\"\"}",
+    "created_at": "2025-07-09T15:00:42.698108+00:00",
+    "updated_at": "2025-07-11T01:25:05.338982+00:00",
+    "codigo_assinatura": "1526458038"
+  },
+  {
+    "id": "d8f3c401-db9b-4478-bc6e-ae230a9e04b8",
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "cliente_id": null,
+    "plano": "SKY TOP",
+    "valor": 89.9,
+    "data_inicio": "2025-07-09",
+    "data_fim": null,
+    "status": "ativa",
+    "observacoes": "{\"nome_completo\":\"Regiane Pereira Correa\",\"cpf\":\"04463972299\",\"rg\":\"7903542\",\"email\":\"moisestimesky@gmail.com\",\"telefone\":\"91982454964\",\"data_nascimento\":\"1997-03-30\",\"endereco_completo\":\"Bar do amigo, 170, Paz, Moju, Pará, 68450000\",\"estado\":\"Pará\",\"cidade\":\"Moju\",\"bairro\":\"Paz\",\"rua\":\"Bar do amigo\",\"numero\":\"170\",\"cep\":\"68450000\",\"ponto_referencia\":\"\"}",
+    "created_at": "2025-07-09T15:09:34.721066+00:00",
+    "updated_at": "2025-07-11T01:25:05.338982+00:00",
+    "codigo_assinatura": "1526445431"
+  },
+  {
+    "id": "b2ddf643-0729-4bf7-bd24-80cc56d0fd7b",
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "cliente_id": null,
+    "plano": "SKY TOP",
+    "valor": 89.9,
+    "data_inicio": "2025-07-09",
+    "data_fim": null,
+    "status": "ativa",
+    "observacoes": "{\"nome_completo\":\"Regiane Pereira Correa\",\"cpf\":\"04463972299\",\"rg\":\"7903542\",\"email\":\"moisestimesky@gmail.com\",\"telefone\":\"91982454964\",\"data_nascimento\":\"1997-03-30\",\"endereco_completo\":\"Bar do amigo, 169, Bosque, Abaetetuba, Pará, 68440000\",\"estado\":\"Pará\",\"cidade\":\"Abaetetuba\",\"bairro\":\"Bosque\",\"rua\":\"Bar do amigo\",\"numero\":\"169\",\"cep\":\"68440000\",\"ponto_referencia\":\"\"}",
+    "created_at": "2025-07-09T15:17:10.35784+00:00",
+    "updated_at": "2025-07-11T01:25:05.338982+00:00",
+    "codigo_assinatura": "1518532646"
+  },
+  {
+    "id": "5d6cbaf0-3575-4de6-93db-da3257dab7d4",
+    "user_id": "3cba1660-548f-48eb-8eac-a9f5caa74811",
+    "cliente_id": null,
+    "plano": "SKY TOP",
+    "valor": 89.9,
+    "data_inicio": "2025-07-09",
+    "data_fim": null,
+    "status": "ativa",
+    "observacoes": "{\"nome_completo\":\"Joana Darch Souza da Silva\",\"cpf\":\"27973603204 \",\"rg\":\"3039507 \",\"email\":\"moisestimesky@gmail.com\",\"telefone\":\"91982454964\",\"data_nascimento\":\"1957-02-11\",\"endereco_completo\":\"Travessa petruceli, 109, Aratanha, Santa isabel do Pará, Pará, 68790000\",\"estado\":\"Pará\",\"cidade\":\"Santa isabel do Pará\",\"bairro\":\"Aratanha\",\"rua\":\"Travessa petruceli\",\"numero\":\"109\",\"cep\":\"68790000\",\"ponto_referencia\":\"\"}",
+    "created_at": "2025-07-09T15:18:47.756521+00:00",
+    "updated_at": "2025-07-11T01:25:05.338982+00:00",
+    "codigo_assinatura": "1521998638"
+  }
+]

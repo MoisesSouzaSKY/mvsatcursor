@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Regra temporária - permitir acesso para usuários autenticados
+    match /{collection}/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // Regras específicas para funcionários
+    match /funcionarios/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // Permissões de funcionários
+    match /funcionario_permissoes/{document=**} {
+      allow read: if request.auth != null;
+    }
+    
+    // Configurações globais
+    match /configuracoes/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+  }
+} 
