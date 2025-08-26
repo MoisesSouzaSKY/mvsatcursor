@@ -1,0 +1,14 @@
+{
+  "collections": [
+    {
+      "name": "clientes",
+      "indexes": [
+        { "fields": ["nome"] },
+        { "fields": ["status"] },
+        { "fields": ["created_at"] }
+      ]
+    }
+  ]
+}
+
+

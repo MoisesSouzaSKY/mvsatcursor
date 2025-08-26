@@ -1,0 +1,13 @@
+{
+  "collections": [
+    {
+      "name": "tvbox",
+      "indexes": [
+        { "fields": ["cliente_id"] },
+        { "fields": ["status"] }
+      ]
+    }
+  ]
+}
+
+

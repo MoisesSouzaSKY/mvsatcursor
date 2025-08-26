@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MV SAT - Visualizador do Projeto</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            text-align: center;
+            color: #fff;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .section {
+            background: rgba(255, 255, 255, 0.1);
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+        .section h2 {
+            color: #4CAF50;
+            margin-top: 0;
+        }
+        .file-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .file-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .file-name {
+            font-weight: bold;
+            color: #FFD700;
+        }
+        .file-type {
+            color: #87CEEB;
+            font-size: 0.9em;
+        }
+        .file-size {
+            color: #98FB98;
+            font-size: 0.9em;
+        }
+        .status {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-align: center;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .button {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+        .button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .warning {
+            background: #ff9800;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #f57c00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 MV SAT - Sistema de Gestão</h1>
+        
+        <div class="status">
+            ✅ Projeto configurado e funcionando!
+        </div>
+
+        <div class="section">
+            <h2>📁 Estrutura do Projeto</h2>
+            <p>Este é um projeto React/TypeScript com as seguintes funcionalidades:</p>
+            
+            <div class="file-list">
+                <div class="file-item">
+                    <div class="file-name">👥 Clientes</div>
+                    <div class="file-type">Gestão de clientes</div>
+                    <div class="file-size">Cadastro, edição e listagem</div>
+                </div>
+                
+                <div class="file-item">
+                    <div class="file-name">📋 Assinaturas</div>
+                    <div class="file-type">Gestão de assinaturas</div>
+                    <div class="file-size">Criação e gerenciamento</div>
+                </div>
+                
+                <div class="file-item">
+                    <div class="file-name">💰 Cobranças</div>
+                    <div class="file-type">Sistema de cobranças</div>
+                    <div class="file-size">Controle financeiro</div>
+                </div>
+                
+                <div class="file-item">
+                    <div class="file-name">📺 TV Box</div>
+                    <div class="file-type">Gestão de equipamentos</div>
+                    <div class="file-size">Controle de TV Box</div>
+                </div>
+                
+                <div class="file-item">
+                    <div class="file-name">⚙️ Equipamentos</div>
+                    <div class="file-type">Gestão de equipamentos</div>
+                    <div class="file-size">Cadastro e controle</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🌐 Como Acessar o Projeto</h2>
+            <p>Para visualizar o projeto funcionando, você tem duas opções:</p>
+            
+            <a href="http://localhost:5173" class="button" target="_blank">
+                🚀 Abrir Aplicação (Servidor Local)
+            </a>
+            
+            <a href="index.html" class="button">
+                📄 Abrir HTML Principal
+            </a>
+        </div>
+
+        <div class="warning">
+            <strong>⚠️ Importante:</strong> O arquivo <code>index.ts</code> que você tentou abrir é um arquivo TypeScript, não uma página web. 
+            Arquivos <code>.ts</code> são arquivos de código fonte que precisam ser compilados e executados através do projeto.
+        </div>
+
+        <div class="section">
+            <h2>🔧 Tecnologias Utilizadas</h2>
+            <ul>
+                <li><strong>React 18</strong> - Framework frontend</li>
+                <li><strong>TypeScript</strong> - Linguagem de programação</li>
+                <li><strong>Vite</strong> - Build tool e servidor de desenvolvimento</li>
+                <li><strong>Firebase</strong> - Backend e banco de dados</li>
+                <li><strong>React Router</strong> - Navegação entre páginas</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>📱 Funcionalidades Principais</h2>
+            <ul>
+                <li>Dashboard interativo</li>
+                <li>Gestão completa de clientes</li>
+                <li>Sistema de assinaturas</li>
+                <li>Controle de cobranças</li>
+                <li>Gestão de equipamentos</li>
+                <li>Interface responsiva e moderna</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Verificar se o servidor está rodando
+        fetch('http://localhost:5173')
+            .then(response => {
+                if (response.ok) {
+                    console.log('✅ Servidor local está rodando!');
+                }
+            })
+            .catch(error => {
+                console.log('❌ Servidor local não está rodando. Execute: npm run dev');
+            });
+    </script>
+</body>
+</html>

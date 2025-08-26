@@ -1,0 +1,15 @@
+{
+  "collections": [
+    {
+      "name": "equipamentos",
+      "indexes": [
+        { "fields": ["numero_nds"], "unique": true },
+        { "fields": ["smart_card"], "unique": true },
+        { "fields": ["status_aparelho"] },
+        { "fields": ["cliente_atual_id"] }
+      ]
+    }
+  ]
+}
+
+

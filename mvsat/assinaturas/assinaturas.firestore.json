@@ -1,0 +1,15 @@
+{
+  "collections": [
+    {
+      "name": "assinaturas",
+      "indexes": [
+        { "fields": ["codigo_assinatura"], "unique": true },
+        { "fields": ["status", "cliente_id"] },
+        { "fields": ["data_criacao"] }
+      ]
+    },
+    { "name": "faturas", "indexes": [ { "fields": ["assinatura_id", "data_vencimento"] } ] }
+  ]
+}
+
+

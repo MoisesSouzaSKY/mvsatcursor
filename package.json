@@ -1,0 +1,26 @@
+{
+  "name": "mvsat",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 5173",
+    "deploy": "npx firebase-tools deploy --only hosting --non-interactive"
+  },
+  "dependencies": {
+    "firebase": "^10.12.0",
+    "firebase-admin": "^13.4.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.26.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.66",
+    "@types/react-dom": "^18.2.22",
+    "@vitejs/plugin-react": "^4.7.0",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.19"
+  }
+}

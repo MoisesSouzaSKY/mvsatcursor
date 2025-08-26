@@ -1,0 +1,13 @@
+{
+  "collections": [
+    {
+      "name": "cobrancas",
+      "indexes": [
+        { "fields": ["cliente_id", "data_vencimento"] },
+        { "fields": ["status"] }
+      ]
+    }
+  ]
+}
+
+

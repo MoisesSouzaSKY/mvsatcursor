@@ -1,0 +1,178 @@
+// Atualiza a coleção tvbox_assinaturas criando o array equipamentos[]
+// a partir da lista enviada pelo usuário (ASSINATURA, NDS, MAC)
+
+const admin = require('firebase-admin');
+const path = require('path');
+
+// Inicialização do Firebase Admin usando a service account local
+const serviceAccountPath = path.resolve(__dirname, '..', 'service-account.json');
+admin.initializeApp({
+  credential: admin.credential.cert(require(serviceAccountPath)),
+});
+
+const db = admin.firestore();
+
+// Lista enviada pelo usuário (copiada literal). Formato: "num nds mac"
+const RAW = `
+1 PRO25JAN036523 90F421A715AE
+1 PRO25JAN037207 90F421A7185A
+2 PRO25JAN037249 90F421A71884
+2 PRO25JAN045995 90F421A73AAE
+3 PRO25JAN041691 90F421A729DE
+3 PRO25JAN037235 90F421A71876
+4 PRO25JAN036355 90F421A71506
+4 PRO25JAN044219 90F421A733BE
+5 PRO25JAN037234 90F421A71875
+5 PRO25JAN036366 90F421A71511
+6 PRO25JAN044266 90F421A733ED
+6 PRO25JAN037371 90F421A718FE
+7 PRO25JAN044292 90F421A73407
+7 PRO25JAN048481 90F421A74464
+8 PRO25JAN034512 90F421A64A83
+8 PRO25JAN045964 90F421A73A8F
+9 PRO25JAN048494 90F421A74471
+9 PRO25JAN034657 90F421A70E64
+10 PRO25JAN017061 90F421A6C9A8
+10 PRO25JAN045990 90F421A73AA9
+11 PRO25JAN037568 90F421A719C3
+11 PRO25JAN037289 90F421A718AC
+11 PRO25JAN034607 90F421A70E32
+12 PRO25JAN036802 90F421A716C5
+12 PRO25JAN011016 90F421A6B20B
+13 PRO25JAN037247 90F421A71882
+13 PRO25JAN028817 90F421A6F794
+14 PRO25JAN047732 90F421A74177
+14 PRO25JAN047454 90F421A74061
+15 PRO25JAN034235 90F421A70CBE
+15 PRO24DEC034515 90F421A64A86
+16 PRO25JAN047315 90F421A73FD6
+16 PRO25JAN037564 90F421A719BF
+17 PRO25JAN037900 90F421A71B0F
+17 PRO25JAN041700 90F421A729E7
+18 PRO25JAN037511 90F421A7198A
+18 PRO25JAN036052 90F421A713D7
+19 PRO25JAN041698 90F421A729E5
+19 PRO25JAN011678 90F421A6B4A1
+20 PRO25JAN045993 90F421A73AAC
+21 PRO25JAN037244 90F421A7187F
+21 PRO25JAN041588 90F421A72977
+22 PRO25JAN031847 90F421A7036A
+22 PRO25JAN048486 90F421A74469
+23 PRO25JAN044293 90F421A73408
+23 PRO25JAN031821 90F421A70350
+24 PRO25JAN031802 90F421A7033D
+24 PRO25JAN017085 90F421A6C9C0
+25 PRO25JAN031807 90F421A70342
+25 PRO25JAN036516 90F421A715A7
+26 PRO25JAN045985 90F421A73AA4
+26 PRO25JAN031834 90F421A7035D
+27 PRO25JAN037283 90F421A718A6
+27 PRO25JAN017093 90F421A6C9C8
+28 PRO25JAN045947 90F421A73A7E
+28 PRO25JAN045984 90F421A73AA3
+29 PRO25JAN045960 90F421A73A8B
+29 PRO25JAN036544 90F421A715C3
+30 PRO25JAN041693 90F421A729E0
+30 PRO25JAN037227 90F421A7186E
+31 PRO25JAN048488 90F421A7446D
+31 PRO25JAN048490
+32 PRO25JAN048484 90F421A74467
+32 PRO25JAN044261 90F421A733E8
+33 PRO25JAN017084 90F421A6C9BF
+33 PRO25JAN044257 90F421A733E4
+34 PRO25JAN048422 90F421A74429
+34 PRO25JAN045933 90F421A73A70
+35 PRO25JAN017100 90F421A6C9CF
+35 PRO25JAN017099 90F421A6C9CE
+36 PRO25JAN017076 90F421A6C9B7
+36 PRO25JAN048435 90F421A74436
+37 PRO25JAN044247 90F421A733DA
+37 PRO25JAN048500 90F421A74477
+38 PRO25JAN031823 90F421A70352
+38 PRO25JAN048485 90F421A74468
+39 PRO25JAN048489 90F421A7446C
+39 PRO25JAN017092 90F421A6C9C7
+40 PRO25JAN031828 90F421A70357
+41 PRO25JAN036501 90F421A71598
+41 PRO25JAN037211 90F421A7185E
+42 PRO25JAN045929 90F421A73A6C
+42 PRO25JAN045936 90F421A73A73
+43 PRO25JAN045950 90F421A73A81
+43 PRO25JAN037205 90F421A71858
+44 PRO25JAN045967 90F421A73A92
+44 PRO25JAN045954 90F421A73A85
+45 PRO25JAN045989 90F421A73AA8
+45 PRO25JAN037226 90F421A7186D
+46 PRO25JAN041651 90F421A729B6
+46 PRO25JAN037209 90F421A7185C
+47 PRO25JAN037202 90F421A71855
+47 PRO25JAN045959 90F421A73A8A
+48 PRO25JAN037230 90F421A71871
+48 PRO25JAN045946 90F421A73A7D
+49 PRO24DEC011458 90F421A5F075
+49 PRO25JAN045949 90F421A73A80
+`;
+
+function parseList(raw) {
+  const lines = raw
+    .split(/\r?\n/)
+    .map(l => l.trim())
+    .filter(Boolean);
+  const byAssinatura = new Map();
+  for (const line of lines) {
+    const parts = line.split(/\s+/);
+    const num = parts[0];
+    const nds = parts[1] || '';
+    const mac = parts[2] || '';
+    if (!byAssinatura.has(num)) byAssinatura.set(num, []);
+    byAssinatura.get(num).push({ nds, mac, idAparelho: '' });
+  }
+  return byAssinatura;
+}
+
+async function updateAssinaturas() {
+  const grouped = parseList(RAW);
+  let ok = 0;
+  let fail = 0;
+  for (const [num, equipamentos] of grouped.entries()) {
+    const label = `Assinatura ${num}`;
+    const snap = await db.collection('tvbox_assinaturas').where('assinatura', '==', label).get();
+    if (snap.empty) {
+      console.warn('Assinatura não encontrada:', label);
+      fail++;
+      continue;
+    }
+    // Atualiza todos os docs que correspondem (normalmente 1)
+    for (const doc of snap.docs) {
+      try {
+        await doc.ref.update({
+          equipamentos,
+          nds: admin.firestore.FieldValue.delete(),
+          mac: admin.firestore.FieldValue.delete(),
+          idAparelho: admin.firestore.FieldValue.delete(),
+          nds2: admin.firestore.FieldValue.delete(),
+          mac2: admin.firestore.FieldValue.delete(),
+          idAparelho2: admin.firestore.FieldValue.delete(),
+        });
+        console.log(`✅ ${label} -> ${equipamentos.length} equipamentos (doc ${doc.id})`);
+        ok++;
+      } catch (e) {
+        console.error(`❌ Falha ao atualizar ${label} (doc ${doc.id})`, e);
+        fail++;
+      }
+    }
+  }
+  console.log(`\nConcluído. Sucesso: ${ok} | Falhas: ${fail}`);
+}
+
+updateAssinaturas()
+  .then(() => process.exit(0))
+  .catch(err => {
+    console.error(err);
+    process.exit(1);
+  });
+
+
+
+
+
