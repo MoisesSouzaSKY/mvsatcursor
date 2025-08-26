@@ -3,6 +3,7 @@ import { Button } from '../../shared/components/ui/Button';
 import { Card } from '../../shared/components/ui/Card';
 import { Input } from '../../shared/components/ui/Input';
 import { Select } from '../../shared/components/ui/Select';
+import { Modal } from '../../shared/components/ui/Modal';
 
 // Tipos para as cobranças
 interface Cobranca {
@@ -115,6 +116,13 @@ export default function CobrancasPage() {
   const [cobrancas, setCobrancas] = useState<Cobranca[]>(mockCobrancas);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState('data');
+  const [showGerarCobrancaModal, setShowGerarCobrancaModal] = useState(false);
+  const [formData, setFormData] = useState({
+    cliente: '',
+    tipoCobranca: 'SKY',
+    valor: '',
+    dataVencimento: ''
+  });
 
   // Estatísticas calculadas
   const totalRecebido = 69919.00;
@@ -159,6 +167,37 @@ export default function CobrancasPage() {
     cobranca.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
     cobranca.bairro.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Função para abrir o modal
+  const handleOpenGerarCobrancaModal = () => {
+    setShowGerarCobrancaModal(true);
+  };
+
+  // Função para fechar o modal
+  const handleCloseGerarCobrancaModal = () => {
+    setShowGerarCobrancaModal(false);
+    setFormData({
+      cliente: '',
+      tipoCobranca: 'SKY',
+      valor: '',
+      dataVencimento: ''
+    });
+  };
+
+  // Função para gerar cobrança
+  const handleGerarCobranca = () => {
+    // Aqui você implementaria a lógica para gerar a cobrança
+    console.log('Gerando cobrança:', formData);
+    handleCloseGerarCobrancaModal();
+  };
+
+  // Função para atualizar o formulário
+  const handleFormChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
   return (
     <div style={{ 
@@ -310,7 +349,7 @@ export default function CobrancasPage() {
           <svg style={{ width: '16px', height: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-        }>
+        } onClick={handleOpenGerarCobrancaModal}>
           Gerar Cobranças
         </Button>
       </div>
@@ -440,6 +479,209 @@ export default function CobrancasPage() {
           </table>
         </div>
       </Card>
+
+      {/* Modal Gerar Cobrança */}
+      <Modal
+        open={showGerarCobrancaModal}
+        onClose={handleCloseGerarCobrancaModal}
+        title="Gerar Cobranças Mensais"
+        size="md"
+      >
+        <div style={{ padding: '24px' }}>
+          {/* Título principal */}
+          <div style={{ marginBottom: '24px', textAlign: 'center' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              gap: '12px',
+              marginBottom: '8px'
+            }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                backgroundColor: 'var(--color-primary-100)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <svg style={{ width: '20px', height: '20px', color: 'var(--color-primary-600)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
+              </div>
+              <h2 style={{ 
+                fontSize: '20px', 
+                fontWeight: '600', 
+                color: 'var(--text-primary)',
+                margin: 0
+              }}>
+                Gerar Cobrança de Mensalidade
+              </h2>
+            </div>
+            <p style={{ 
+              fontSize: '14px', 
+              color: 'var(--text-secondary)',
+              margin: 0
+            }}>
+              Selecione o cliente, tipo de cobrança e valor para gerar uma cobrança de mensalidade.
+            </p>
+          </div>
+
+          {/* Formulário */}
+          <div style={{ marginBottom: '24px' }}>
+            {/* Cliente */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ 
+                display: 'block', 
+                fontSize: '14px', 
+                fontWeight: '500', 
+                color: 'var(--text-primary)',
+                marginBottom: '8px'
+              }}>
+                Cliente *
+              </label>
+                          <Select
+              value={formData.cliente}
+              onChange={(value) => handleFormChange('cliente', String(value))}
+              placeholder="Selecione um cliente"
+              options={[
+                { value: 'arnaldo-gabrie', label: 'Arnaldo Gabrie - Pratinha' },
+                { value: 'abimael-correa', label: 'Abimael Corrêa - Pedreira' },
+                { value: 'adailton-costa', label: 'Adailton Costa - 40 Horas' },
+                { value: 'adawilkson-santos', label: 'Adawilkson Santos - Taua' },
+                { value: 'adilio-rodrigues', label: 'Adilio Rodrigues - Combu' },
+                { value: 'adilton', label: 'Adilton - Telegrafo' },
+                { value: 'adriano-cezar', label: 'Adriano Cezar - Matadouro' },
+                { value: 'ailton-souza', label: 'Ailton Souza - Cidade Nova 8' },
+                { value: 'ajacson', label: 'Ajacson - Marajó' },
+                { value: 'alberto-carlos', label: 'Alberto Carlos - Bela vista 2' },
+                { value: 'aldenour', label: 'Aldenour - Castanhal' }
+              ]}
+            />
+            </div>
+
+            {/* Tipo de Cobrança */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ 
+                display: 'block', 
+                fontSize: '14px', 
+                fontWeight: '500', 
+                color: 'var(--text-primary)',
+                marginBottom: '8px'
+              }}>
+                Tipo de Cobrança *
+              </label>
+                          <Select
+              value={formData.tipoCobranca}
+              onChange={(value) => handleFormChange('tipoCobranca', String(value))}
+              options={[
+                { value: 'SKY', label: 'SKY' },
+                { value: 'TV_BOX', label: 'TV BOX' },
+                { value: 'COMBO', label: 'COMBO (SKY E TV BOX)' }
+              ]}
+            />
+            </div>
+
+            {/* Valor da Mensalidade */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ 
+                display: 'block', 
+                fontSize: '14px', 
+                fontWeight: '500', 
+                color: 'var(--text-primary)',
+                marginBottom: '8px'
+              }}>
+                Valor da Mensalidade *
+              </label>
+              <Input
+                type="text"
+                value={formData.valor}
+                onChange={(e) => handleFormChange('valor', e.target.value)}
+                placeholder="0,00"
+                leftIcon={
+                  <svg style={{ width: '16px', height: '16px', color: 'var(--text-tertiary)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                  </svg>
+                }
+              />
+            </div>
+
+            {/* Data de Vencimento */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ 
+                display: 'block', 
+                fontSize: '14px', 
+                fontWeight: '500', 
+                color: 'var(--text-primary)',
+                marginBottom: '8px'
+              }}>
+                Data de Vencimento *
+              </label>
+              <Input
+                type="date"
+                value={formData.dataVencimento}
+                onChange={(e) => handleFormChange('dataVencimento', e.target.value)}
+                leftIcon={
+                  <svg style={{ width: '16px', height: '16px', color: 'var(--text-tertiary)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                }
+              />
+            </div>
+          </div>
+
+          {/* Mensagem informativa */}
+          <div style={{
+            backgroundColor: 'var(--color-info-50)',
+            border: '1px solid var(--color-info-200)',
+            borderRadius: '8px',
+            padding: '16px',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px'
+          }}>
+            <div style={{
+              width: '20px',
+              height: '20px',
+              backgroundColor: 'var(--color-info-500)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              marginTop: '2px'
+            }}>
+              <svg style={{ width: '12px', height: '12px', color: 'white' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p style={{
+              fontSize: '14px',
+              color: 'var(--color-info-700)',
+              margin: 0,
+              lineHeight: '1.5'
+            }}>
+              A cobrança será criada com status pendente e poderá receber o comprovante de pagamento posteriormente.
+            </p>
+          </div>
+
+          {/* Botões de ação */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '12px'
+          }}>
+            <Button variant="outline" onClick={handleCloseGerarCobrancaModal}>
+              Cancelar
+            </Button>
+            <Button variant="primary" onClick={handleGerarCobranca}>
+              Gerar Cobrança
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
