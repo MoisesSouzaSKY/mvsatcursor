@@ -8,8 +8,30 @@ export async function criarCobranca(payload: any) {
 }
 
 export async function listarCobrancas() {
-  const snap = await getDocs(collection(getDb(), 'cobrancas'));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  try {
+    const db = getDb();
+    const cobrancasRef = collection(db, 'cobrancas');
+    const snap = await getDocs(cobrancasRef);
+    
+    const dados = snap.docs.map(d => {
+      const docData = d.data();
+      return { id: d.id, ...docData };
+    });
+    
+    return dados;
+  } catch (error) {
+    console.error('Erro em listarCobrancas:', error);
+    throw error;
+  }
+}
+
+export async function atualizarCobranca(id: string, dados: any) {
+  await updateDoc(doc(getDb(), 'cobrancas', id), { 
+    ...dados, 
+    data_atualizacao: new Date() 
+  });
+  const snap = await getDoc(doc(getDb(), 'cobrancas', id));
+  return { ok: true, id, cobranca: snap.data() };
 }
 
 export async function marcarComoPaga(id: string, data: { valor_pago: number; data_pagamento: string }) {

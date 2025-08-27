@@ -14,5 +14,8 @@ export type { LoadingProps, SkeletonTextProps } from './Loading';
 export { Modal, ConfirmModal } from './Modal';
 export type { ModalProps, ConfirmModalProps } from './Modal';
 
+export { ConfirmacaoDesativacaoModal } from './ConfirmacaoDesativacaoModal';
+export { SucessoDesativacaoModal } from './SucessoDesativacaoModal';
+
 export { Select } from './Select';
 export type { SelectProps, SelectOption } from './Select';

@@ -92,6 +92,16 @@ export function useToastHelpers() {
     return addToast({ type: 'success', title, message, ...options });
   }, [addToast]);
 
+  const successQuick = useCallback((title: string, message?: string, options?: Partial<Toast>) => {
+    return addToast({ 
+      type: 'success', 
+      title, 
+      message, 
+      duration: 1000, // 1 segundo
+      ...options 
+    });
+  }, [addToast]);
+
   const error = useCallback((title: string, message?: string, options?: Partial<Toast>) => {
     return addToast({ type: 'error', title, message, duration: 7000, ...options });
   }, [addToast]);
@@ -104,5 +114,5 @@ export function useToastHelpers() {
     return addToast({ type: 'info', title, message, ...options });
   }, [addToast]);
 
-  return { success, error, warning, info };
+  return { success, successQuick, error, warning, info };
 }

@@ -18,12 +18,14 @@ interface Equipamento {
   smartcard: string;
   status: 'disponivel' | 'alugado' | 'problema' | string;
   cliente?: string; // nome do cliente
+  clienteId?: string | null; // id do cliente
   codigo?: string; // código da assinatura (campo direto)
   nomeCompleto?: string; // nome completo da assinatura (campo direto)
   assinatura?: {
     codigo: string;
     nomeAssinatura?: string; // nome completo da assinatura
   } | null;
+  assinaturaId?: string | null; // id da assinatura
 }
 
 // Função para buscar assinatura por código
@@ -158,6 +160,7 @@ async function normalizeEquipamento(obj: any, id: string): Promise<Equipamento> 
 
   // Buscar informações completas da assinatura seguindo prioridade: ID (UUID) -> código numérico -> código geral
   let assinaturaCompleta: Assinatura | null = null;
+  let assinaturaId: string | null = null;
   
   if (idCandidato && ehUUID) {
     // Se é um UUID, buscar diretamente pelo ID do documento
@@ -173,6 +176,7 @@ async function normalizeEquipamento(obj: any, id: string): Promise<Equipamento> 
           nomeCompleto: data?.nomeCompleto,
           ...(data as any)
         } as Assinatura;
+        assinaturaId = snap.id;
         console.log('  ✅ Assinatura encontrada por ID (UUID):', { codigo: assinaturaCompleta.codigo, nome: assinaturaCompleta.nomeCompleto });
       } else {
         console.log('  ❌ Assinatura não encontrada por ID (UUID):', idCandidato);
@@ -182,33 +186,39 @@ async function normalizeEquipamento(obj: any, id: string): Promise<Equipamento> 
     }
   } else if (idCandidato) {
     console.log('  🔍 Tentando buscar por ID (não UUID):', idCandidato);
-    assinaturaCompleta = await buscarAssinaturaPorCodigo(String(idCandidato));
+    const a = await buscarAssinaturaPorCodigo(String(idCandidato));
+    if (a) { assinaturaCompleta = a; assinaturaId = a.id; }
   } else if (ehCodigoNumerico) {
     console.log('  🔍 Tentando buscar por código numérico:', codigoCandidato);
-    assinaturaCompleta = await buscarAssinaturaPorCodigo(String(codigoCandidato));
+    const a = await buscarAssinaturaPorCodigo(String(codigoCandidato));
+    if (a) { assinaturaCompleta = a; assinaturaId = a.id; }
   } else if (codigoCandidato) {
     console.log('  🔍 Tentando buscar por código (não numérico):', codigoCandidato);
-    assinaturaCompleta = await buscarAssinaturaPorCodigo(String(codigoCandidato));
+    const a = await buscarAssinaturaPorCodigo(String(codigoCandidato));
+    if (a) { assinaturaCompleta = a; assinaturaId = a.id; }
   } else {
     console.log('  ❌ Nenhum candidato válido encontrado para busca de assinatura');
   }
 
-  // Log do resultado da busca
-  if (assinaturaCompleta) {
-    console.log('  ✅ Assinatura completa encontrada:', { codigo: assinaturaCompleta.codigo, nome: assinaturaCompleta.nomeCompleto });
-  } else {
-    console.log('  ❌ Assinatura completa NÃO encontrada para nenhum candidato.');
-  }
+  // Derivar status automaticamente
+  const statusRaw = String(pick(obj, ['status', 'status_aparelho', 'situacao', 'state'], ''));
+  const clienteIdRaw = pick(obj, ['cliente_id', 'clienteId'], '') as string;
+  const clienteNomeRaw = pick(obj, ['cliente_nome', 'cliente', 'nome_cliente'], '') as string;
+  const hasProblema = statusRaw.toLowerCase().trim() === 'problema' || statusRaw.toLowerCase().trim() === 'com_problema';
+  const hasCliente = Boolean(clienteIdRaw || clienteNomeRaw);
+  const hasAssinatura = Boolean(assinaturaId || codigoCandidato || assinaturaCompleta?.codigo);
+  const derivedStatus = hasProblema ? 'problema' : (hasCliente && hasAssinatura ? 'alugado' : 'disponivel');
 
   return {
     id,
     nds: String(pick(obj, ['nds', 'NDS', 'numero_nds', 'num_nds', 'card_nds'], '')),
     smartcard: String(pick(obj, ['smartcard', 'smart_card', 'smartCard', 'SC', 'numero_sc'], '')),
-    status: String(pick(obj, ['status', 'status_aparelho', 'situacao', 'state'], '')) as any,
+    status: derivedStatus as any,
     cliente: String(
       pick(obj, ['cliente', 'cliente_nome', 'nome_cliente', 'clienteName'], '') ||
       pick(obj?.cliente, ['nome', 'name', 'fullName'], '')
     ),
+    clienteId: clienteIdRaw || null,
     codigo: String(pick(obj, ['codigo', 'codigo_assinatura'], '')),
     nomeCompleto: String(pick(obj, ['nomeCompleto', 'nome_completo'], '')),
     assinatura: assinaturaCompleta
@@ -218,7 +228,8 @@ async function normalizeEquipamento(obj: any, id: string): Promise<Equipamento> 
         }
       : (codigoCandidato)
         ? { codigo: String(codigoCandidato), nomeAssinatura: 'Nome não encontrado' }
-        : null
+        : null,
+    assinaturaId: assinaturaId || null
   };
 }
 
@@ -293,26 +304,6 @@ export default function EquipamentosPage() {
     return { total, disponiveis, alugados, problema };
   }, [items]);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   const loadAssinaturas = async () => {
     try {
       const snap = await getDocs(collection(getDb(), 'assinaturas'));
@@ -369,9 +360,11 @@ export default function EquipamentosPage() {
       smartcard: '',
       status: 'disponivel',
       cliente: '',
+      clienteId: null,
       codigo: '',
       nomeCompleto: '',
-      assinatura: null
+      assinatura: null,
+      assinaturaId: null
     };
     setEditingItem(novoEquipamento);
     setShowModal(true);
@@ -385,7 +378,9 @@ export default function EquipamentosPage() {
       ...item,
       status: item.status || 'disponivel',
       codigo: item.codigo || item.assinatura?.codigo || '',
-      nomeCompleto: item.nomeCompleto || item.assinatura?.nomeAssinatura || ''
+      nomeCompleto: item.nomeCompleto || item.assinatura?.nomeAssinatura || '',
+      clienteId: item.clienteId || null,
+      assinaturaId: item.assinaturaId || null
     };
     
     console.log('📝 Dados para edição:', equipamentoParaEdicao);
@@ -403,7 +398,8 @@ export default function EquipamentosPage() {
           assinatura: {
             codigo: String(assinatura.codigo || ''),
             nomeAssinatura: String(assinatura.nomeCompleto || '')
-          }
+          },
+          assinaturaId: assinatura.id
         });
         console.log('✅ Assinatura encontrada automaticamente:', assinatura.nomeCompleto);
       }
@@ -412,28 +408,44 @@ export default function EquipamentosPage() {
     }
   };
 
-
-
   const handleSave = async () => {
     if (!editingItem) return;
     try {
-      const { id, assinatura, ...data } = editingItem;
-      
-      // Preparar dados para salvar - usar campos diretos quando possível
-      const equipamentoData = {
+      const { id, assinatura, assinaturaId, clienteId, ...data } = editingItem;
+
+      // Resolver assinaturaId a partir do código selecionado, se necessário
+      let resolvedAssinaturaId: string | null = assinaturaId || null;
+      if (!resolvedAssinaturaId && (data.codigo || assinatura?.codigo)) {
+        const codigo = data.codigo || assinatura?.codigo || '';
+        const found = assinaturas.find(a => a.codigo === codigo);
+        resolvedAssinaturaId = found?.id || null;
+      }
+
+      // Derivar status automaticamente
+      let nextStatus = (data.status || '').toLowerCase().trim();
+      if (nextStatus === 'problema') {
+        nextStatus = 'problema';
+      } else {
+        const hasCliente = Boolean(clienteId);
+        const hasAssinatura = Boolean(resolvedAssinaturaId || data.codigo);
+        nextStatus = hasCliente && hasAssinatura ? 'alugado' : 'disponivel';
+      }
+
+      // Preparar dados para salvar - normalizado
+      const equipamentoData: any = {
         numero_nds: data.nds,
         smart_card: data.smartcard,
-        status_aparelho: data.status,
-        cliente_nome: data.cliente,
+        status_aparelho: nextStatus,
+        cliente_nome: data.cliente || null,
+        cliente_id: clienteId || null,
         codigo: data.codigo || assinatura?.codigo || '',
-        nomeCompleto: data.nomeCompleto || assinatura?.nomeAssinatura || ''
+        nomeCompleto: data.nomeCompleto || assinatura?.nomeAssinatura || '',
+        assinatura_id: resolvedAssinaturaId || null
       };
 
       if (id && id !== '') {
-        // Atualizar equipamento existente
         await updateDoc(doc(getDb(), 'equipamentos', id), equipamentoData as any);
       } else {
-        // Criar novo equipamento
         await addDoc(collection(getDb(), 'equipamentos'), equipamentoData as any);
       }
       
@@ -661,7 +673,8 @@ export default function EquipamentosPage() {
                     assinatura: assinaturaSelecionada ? {
                       codigo: assinaturaSelecionada.codigo,
                       nomeAssinatura: assinaturaSelecionada.nomeCompleto
-                    } : null
+                    } : null,
+                    assinaturaId: assinaturaSelecionada?.id || null
                   });
                 }}
                 style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 4 }} 
@@ -678,18 +691,20 @@ export default function EquipamentosPage() {
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>Cliente que está com o aparelho</label>
               <select 
-                value={editingItem.cliente || ''}
+                value={editingItem.clienteId || ''}
                 onChange={(e) => {
+                  const c = clientes.find(x => x.id === e.target.value);
                   setEditingItem({
                     ...(editingItem as Equipamento),
-                    cliente: e.target.value
+                    clienteId: c?.id || null,
+                    cliente: c?.nome || ''
                   });
                 }}
                 style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 4 }} 
               >
                 <option value="">Nenhum cliente</option>
                 {clientes.map(cliente => (
-                  <option key={cliente.id} value={cliente.nome}>
+                  <option key={cliente.id} value={cliente.id}>
                     {cliente.nome}
                   </option>
                 ))}

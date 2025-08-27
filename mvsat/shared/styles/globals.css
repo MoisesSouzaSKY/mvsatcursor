@@ -55,11 +55,15 @@ body {
   --color-success-100: #dcfce7;
   --color-success-200: #bbf7d0;
   --color-success-500: #10b981;
-  --color-success-800: #166534;
+  --color-success-600: #059669;
+  --color-success-700: #047857;
+  --color-success-800: #065f46;
   
   --color-warning-100: #fef3c7;
   --color-warning-200: #fde68a;
   --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
   --color-warning-800: #92400e;
   
   --color-error-100: #fee2e2;
@@ -69,7 +73,12 @@ body {
   --color-error-700: #b91c1c;
   --color-error-800: #991b1b;
   
+  --color-info-50: #f0f9ff;
+  --color-info-100: #e0f2fe;
+  --color-info-200: #bae6fd;
   --color-info-500: #0ea5e9;
+  --color-info-600: #0284c7;
+  --color-info-700: #0369a1;
   
   /* Semantic colors - Light theme */
   --background-primary: var(--color-gray-50);

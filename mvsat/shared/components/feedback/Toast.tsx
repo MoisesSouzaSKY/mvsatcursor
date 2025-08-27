@@ -62,11 +62,33 @@ export function Toast({ toast, onRemove }: ToastProps) {
 
   const getIcon = () => {
     switch (toast.type) {
-      case 'success': return '✅';
-      case 'error': return '❌';
-      case 'warning': return '⚠️';
-      case 'info': return 'ℹ️';
-      default: return '';
+      case 'success': 
+        return (
+          <svg style={{ width: '20px', height: '20px', color: 'var(--color-success-600)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        );
+      case 'error': 
+        return (
+          <svg style={{ width: '20px', height: '20px', color: 'var(--color-error-600)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        );
+      case 'warning': 
+        return (
+          <svg style={{ width: '20px', height: '20px', color: 'var(--color-warning-600)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+        );
+      case 'info': 
+        return (
+          <svg style={{ width: '20px', height: '20px', color: 'var(--color-info-600)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 16v-4M12 8h.01"/>
+          </svg>
+        );
+      default: 
+        return '';
     }
   };
 

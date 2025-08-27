@@ -1,11 +1,12 @@
 import React from 'react';
-import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, query, where, writeBatch } from 'firebase/firestore';
 import { getDb } from '../../config/database.config';
 import EditarClienteModal from '../../clientes/EditarClienteModal';
 import NovoClienteModal from '../../clientes/NovoClienteModal';
 import { formatPhoneNumber } from '../../shared/utils/phoneFormatter';
 import { migrarTelefones } from '../../clientes/clientes.functions';
 import { EyeIcon, EditIcon, DeleteIcon, UserRemoveIcon, CheckIcon, XMarkIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, FunnelIcon } from '../../clientes/components/Icons';
+import { ConfirmacaoDesativacaoModal, SucessoDesativacaoModal } from '../../shared/components/ui';
 
 interface Cliente {
   id: string;
@@ -30,6 +31,9 @@ interface Cliente {
   };
   observacoes?: string;
   status?: 'ativo' | 'desativado' | 'inativo' | 'suspenso' | 'cancelado' | string;
+  // Propriedades temporárias para equipamentos liberados
+  equipamentosLiberados?: number;
+  tvBoxesLiberadas?: number;
 }
 
 function pick(obj: any, keys: string[], fallback: any = '') {
@@ -82,6 +86,14 @@ export default function ClientesPage() {
   const [activeTab, setActiveTab] = React.useState<'ativos' | 'ex-clientes'>('ativos');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
+  
+  // Estados para os modais de desativação
+  const [showConfirmacaoDesativacao, setShowConfirmacaoDesativacao] = React.useState(false);
+  const [showSucessoDesativacao, setShowSucessoDesativacao] = React.useState(false);
+  const [clienteParaDesativar, setClienteParaDesativar] = React.useState<Cliente | null>(null);
+  const [desativandoCliente, setDesativandoCliente] = React.useState(false);
+  const [equipamentosLiberados, setEquipamentosLiberados] = React.useState(0);
+  const [tvBoxesLiberadas, setTvBoxesLiberadas] = React.useState(0);
 
   React.useEffect(() => {
     loadClientes();
@@ -170,21 +182,102 @@ export default function ClientesPage() {
   };
 
   const handleToggleStatus = async (cliente: Cliente) => {
-    const novoStatus = cliente.status === 'ativo' ? 'desativado' : 'ativo';
-    const acao = novoStatus === 'ativo' ? 'ativar' : 'desativar';
-    
-    if (window.confirm(`Tem certeza que deseja ${acao} o cliente ${cliente.nome}?`)) {
-      try {
-        await updateDoc(doc(getDb(), 'clientes', cliente.id), {
-          status: novoStatus,
-          dataUltimaAtualizacao: new Date()
-        });
-        await loadClientes();
-        alert(`Cliente ${acao === 'ativar' ? 'ativado' : 'desativado'} com sucesso!`);
-      } catch (e: any) {
-        alert(`Erro ao ${acao} cliente: ` + e.message);
+    // Se for para desativar, mostrar modal de confirmação
+    if (cliente.status === 'ativo') {
+      setClienteParaDesativar(cliente);
+      setShowConfirmacaoDesativacao(true);
+    } else {
+      // Se for para ativar, usar o fluxo antigo (mais simples)
+      if (window.confirm(`Tem certeza que deseja ativar o cliente ${cliente.nome}?`)) {
+        try {
+          await updateDoc(doc(getDb(), 'clientes', cliente.id), {
+            status: 'ativo',
+            dataUltimaAtualizacao: new Date()
+          });
+          await loadClientes();
+          alert('Cliente ativado com sucesso!');
+        } catch (e: any) {
+          alert('Erro ao ativar cliente: ' + e.message);
+        }
       }
     }
+  };
+
+  // Função para confirmar desativação
+  const handleConfirmarDesativacao = async () => {
+    if (!clienteParaDesativar) return;
+    
+    try {
+      setDesativandoCliente(true);
+      
+      // 1) Desativa o cliente
+      await updateDoc(doc(getDb(), 'clientes', clienteParaDesativar.id), {
+        status: 'desativado',
+        dataUltimaAtualizacao: new Date()
+      });
+      
+      // 2) Libera equipamentos vinculados (coleção 'equipamentos')
+      const equipamentosQueryRef = query(
+        collection(getDb(), 'equipamentos'),
+        where('cliente_id', '==', clienteParaDesativar.id)
+      );
+      const equipamentosSnap = await getDocs(equipamentosQueryRef);
+      if (!equipamentosSnap.empty) {
+        const batch = writeBatch(getDb());
+        equipamentosSnap.docs.forEach((d) => {
+          batch.update(d.ref, {
+            cliente_id: null,
+            cliente_nome: null,
+            status: 'disponivel',
+            dataUltimaAtualizacao: new Date(),
+            cliente_anterior: clienteParaDesativar.nome || 'Cliente sem nome',
+            data_desativacao_cliente: new Date()
+          });
+        });
+        await batch.commit();
+      }
+      
+      // 3) Libera TV Boxes vinculadas (coleção 'tvbox')
+      const tvboxQueryRef = query(
+        collection(getDb(), 'tvbox'),
+        where('cliente_id', '==', clienteParaDesativar.id)
+      );
+      const tvboxSnap = await getDocs(tvboxQueryRef);
+      if (!tvboxSnap.empty) {
+        const batch = writeBatch(getDb());
+        tvboxSnap.docs.forEach((d) => {
+          batch.update(d.ref, {
+            cliente_id: null,
+            cliente_nome: null,
+            status: 'disponivel',
+            dataUltimaAtualizacao: new Date(),
+            cliente_anterior: clienteParaDesativar.nome || 'Cliente sem nome',
+            data_desativacao_cliente: new Date()
+          });
+        });
+        await batch.commit();
+      }
+      
+      // 4) Guarda totais para o modal de sucesso
+      setEquipamentosLiberados(equipamentosSnap.size);
+      setTvBoxesLiberadas(tvboxSnap.size);
+      
+      await loadClientes();
+      setShowConfirmacaoDesativacao(false);
+      setShowSucessoDesativacao(true);
+    } catch (e: any) {
+      alert('Erro ao desativar cliente: ' + e.message);
+    } finally {
+      setDesativandoCliente(false);
+    }
+  };
+
+  // Função para fechar modal de sucesso
+  const handleFecharSucesso = () => {
+    setShowSucessoDesativacao(false);
+    setClienteParaDesativar(null);
+    setEquipamentosLiberados(0);
+    setTvBoxesLiberadas(0);
   };
 
   const handleSave = async () => {
@@ -465,6 +558,24 @@ export default function ClientesPage() {
         isOpen={showNovoClienteModal}
         onClose={() => setShowNovoClienteModal(false)}
         onSave={handleSave}
+      />
+
+      {/* Modal de confirmação de desativação */}
+      <ConfirmacaoDesativacaoModal
+        open={showConfirmacaoDesativacao}
+        onClose={() => setShowConfirmacaoDesativacao(false)}
+        onConfirm={handleConfirmarDesativacao}
+        clienteNome={clienteParaDesativar?.nome || ''}
+        loading={desativandoCliente}
+      />
+
+      {/* Modal de sucesso na desativação */}
+      <SucessoDesativacaoModal
+        open={showSucessoDesativacao}
+        onClose={handleFecharSucesso}
+        clienteNome={clienteParaDesativar?.nome || ''}
+        equipamentosLiberados={equipamentosLiberados}
+        tvBoxesLiberadas={tvBoxesLiberadas}
       />
     </div>
   );
