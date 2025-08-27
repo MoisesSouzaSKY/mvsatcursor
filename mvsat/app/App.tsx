@@ -7,6 +7,7 @@ import AssinaturasPage from './pages/AssinaturasPage';
 import EquipamentosPage from './pages/EquipamentosPage';
 import CobrancasPage from './pages/CobrancasPage';
 import TvBoxPage from './pages/TvBoxPage';
+import DespesasPage from './pages/DespesasPage';
 import SeedAssinaturas from './pages/SeedAssinaturas';
 import FuncionariosPage from './pages/FuncionariosPage';
 import ConfiguracoesPage from './pages/ConfiguracoesPage';
@@ -29,6 +30,7 @@ export default function App() {
             <Route path="/equipamentos" element={<EquipamentosPage />} />
             <Route path="/cobrancas" element={<CobrancasPage />} />
             <Route path="/tvbox" element={<TvBoxPage />} />
+            <Route path="/despesas" element={<DespesasPage />} />
             <Route path="/seed/assinaturas" element={<SeedAssinaturas />} />
             <Route path="/funcionarios" element={<FuncionariosPage />} />
             <Route path="/configuracoes" element={<ConfiguracoesPage />} />

@@ -129,6 +129,7 @@ export default function TvBoxPage() {
   const [clientesFiltrados, setClientesFiltrados] = useState<Cliente[]>([]);
   const [novoCliente, setNovoCliente] = useState({ nome: '', telefone: '', email: '' });
   const [mostrarCriarCliente, setMostrarCriarCliente] = useState(false);
+  const [linhasRealcadas, setLinhasRealcadas] = useState<Set<string>>(new Set());
 
 
 
@@ -501,6 +502,56 @@ export default function TvBoxPage() {
     } catch (error) {
       console.error('❌ Erro ao atualizar status:', error);
       alert('❌ Erro ao atualizar status. Tente novamente.');
+    } finally {
+      setExecutandoTarefa(false);
+    }
+  };
+
+  // Ação: Renovar mensalidade com criação de despesa e atualização local
+  const darBaixaRenovacao = async (tvbox: TVBox) => {
+    // Confirmação antes de prosseguir
+    const confirmacao = window.confirm(
+      `🔄 RENOVAR MENSALIDADE\n\n` +
+      `Assinatura: ${tvbox.assinatura}\n` +
+      `Login: ${tvbox.login}\n` +
+      `Mês atual: ${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}\n` +
+      `Valor: R$ 10,00\n\n` +
+      `Deseja prosseguir com a renovação?`
+    );
+
+    if (!confirmacao) {
+      return; // Usuário cancelou
+    }
+
+    try {
+      setExecutandoTarefa(true);
+      const { renovarTvBox, formatDateBelem } = await import('../../tvbox/renovacaoTvBox');
+      const resp = await renovarTvBox(tvbox.id);
+      if (!resp.ok) {
+        alert('❌ ' + resp.error);
+        return;
+      }
+
+      const renovadoEmStr = formatDateBelem(resp.ultimoPagamentoEm);
+      const proximoVencStr = formatDateBelem(resp.proximoVencimento);
+
+      // Forçar atualização completa recarregando do Firestore
+      await carregarTVBoxes();
+
+      // Realçar linha por 2s
+      setLinhasRealcadas(prev => new Set(prev).add(tvbox.id));
+      setTimeout(() => {
+        setLinhasRealcadas(prev => {
+          const n = new Set(prev);
+          n.delete(tvbox.id);
+          return n;
+        });
+      }, 2000);
+
+      alert(`✅ Renovação concluída!\n\nRenovado em: ${renovadoEmStr}\nPróximo venc.: ${proximoVencStr}`);
+    } catch (e: any) {
+      console.error('Erro ao renovar:', e);
+      alert('❌ Falha ao renovar');
     } finally {
       setExecutandoTarefa(false);
     }
@@ -1035,6 +1086,39 @@ export default function TvBoxPage() {
     return temCliente || temMac || temNds || temLogin || temSenha;
   };
 
+  // Util: parse dd/MM/yyyy -> Date para ordenação
+  const parsePtBrDate = (value?: string | null): Date | null => {
+    if (!value) return null;
+    const parts = value.split('/');
+    if (parts.length !== 3) return null;
+    const [dd, mm, yyyy] = parts.map(p => parseInt(p, 10));
+    if (!dd || !mm || !yyyy) return null;
+    const d = new Date(yyyy, mm - 1, dd, 0, 0, 0, 0);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  // Função para calcular dias até o vencimento
+  const calcularDiasAteVencimento = (tvbox: TVBox): number => {
+    const dataRenov = parsePtBrDate(tvbox.dataRenovacao || tvbox.renovacaoData || undefined);
+    if (!dataRenov) return 999; // Sem data, vai para o final
+    
+    const hoje = new Date();
+    const hojeLimpo = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    
+    // Calcular próxima data de vencimento
+    let proximaDataVencimento = new Date(hoje.getFullYear(), dataRenov.getMonth(), dataRenov.getDate());
+    
+    // Se a data já passou este ano, usar o próximo ano
+    if (proximaDataVencimento < hojeLimpo) {
+      proximaDataVencimento = new Date(hoje.getFullYear() + 1, dataRenov.getMonth(), dataRenov.getDate());
+    }
+    
+    const diffTime = proximaDataVencimento.getTime() - hojeLimpo.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays;
+  };
+
   if (loading) {
     return (
       <div style={{ padding: '20px' }}>
@@ -1294,7 +1378,7 @@ export default function TvBoxPage() {
             flexWrap: 'wrap'
           }}>
             {/* Campo de busca por Nome, MAC ou NDS */}
-            <div style={{ flex: '1', minWidth: '300px' }}>
+            <div style={{ flex: '0 0 auto', width: '400px' }}>
               <input
                 type="text"
                 placeholder="Buscar por Nome, MAC, NDS, Login ou Senha..."
@@ -1432,9 +1516,13 @@ export default function TvBoxPage() {
                       return numA - numB;
                     } else if (ordemFiltro === 'alfabetica') {
                       return a.assinatura.localeCompare(b.assinatura, 'pt-BR');
-                    } else {
-                      return b.assinatura.localeCompare(a.assinatura, 'pt-BR');
+                    } else if (ordemFiltro === 'renovacao') {
+                      // Ordenar por vencimento mais próximo primeiro
+                      const diasA = calcularDiasAteVencimento(a);
+                      const diasB = calcularDiasAteVencimento(b);
+                      return diasA - diasB;
                     }
+                    return 0;
                   })
                   .map((tvbox) => (
                     <tr key={tvbox.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
@@ -1562,6 +1650,32 @@ export default function TvBoxPage() {
                             }}
                           >
                             👁️ Visualizar/Editar
+                          </button>
+                          <button
+                            onClick={() => darBaixaRenovacao(tvbox)}
+                            disabled={executandoTarefa}
+                            style={{
+                              padding: '6px 12px',
+                              backgroundColor: executandoTarefa ? '#6b7280' : '#10b981',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: executandoTarefa ? 'not-allowed' : 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '500'
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!executandoTarefa) {
+                                e.currentTarget.style.backgroundColor = '#059669';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!executandoTarefa) {
+                                e.currentTarget.style.backgroundColor = '#10b981';
+                              }
+                            }}
+                          >
+                            🔄 Renovar
                           </button>
                         </div>
                       </td>

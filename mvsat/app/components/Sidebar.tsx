@@ -44,6 +44,7 @@ export default function Sidebar() {
         <NavLink to="/assinaturas" style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>Assinaturas</NavLink>
         <NavLink to="/equipamentos" style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>Equipamentos</NavLink>
         <NavLink to="/cobrancas" style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>Cobranças</NavLink>
+        <NavLink to="/despesas" style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>Despesas</NavLink>
         <NavLink to="/tvbox" style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>TVBox</NavLink>
         <NavLink to="/funcionarios" style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>Funcionários</NavLink>
         <NavLink to="/configuracoes" style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>Configurações</NavLink>

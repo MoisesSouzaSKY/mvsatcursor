@@ -1,11 +1,13 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { firebaseConfig as localFirebaseConfig } from './environment';
 
 let app: FirebaseApp | null = null;
 let authInstance: Auth | null = null;
 let dbInstance: Firestore | null = null;
+let storageInstance: FirebaseStorage | null = null;
 
 function ensureInitializedSync(): void {
   if (!app) {
@@ -21,6 +23,9 @@ function ensureInitializedSync(): void {
   }
   if (!dbInstance && app) {
     dbInstance = getFirestore(app);
+  }
+  if (!storageInstance && app) {
+    storageInstance = getStorage(app);
   }
 }
 
@@ -45,6 +50,7 @@ export async function initFirebase(): Promise<void> {
 
   authInstance = getAuth(app!);
   dbInstance = getFirestore(app!);
+  storageInstance = getStorage(app!);
 }
 
 export function getApp(): FirebaseApp {
@@ -69,8 +75,14 @@ export function getDb(): Firestore {
     app = initializeApp(localFirebaseConfig);
     authInstance = getAuth(app);
     dbInstance = getFirestore(app);
+    storageInstance = getStorage(app);
   }
   return dbInstance!;
+}
+
+export function getStorageInstance(): FirebaseStorage {
+  if (!storageInstance) ensureInitializedSync();
+  return storageInstance!;
 }
 
 
