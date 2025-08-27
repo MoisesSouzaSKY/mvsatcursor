@@ -298,61 +298,147 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      backdropFilter: 'blur(4px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 999999,
-      fontFamily: 'Arial, sans-serif'
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      padding: '20px'
     }}>
       <div style={{
         backgroundColor: 'white',
-        borderRadius: '12px',
-        padding: '30px',
-        width: '90%',
-        maxWidth: '800px',
+        borderRadius: '20px',
+        padding: '0',
+        width: '100%',
+        maxWidth: '900px',
         maxHeight: '90vh',
-        overflow: 'auto'
+        overflow: 'hidden',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+        border: '1px solid rgba(255, 255, 255, 0.1)'
       }}>
         {/* Header */}
         <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '24px',
-          borderBottom: '1px solid #e5e7eb',
-          paddingBottom: '16px'
+          background: 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)',
+          padding: '32px',
+          color: 'white',
+          position: 'relative',
+          overflow: 'hidden'
         }}>
-          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '600', color: '#111827' }}>
-            🆕 Nova Assinatura TV Box
-          </h2>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '24px',
-              cursor: 'pointer',
-              color: '#6b7280',
-              padding: '4px'
-            }}
-          >
-            ×
-          </button>
+          <div style={{
+            position: 'absolute',
+            top: '-50%',
+            right: '-10%',
+            width: '200px',
+            height: '200px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: '50%',
+            filter: 'blur(40px)'
+          }} />
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            position: 'relative',
+            zIndex: 1
+          }}>
+            <div>
+              <h2 style={{ 
+                margin: '0 0 8px 0', 
+                fontSize: '28px', 
+                fontWeight: '700', 
+                color: 'white',
+                textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+              }}>
+                🆕 Nova Assinatura TV Box
+              </h2>
+              <p style={{
+                margin: 0,
+                fontSize: '16px',
+                color: 'rgba(255, 255, 255, 0.9)',
+                fontWeight: '400'
+              }}>
+                Preencha os dados para criar uma nova assinatura
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              style={{
+                background: 'rgba(255, 255, 255, 0.2)',
+                border: 'none',
+                borderRadius: '12px',
+                width: '44px',
+                height: '44px',
+                cursor: 'pointer',
+                color: 'white',
+                fontSize: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease',
+                backdropFilter: 'blur(10px)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              ×
+            </button>
+          </div>
         </div>
+
+        {/* Conteúdo do Modal */}
+        <div style={{
+          padding: '40px',
+          maxHeight: 'calc(90vh - 140px)',
+          overflow: 'auto'
+        }}>
 
         {/* Formulário */}
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '32px' }}>
             {/* Seção A: Dados da Assinatura */}
-            <div style={{ marginBottom: '24px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#374151' }}>
-                📋 Dados da Assinatura
+            <div style={{ 
+              marginBottom: '32px',
+              backgroundColor: '#f8fafc',
+              borderRadius: '16px',
+              padding: '24px',
+              border: '1px solid #e2e8f0'
+            }}>
+              <h3 style={{ 
+                fontSize: '20px', 
+                fontWeight: '700', 
+                marginBottom: '20px', 
+                color: '#1e293b',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <span style={{ 
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  borderRadius: '8px',
+                  padding: '8px',
+                  fontSize: '16px'
+                }}>📋</span>
+                Dados da Assinatura
               </h3>
               
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                                   <div>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151' }}>
+                    <label style={{ 
+                      display: 'block', 
+                      marginBottom: '12px', 
+                      fontWeight: '600', 
+                      color: '#1e293b',
+                      fontSize: '15px'
+                    }}>
                       Número da Assinatura*
                     </label>
                     <input
@@ -363,11 +449,21 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
                       required
                       style={{
                         width: '100%',
-                        padding: '12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        backgroundColor: assinatura.assinatura.trim() ? '#f0fdf4' : 'white'
+                        padding: '16px',
+                        border: '2px solid #e2e8f0',
+                        borderRadius: '12px',
+                        fontSize: '15px',
+                        backgroundColor: assinatura.assinatura.trim() ? '#f0fdf4' : 'white',
+                        transition: 'all 0.2s ease',
+                        fontWeight: '500'
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = '#3b82f6';
+                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = '#e2e8f0';
+                        e.currentTarget.style.boxShadow = 'none';
                       }}
                     />
                     {assinatura.assinatura.trim() && (
@@ -664,24 +760,38 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
           {/* Botões */}
           <div style={{
             display: 'flex',
-            gap: '12px',
+            gap: '16px',
             justifyContent: 'flex-end',
-            borderTop: '1px solid #e5e7eb',
-            paddingTop: '16px'
+            borderTop: '2px solid #f1f5f9',
+            paddingTop: '24px',
+            marginTop: '32px'
           }}>
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
               style={{
-                padding: '12px 24px',
-                border: '1px solid #d1d5db',
+                padding: '16px 32px',
+                border: '2px solid #e2e8f0',
                 backgroundColor: 'white',
-                color: '#374151',
-                borderRadius: '8px',
+                color: '#64748b',
+                borderRadius: '12px',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                fontWeight: '500'
+                fontSize: '15px',
+                fontWeight: '600',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.borderColor = '#cbd5e1';
+                  e.currentTarget.style.backgroundColor = '#f8fafc';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.borderColor = '#e2e8f0';
+                  e.currentTarget.style.backgroundColor = 'white';
+                }
               }}
             >
               Cancelar
@@ -690,20 +800,40 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
               type="submit"
               disabled={loading}
               style={{
-                padding: '12px 24px',
+                padding: '16px 32px',
                 backgroundColor: loading ? '#6b7280' : '#10b981',
                 color: 'white',
                 border: 'none',
-                borderRadius: '8px',
+                borderRadius: '12px',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                fontWeight: '600'
+                fontSize: '15px',
+                fontWeight: '700',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.backgroundColor = '#059669';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = '0 8px 20px rgba(16, 185, 129, 0.4)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.backgroundColor = '#10b981';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.25)';
+                }
               }}
             >
               {loading ? '💾 Criando...' : '💾 Criar Assinatura'}
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );

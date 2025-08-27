@@ -99,6 +99,26 @@ export default function TvBoxPage() {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
+      @keyframes slideInRight {
+        0% { 
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        100% { 
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      @keyframes slideOutRight {
+        0% { 
+          transform: translateX(0);
+          opacity: 1;
+        }
+        100% { 
+          transform: translateX(100%);
+          opacity: 0;
+        }
+      }
     `;
     document.head.appendChild(style);
     
@@ -117,11 +137,18 @@ export default function TvBoxPage() {
   const [busca, setBusca] = useState<string>('');
   const [buscaDebounced, setBuscaDebounced] = useState<string>('');
   const [ordemFiltro, setOrdemFiltro] = useState<'numerica' | 'alfabetica' | 'renovacao'>('numerica');
+  const [filtroRenovacao, setFiltroRenovacao] = useState<string>('');
   const [showModalVisualizar, setShowModalVisualizar] = useState(false);
   const [tvboxSelecionado, setTvboxSelecionado] = useState<TVBox | null>(null);
   const [showModalEditar, setShowModalEditar] = useState(false);
   const [tvboxEditando, setTvboxEditando] = useState<TVBox | null>(null);
   const [showModalNovaAssinatura, setShowModalNovaAssinatura] = useState(false);
+  const [showModalRenovar, setShowModalRenovar] = useState(false);
+  const [tvboxParaRenovar, setTvboxParaRenovar] = useState<TVBox | null>(null);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [showAlertaRenovacao, setShowAlertaRenovacao] = useState(false);
+  const [tvboxAlertaRenovacao, setTvboxAlertaRenovacao] = useState<TVBox | null>(null);
 
   const [executandoTarefa, setExecutandoTarefa] = useState(false);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -372,7 +399,10 @@ export default function TvBoxPage() {
 
   // Função para calcular estatísticas dos cards
   const calcularEstatisticas = () => {
+    const totalAssinaturas = tvboxes.length;
     const assinaturasAtivas = tvboxes.filter(t => t.status === 'ativa').length;
+    const assinaturasPendentes = tvboxes.filter(t => t.status === 'pendente').length;
+    
     const clientesAtivos = new Set(
       tvboxes.flatMap(t => 
         t.equipamentos
@@ -389,8 +419,19 @@ export default function TvBoxPage() {
       t.equipamentos.filter(eq => !eq.cliente_nome || eq.cliente_nome === 'Disponível')
     ).length;
     
-    // Encontrar data de vencimento mais próxima (apenas assinaturas ativas)
+    const totalEquipamentos = equipamentosAlugados + equipamentosDisponiveis;
+    const percentualAlugados = totalEquipamentos > 0 ? Math.round((equipamentosAlugados / totalEquipamentos) * 100) : 0;
+    const percentualDisponiveis = totalEquipamentos > 0 ? Math.round((equipamentosDisponiveis / totalEquipamentos) * 100) : 0;
+    
+    const mediaPorCliente = clientesAtivos > 0 ? Math.round((equipamentosAlugados / clientesAtivos) * 10) / 10 : 0;
+    
+    // Calcular vencimentos
     const hoje = new Date();
+    const inicioSemana = new Date(hoje);
+    inicioSemana.setDate(hoje.getDate() - hoje.getDay());
+    const fimSemana = new Date(inicioSemana);
+    fimSemana.setDate(inicioSemana.getDate() + 6);
+    
     const vencimentos = tvboxes
       .filter(t => t.status === 'ativa' && t.renovacaoDia !== null && t.renovacaoDia !== undefined)
       .map(t => {
@@ -399,16 +440,24 @@ export default function TvBoxPage() {
           vencimento.setMonth(vencimento.getMonth() + 1);
         }
         return { assinatura: t.assinatura, data: vencimento, dias: Math.ceil((vencimento.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24)) };
-      })
-      .sort((a, b) => a.dias - b.dias);
+      });
     
-    const proximoVencimento = vencimentos[0];
+    const vencimentosHoje = vencimentos.filter(v => v.dias === 0).length;
+    const vencimentosEstaSemana = vencimentos.filter(v => v.dias >= 0 && v.dias <= 7).length;
+    const proximoVencimento = vencimentos.sort((a, b) => a.dias - b.dias)[0];
     
     return {
+      totalAssinaturas,
       assinaturasAtivas,
+      assinaturasPendentes,
       clientesAtivos,
+      mediaPorCliente,
       equipamentosAlugados,
       equipamentosDisponiveis,
+      percentualAlugados,
+      percentualDisponiveis,
+      vencimentosHoje,
+      vencimentosEstaSemana,
       proximoVencimento
     };
   };
@@ -507,26 +556,49 @@ export default function TvBoxPage() {
     }
   };
 
-  // Ação: Renovar mensalidade com criação de despesa e atualização local
-  const darBaixaRenovacao = async (tvbox: TVBox) => {
-    // Confirmação antes de prosseguir
-    const confirmacao = window.confirm(
-      `🔄 RENOVAR MENSALIDADE\n\n` +
-      `Assinatura: ${tvbox.assinatura}\n` +
-      `Login: ${tvbox.login}\n` +
-      `Mês atual: ${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}\n` +
-      `Valor: R$ 10,00\n\n` +
-      `Deseja prosseguir com a renovação?`
-    );
-
-    if (!confirmacao) {
-      return; // Usuário cancelou
+  // Função para verificar se já foi renovado este mês
+  const verificarRenovacaoMesAtual = (tvbox: TVBox): boolean => {
+    const hoje = new Date();
+    const mesAtual = hoje.getMonth();
+    const anoAtual = hoje.getFullYear();
+    
+    // Se tem dia de renovação definido
+    if (tvbox.renovacaoDia && tvbox.dataRenovacao) {
+      const dataRenovacao = new Date(tvbox.dataRenovacao.split('/').reverse().join('-'));
+      const mesRenovacao = dataRenovacao.getMonth();
+      const anoRenovacao = dataRenovacao.getFullYear();
+      
+      // Se a renovação foi no mês atual
+      if (mesRenovacao === mesAtual && anoRenovacao === anoAtual) {
+        return true; // Já renovado este mês
+      }
     }
+    
+    return false; // Pode renovar
+  };
+
+  // Função para abrir modal de renovação
+  const abrirModalRenovar = (tvbox: TVBox) => {
+    // Verificar se já foi renovado este mês
+    if (verificarRenovacaoMesAtual(tvbox)) {
+      // Mostrar alerta bonito de que já foi renovado
+      setShowAlertaRenovacao(true);
+      setTvboxAlertaRenovacao(tvbox);
+      return;
+    }
+    
+    setTvboxParaRenovar(tvbox);
+    setShowModalRenovar(true);
+  };
+
+  // Ação: Renovar mensalidade com criação de despesa e atualização local
+  const darBaixaRenovacao = async () => {
+    if (!tvboxParaRenovar) return;
 
     try {
       setExecutandoTarefa(true);
       const { renovarTvBox, formatDateBelem } = await import('../../tvbox/renovacaoTvBox');
-      const resp = await renovarTvBox(tvbox.id);
+      const resp = await renovarTvBox(tvboxParaRenovar.id);
       if (!resp.ok) {
         alert('❌ ' + resp.error);
         return;
@@ -539,16 +611,27 @@ export default function TvBoxPage() {
       await carregarTVBoxes();
 
       // Realçar linha por 2s
-      setLinhasRealcadas(prev => new Set(prev).add(tvbox.id));
+      setLinhasRealcadas(prev => new Set(prev).add(tvboxParaRenovar.id));
       setTimeout(() => {
         setLinhasRealcadas(prev => {
           const n = new Set(prev);
-          n.delete(tvbox.id);
+          n.delete(tvboxParaRenovar.id);
           return n;
         });
       }, 2000);
 
-      alert(`✅ Renovação concluída!\n\nRenovado em: ${renovadoEmStr}\nPróximo venc.: ${proximoVencStr}`);
+      // Fechar modal e mostrar toast de sucesso
+      setShowModalRenovar(false);
+      setTvboxParaRenovar(null);
+      
+      // Mostrar toast de sucesso
+      setToastMessage('✅ Renovação confirmada com sucesso!');
+      setShowToast(true);
+      
+      // Auto-hide toast após 4 segundos
+      setTimeout(() => {
+        setShowToast(false);
+      }, 4000);
     } catch (e: any) {
       console.error('Erro ao renovar:', e);
       alert('❌ Falha ao renovar');
@@ -1057,6 +1140,49 @@ export default function TvBoxPage() {
     }
   };
 
+  // Função para filtrar por renovação
+  const filtrarPorRenovacao = (tvbox: TVBox, filtro: string) => {
+    if (!filtro) return true;
+    
+    const hoje = new Date();
+    const inicioSemana = new Date(hoje);
+    inicioSemana.setDate(hoje.getDate() - hoje.getDay());
+    const fimSemana = new Date(inicioSemana);
+    fimSemana.setDate(inicioSemana.getDate() + 6);
+    
+    switch (filtro) {
+      case 'hoje':
+        if (!tvbox.renovacaoDia) return false;
+        return tvbox.renovacaoDia === hoje.getDate();
+        
+      case 'semana':
+        if (!tvbox.renovacaoDia) return false;
+        const vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), tvbox.renovacaoDia);
+        if (vencimento < hoje) {
+          vencimento.setMonth(vencimento.getMonth() + 1);
+        }
+        return vencimento >= inicioSemana && vencimento <= fimSemana;
+        
+      case 'mes':
+        if (!tvbox.renovacaoDia) return false;
+        return true; // Se tem dia de renovação, vence no mês
+        
+      case 'vencidas':
+        if (!tvbox.renovacaoDia || tvbox.status !== 'ativa') return false;
+        const vencimentoVencida = new Date(hoje.getFullYear(), hoje.getMonth(), tvbox.renovacaoDia);
+        return vencimentoVencida < hoje;
+        
+      case 'ativas':
+        return tvbox.status === 'ativa';
+        
+      case 'pendentes':
+        return tvbox.status === 'pendente';
+        
+      default:
+        return true;
+    }
+  };
+
   // Função para filtrar por nome, MAC, NDS, login ou senha
   const filtrarPorNomeMacNds = (tvbox: TVBox, termo: string) => {
     if (!termo) return true;
@@ -1148,8 +1274,73 @@ export default function TvBoxPage() {
 
   return (
     <>
-      <div style={{ padding: '20px' }}>
-        
+      <div style={{ padding: '20px', width: '100%', maxWidth: 'none' }}>
+        {/* Banner Informativo */}
+        <div style={{
+          background: 'linear-gradient(135deg, #1e3a8a 0%, #e5e7eb 100%)',
+          borderRadius: '16px',
+          padding: '40px 32px',
+          marginBottom: '32px',
+          width: '100%',
+          position: 'relative',
+          overflow: 'hidden',
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
+        }}>
+          {/* Ícone de TV no canto esquerdo */}
+          <div style={{
+            position: 'absolute',
+            left: '32px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            fontSize: '56px',
+            opacity: '0.25',
+            color: 'white'
+          }}>
+            📺
+          </div>
+          
+          {/* Efeito decorativo no canto direito */}
+          <div style={{
+            position: 'absolute',
+            right: '-20px',
+            top: '-20px',
+            width: '120px',
+            height: '120px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: '50%',
+            filter: 'blur(30px)'
+          }} />
+          
+          {/* Conteúdo centralizado */}
+          <div style={{
+            textAlign: 'center',
+            paddingLeft: '100px',
+            paddingRight: '40px',
+            position: 'relative',
+            zIndex: 1
+          }}>
+            <h1 style={{
+              fontSize: '48px',
+              fontWeight: '700',
+              color: 'white',
+              margin: '0 0 16px 0',
+              textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+              letterSpacing: '2px'
+            }}>
+              TV BOX
+            </h1>
+            <p style={{
+              fontSize: '20px',
+              color: 'rgba(255, 255, 255, 0.95)',
+              fontWeight: '400',
+              textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
+              maxWidth: '600px',
+              margin: '0 auto'
+            }}>
+              Gerencie suas assinaturas e renovações de forma simples e organizada.
+            </p>
+          </div>
+        </div>
 
         {/* Header com título */}
         <div style={{ marginBottom: '24px' }}>
@@ -1164,158 +1355,228 @@ export default function TvBoxPage() {
           <p style={{ color: '#6b7280', margin: 0 }}>Gerenciamento de TV Box</p>
         </div>
 
-        {/* Cards de Resumo Reformulados */}
+        {/* Cards de Resumo Modernos */}
         <div style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-          gap: '16px', 
-          marginBottom: '32px' 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+          gap: '24px', 
+          marginBottom: '40px' 
         }}>
-          {/* Assinaturas Ativas */}
+          {/* Card 1 - Assinaturas */}
           <div style={{
-            backgroundColor: '#f0f9ff',
-            border: '1px solid #0ea5e9',
+            backgroundColor: 'white',
             borderRadius: '16px',
-            padding: '24px',
-            textAlign: 'center',
+            padding: '32px',
             position: 'relative',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            border: '1px solid #f1f5f9',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
           }}>
             <div style={{ 
               position: 'absolute', 
-              top: '16px', 
-              right: '16px', 
-              fontSize: '20px', 
-              opacity: '0.6' 
+              top: '24px', 
+              right: '24px', 
+              fontSize: '32px', 
+              opacity: '0.2' 
             }}>
-              📑
+              📋
             </div>
-            <div style={{ fontSize: '36px', fontWeight: '700', color: '#0369a1', marginBottom: '8px' }}>
-              {estatisticas.assinaturasAtivas}
+            <div style={{ marginBottom: '20px' }}>
+              <h3 style={{ 
+                fontSize: '18px', 
+                fontWeight: '600', 
+                color: '#1e293b', 
+                margin: '0 0 16px 0' 
+              }}>
+                Assinaturas
+              </h3>
+              <div style={{ fontSize: '48px', fontWeight: '700', color: '#3b82f6', marginBottom: '12px' }}>
+                {estatisticas.totalAssinaturas}
+              </div>
             </div>
-            <div style={{ color: '#0369a1', fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
-              Assinaturas Ativas
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', fontWeight: '600', color: '#059669' }}>
+                  {estatisticas.assinaturasAtivas}
+                </div>
+                <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>
+                  Ativas
+                </div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', fontWeight: '600', color: '#d97706' }}>
+                  {estatisticas.assinaturasPendentes}
+                </div>
+                <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>
+                  Pendentes
+                </div>
+              </div>
             </div>
-            <div style={{ color: '#0ea5e9', fontSize: '14px' }}>Renovações em dia</div>
           </div>
 
-          {/* Clientes Ativos */}
+          {/* Card 2 - Clientes Ativos */}
           <div style={{
-            backgroundColor: '#f0fdf4',
-            border: '1px solid #22c55e',
+            backgroundColor: 'white',
             borderRadius: '16px',
-            padding: '24px',
-            textAlign: 'center',
+            padding: '32px',
             position: 'relative',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            border: '1px solid #f1f5f9',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
           }}>
             <div style={{ 
               position: 'absolute', 
-              top: '16px', 
-              right: '16px', 
-              fontSize: '20px', 
-              opacity: '0.6' 
+              top: '24px', 
+              right: '24px', 
+              fontSize: '32px', 
+              opacity: '0.2' 
             }}>
-              👤
+              👥
             </div>
-            <div style={{ fontSize: '36px', fontWeight: '700', color: '#15803d', marginBottom: '8px' }}>
-              {estatisticas.clientesAtivos}
+            <div style={{ marginBottom: '20px' }}>
+              <h3 style={{ 
+                fontSize: '18px', 
+                fontWeight: '600', 
+                color: '#1e293b', 
+                margin: '0 0 16px 0' 
+              }}>
+                Clientes Ativos
+              </h3>
+              <div style={{ fontSize: '48px', fontWeight: '700', color: '#10b981', marginBottom: '12px' }}>
+                {estatisticas.clientesAtivos}
+              </div>
             </div>
-            <div style={{ color: '#15803d', fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
-              Clientes Ativos
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#6b7280' }}>
+                Média: {estatisticas.mediaPorCliente} equipamentos/cliente
+              </div>
             </div>
-            <div style={{ color: '#22c55e', fontSize: '14px' }}>Com assinatura ativa</div>
           </div>
 
-          {/* Equipamentos Alugados */}
+          {/* Card 3 - Equipamentos Alugados */}
           <div style={{
-            backgroundColor: '#fef3c7',
-            border: '1px solid #f59e0b',
+            backgroundColor: 'white',
             borderRadius: '16px',
-            padding: '24px',
-            textAlign: 'center',
+            padding: '32px',
             position: 'relative',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            border: '1px solid #f1f5f9',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
           }}>
             <div style={{ 
               position: 'absolute', 
-              top: '16px', 
-              right: '16px', 
-              fontSize: '20px', 
-              opacity: '0.6' 
+              top: '24px', 
+              right: '24px', 
+              fontSize: '32px', 
+              opacity: '0.2' 
             }}>
               📡
             </div>
-            <div style={{ fontSize: '36px', fontWeight: '700', color: '#d97706', marginBottom: '8px' }}>
-              {estatisticas.equipamentosAlugados}
+            <div style={{ marginBottom: '20px' }}>
+              <h3 style={{ 
+                fontSize: '18px', 
+                fontWeight: '600', 
+                color: '#1e293b', 
+                margin: '0 0 16px 0' 
+              }}>
+                Equipamentos Alugados
+              </h3>
+              <div style={{ fontSize: '48px', fontWeight: '700', color: '#f59e0b', marginBottom: '12px' }}>
+                {estatisticas.equipamentosAlugados}
+              </div>
             </div>
-            <div style={{ color: '#d97706', fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
-              Equipamentos Alugados
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#6b7280' }}>
+                {estatisticas.percentualAlugados}% do total
+              </div>
             </div>
-            <div style={{ color: '#f59e0b', fontSize: '14px' }}>Em operação</div>
           </div>
 
-          {/* Equipamentos Disponíveis */}
+          {/* Card 4 - Equipamentos Disponíveis */}
           <div style={{
-            backgroundColor: '#f3e8ff',
-            border: '1px solid #a855f7',
+            backgroundColor: 'white',
             borderRadius: '16px',
-            padding: '24px',
-            textAlign: 'center',
+            padding: '32px',
             position: 'relative',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            border: '1px solid #f1f5f9',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
           }}>
             <div style={{ 
               position: 'absolute', 
-              top: '16px', 
-              right: '16px', 
-              fontSize: '20px', 
-              opacity: '0.6' 
+              top: '24px', 
+              right: '24px', 
+              fontSize: '32px', 
+              opacity: '0.2' 
             }}>
               📦
             </div>
-            <div style={{ fontSize: '36px', fontWeight: '700', color: '#7c3aed', marginBottom: '8px' }}>
-              {estatisticas.equipamentosDisponiveis}
+            <div style={{ marginBottom: '20px' }}>
+              <h3 style={{ 
+                fontSize: '18px', 
+                fontWeight: '600', 
+                color: '#1e293b', 
+                margin: '0 0 16px 0' 
+              }}>
+                Equipamentos Disponíveis
+              </h3>
+              <div style={{ fontSize: '48px', fontWeight: '700', color: '#8b5cf6', marginBottom: '12px' }}>
+                {estatisticas.equipamentosDisponiveis}
+              </div>
             </div>
-            <div style={{ color: '#7c3aed', fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
-              Equipamentos Disponíveis
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#6b7280' }}>
+                {estatisticas.percentualDisponiveis}% disponibilidade
+              </div>
             </div>
-            <div style={{ color: '#a855f7', fontSize: '14px' }}>Aguardando cliente</div>
           </div>
 
-          {/* Data de Vencimento Mais Próxima */}
+          {/* Card 5 - Próximos Vencimentos */}
           <div style={{
-            backgroundColor: '#fef2f2',
-            border: '1px solid #ef4444',
+            backgroundColor: 'white',
             borderRadius: '16px',
-            padding: '24px',
-            textAlign: 'center',
+            padding: '32px',
             position: 'relative',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            border: '1px solid #f1f5f9',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
           }}>
             <div style={{ 
               position: 'absolute', 
-              top: '16px', 
-              right: '16px', 
-              fontSize: '20px', 
-              opacity: '0.6' 
+              top: '24px', 
+              right: '24px', 
+              fontSize: '32px', 
+              opacity: '0.2' 
             }}>
               ⏰
             </div>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#dc2626', marginBottom: '8px' }}>
-              {estatisticas.proximoVencimento ? 
-                `${estatisticas.proximoVencimento.dias} dias` : 
-                'N/A'
-              }
+            <div style={{ marginBottom: '20px' }}>
+              <h3 style={{ 
+                fontSize: '18px', 
+                fontWeight: '600', 
+                color: '#1e293b', 
+                margin: '0 0 16px 0' 
+              }}>
+                Próximos Vencimentos
+              </h3>
+              <div style={{ fontSize: '48px', fontWeight: '700', color: '#ef4444', marginBottom: '12px' }}>
+                {estatisticas.vencimentosHoje}
+              </div>
             </div>
-            <div style={{ color: '#dc2626', fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
-              Próximo Vencimento
-            </div>
-            <div style={{ color: '#ef4444', fontSize: '14px' }}>
-              {estatisticas.proximoVencimento ? 
-                estatisticas.proximoVencimento.assinatura : 
-                'Sem vencimentos'
-              }
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '16px', fontWeight: '600', color: '#dc2626' }}>
+                  Hoje
+                </div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', fontWeight: '600', color: '#f59e0b' }}>
+                  {estatisticas.vencimentosEstaSemana}
+                </div>
+                <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>
+                  Esta semana
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1342,32 +1603,35 @@ export default function TvBoxPage() {
             <button
               onClick={() => setShowModalNovaAssinatura(true)}
               style={{
-                padding: '12px 20px',
+                padding: '14px 24px',
                 backgroundColor: '#10b981',
                 color: 'white',
                 border: 'none',
-                borderRadius: '8px',
+                borderRadius: '12px',
                 cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
+                fontSize: '15px',
+                fontWeight: '700',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
-                boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)',
-                transition: 'all 0.2s ease'
+                gap: '10px',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                transition: 'all 0.3s ease',
+                letterSpacing: '0.025em'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = '#059669';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.boxShadow = '0 4px 8px rgba(16, 185, 129, 0.3)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 20px rgba(16, 185, 129, 0.4)';
+                e.currentTarget.style.filter = 'brightness(1.1)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = '#10b981';
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 2px 4px rgba(16, 185, 129, 0.2)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.25)';
+                e.currentTarget.style.filter = 'brightness(1)';
               }}
             >
-              ➕ Nova Assinatura
+              <span style={{ fontSize: '16px' }}>➕</span> Nova Assinatura
             </button>
           </div>
           
@@ -1413,7 +1677,32 @@ export default function TvBoxPage() {
               >
                 <option value="numerica">Ordem numérica</option>
                 <option value="alfabetica">Ordem alfabética (A-Z)</option>
-                <option value="renovacao">Ordem alfabética (Z-A)</option>
+                <option value="renovacao">Por vencimento</option>
+              </select>
+            </div>
+
+            {/* Filtro por renovação */}
+            <div style={{ minWidth: '180px' }}>
+              <select
+                value={filtroRenovacao}
+                onChange={(e) => setFiltroRenovacao(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #d1d5db',
+                  fontSize: '14px',
+                  backgroundColor: 'white',
+                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                }}
+              >
+                <option value="">Todas as renovações</option>
+                <option value="hoje">Vencem hoje</option>
+                <option value="semana">Vencem esta semana</option>
+                <option value="mes">Vencem este mês</option>
+                <option value="vencidas">Vencidas</option>
+                <option value="ativas">Apenas ativas</option>
+                <option value="pendentes">Apenas pendentes</option>
               </select>
             </div>
           </div>
@@ -1441,66 +1730,83 @@ export default function TvBoxPage() {
           </div>
 
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table style={{ 
+              width: '100%', 
+              borderCollapse: 'separate',
+              borderSpacing: '0',
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+            }}>
               <thead>
-                <tr style={{ backgroundColor: '#f9fafb' }}>
+                <tr style={{ 
+                  backgroundColor: '#f8fafc',
+                  borderBottom: '2px solid #e2e8f0'
+                }}>
                   <th style={{ 
-                    padding: '16px', 
+                    padding: '20px 24px', 
                     textAlign: 'left', 
-                    fontSize: '14px', 
-                    fontWeight: '600', 
-                    color: '#374151',
-                    borderBottom: '1px solid #e5e7eb'
+                    fontSize: '15px', 
+                    fontWeight: '700', 
+                    color: '#1e293b',
+                    letterSpacing: '0.025em',
+                    textTransform: 'uppercase'
                   }}>
-                    Assinatura / Dia de Vencimento
+                    Assinatura / Vencimento
                   </th>
                   <th style={{ 
-                    padding: '16px', 
+                    padding: '20px 24px', 
                     textAlign: 'left', 
-                    fontSize: '14px', 
-                    fontWeight: '600', 
-                    color: '#374151',
-                    borderBottom: '1px solid #e5e7eb'
+                    fontSize: '15px', 
+                    fontWeight: '700', 
+                    color: '#1e293b',
+                    letterSpacing: '0.025em',
+                    textTransform: 'uppercase'
                   }}>
                     Login/Senha
                   </th>
                   <th style={{ 
-                    padding: '16px', 
+                    padding: '20px 24px', 
                     textAlign: 'left', 
-                    fontSize: '14px', 
-                    fontWeight: '600', 
-                    color: '#374151',
-                    borderBottom: '1px solid #e5e7eb'
+                    fontSize: '15px', 
+                    fontWeight: '700', 
+                    color: '#1e293b',
+                    letterSpacing: '0.025em',
+                    textTransform: 'uppercase'
                   }}>
                     Cliente
                   </th>
                   <th style={{ 
-                    padding: '16px', 
-                    textAlign: 'left', 
-                    fontSize: '14px', 
-                    fontWeight: '600', 
-                    color: '#374151',
-                    borderBottom: '1px solid #e5e7eb'
+                    padding: '20px 24px', 
+                    textAlign: 'center', 
+                    fontSize: '15px', 
+                    fontWeight: '700', 
+                    color: '#1e293b',
+                    letterSpacing: '0.025em',
+                    textTransform: 'uppercase'
                   }}>
                     Status
                   </th>
                   <th style={{ 
-                    padding: '16px', 
-                    textAlign: 'left', 
-                    fontSize: '14px', 
-                    fontWeight: '600', 
-                    color: '#374151',
-                    borderBottom: '1px solid #e5e7eb'
+                    padding: '20px 24px', 
+                    textAlign: 'center', 
+                    fontSize: '15px', 
+                    fontWeight: '700', 
+                    color: '#1e293b',
+                    letterSpacing: '0.025em',
+                    textTransform: 'uppercase'
                   }}>
                     Renovação
                   </th>
                   <th style={{ 
-                    padding: '16px', 
-                    textAlign: 'left', 
-                    fontSize: '14px', 
-                    fontWeight: '600', 
-                    color: '#374151',
-                    borderBottom: '1px solid #e5e7eb'
+                    padding: '20px 24px', 
+                    textAlign: 'center', 
+                    fontSize: '15px', 
+                    fontWeight: '700', 
+                    color: '#1e293b',
+                    letterSpacing: '0.025em',
+                    textTransform: 'uppercase'
                   }}>
                     Ações
                   </th>
@@ -1509,6 +1815,7 @@ export default function TvBoxPage() {
               <tbody>
                 {tvboxes
                   .filter(t => filtrarPorNomeMacNds(t, buscaDebounced))
+                  .filter(t => filtrarPorRenovacao(t, filtroRenovacao))
                   .sort((a, b) => {
                     if (ordemFiltro === 'numerica') {
                       const numA = parseInt(a.assinatura.match(/\d+/)?.[0] || '0');
@@ -1525,30 +1832,89 @@ export default function TvBoxPage() {
                     return 0;
                   })
                   .map((tvbox) => (
-                    <tr key={tvbox.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <td style={{ padding: '12px 16px', fontSize: '14px' }}>
-                        <div style={{ fontWeight: '500', color: '#111827' }}>
+                    <tr 
+                      key={tvbox.id} 
+                      style={{ 
+                        borderBottom: '1px solid #e2e8f0',
+                        backgroundColor: linhasRealcadas.has(tvbox.id) ? '#f0f9ff' : 'white',
+                        transition: 'all 0.2s ease',
+                        cursor: 'pointer'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!linhasRealcadas.has(tvbox.id)) {
+                          e.currentTarget.style.backgroundColor = '#f8fafc';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!linhasRealcadas.has(tvbox.id)) {
+                          e.currentTarget.style.backgroundColor = 'white';
+                        }
+                      }}
+                    >
+                      <td style={{ 
+                        padding: '20px 24px', 
+                        fontSize: '14px',
+                        verticalAlign: 'top',
+                        borderRight: '1px solid #f1f5f9'
+                      }}>
+                        <div style={{ 
+                          fontWeight: '600', 
+                          color: '#1e293b',
+                          fontSize: '15px',
+                          marginBottom: '4px'
+                        }}>
                           {tvbox.assinatura}
                         </div>
                         {typeof tvbox.renovacaoDia === 'number' && (
-                          <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                          <div style={{ 
+                            fontSize: '13px', 
+                            color: '#64748b',
+                            fontWeight: '500'
+                          }}>
                             Venc.: dia {tvbox.renovacaoDia}
                           </div>
                         )}
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: '14px' }}>
-                        <div style={{ color: '#374151', marginBottom: '4px' }}>
-                          <strong>Login:</strong> {tvbox.login}
+                      <td style={{ 
+                        padding: '20px 24px', 
+                        fontSize: '14px',
+                        verticalAlign: 'top',
+                        borderRight: '1px solid #f1f5f9'
+                      }}>
+                        <div style={{ 
+                          color: '#1e293b', 
+                          marginBottom: '8px',
+                          fontSize: '14px',
+                          fontWeight: '500'
+                        }}>
+                          <span style={{ color: '#64748b', fontSize: '12px', fontWeight: '600' }}>LOGIN:</span> 
+                          <span style={{ 
+                            marginLeft: '8px',
+                            fontFamily: 'monospace',
+                            backgroundColor: '#f1f5f9',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontSize: '13px'
+                          }}>
+                            {tvbox.login}
+                          </span>
                         </div>
                         <div style={{ 
                           display: 'flex', 
                           alignItems: 'center', 
                           gap: '8px',
-                          fontSize: '12px', 
-                          color: '#6b7280' 
+                          fontSize: '14px', 
+                          color: '#1e293b',
+                          fontWeight: '500'
                         }}>
-                          <strong>Senha:</strong> 
-                          <span style={{ fontFamily: 'monospace' }}>
+                          <span style={{ color: '#64748b', fontSize: '12px', fontWeight: '600' }}>SENHA:</span>
+                          <span style={{ 
+                            fontFamily: 'monospace',
+                            backgroundColor: '#f1f5f9',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontSize: '13px'
+                          }}>
                             {senhasVisiveis.has(tvbox.id) ? tvbox.senha : '••••••••'}
                           </span>
                           <button
@@ -1556,18 +1922,27 @@ export default function TvBoxPage() {
                             style={{
                               background: 'none',
                               border: 'none',
-                              color: '#6b7280',
+                              color: '#64748b',
                               cursor: 'pointer',
-                              fontSize: '12px',
-                              padding: '2px 4px'
+                              fontSize: '14px',
+                              padding: '4px',
+                              borderRadius: '4px',
+                              transition: 'color 0.2s ease'
                             }}
                             title={senhasVisiveis.has(tvbox.id) ? 'Ocultar senha' : 'Mostrar senha'}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#3b82f6'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#64748b'}
                           >
                             {senhasVisiveis.has(tvbox.id) ? '👁️' : '👁️‍🗨️'}
                           </button>
                         </div>
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: '14px' }}>
+                      <td style={{ 
+                        padding: '20px 24px', 
+                        fontSize: '14px',
+                        verticalAlign: 'top',
+                        borderRight: '1px solid #f1f5f9'
+                      }}>
                         <ClienteDualSlots
                           equipamentos={tvbox.equipamentos}
                           onClienteChange={async (equipamentoIndex, clienteId, clienteNome) => {
@@ -1615,63 +1990,101 @@ export default function TvBoxPage() {
                           }}
                         />
                       </td>
-                      <td style={{ padding: '12px 16px' }}>
+                      <td style={{ 
+                        padding: '20px 24px',
+                        textAlign: 'center',
+                        verticalAlign: 'middle',
+                        borderRight: '1px solid #f1f5f9'
+                      }}>
                         <StatusBadge status={tvbox.status} />
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: '14px' }}>
-                        <div style={{ color: '#374151' }}>
+                      <td style={{ 
+                        padding: '20px 24px', 
+                        fontSize: '14px',
+                        textAlign: 'center',
+                        verticalAlign: 'middle',
+                        borderRight: '1px solid #f1f5f9'
+                      }}>
+                        <div style={{ 
+                          color: '#1e293b',
+                          fontWeight: '500',
+                          fontSize: '14px'
+                        }}>
                           {tvbox.dataRenovacao}
                         </div>
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: '14px' }}>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <td style={{ 
+                        padding: '20px 24px', 
+                        fontSize: '14px',
+                        textAlign: 'center',
+                        verticalAlign: 'middle'
+                      }}>
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
                           <button
                             onClick={() => abrirModalEditar(tvbox)}
                             disabled={executandoTarefa}
                             style={{
-                              padding: '6px 12px',
+                              padding: '10px 16px',
                               backgroundColor: executandoTarefa ? '#6b7280' : '#3b82f6',
                               color: 'white',
                               border: 'none',
-                              borderRadius: '6px',
+                              borderRadius: '8px',
                               cursor: executandoTarefa ? 'not-allowed' : 'pointer',
-                              fontSize: '12px',
-                              fontWeight: '500'
+                              fontSize: '13px',
+                              fontWeight: '600',
+                              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                              transition: 'all 0.2s ease',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
                             }}
                             onMouseEnter={(e) => {
                               if (!executandoTarefa) {
                                 e.currentTarget.style.backgroundColor = '#2563eb';
+                                e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)';
+                                e.currentTarget.style.transform = 'translateY(-1px)';
                               }
                             }}
                             onMouseLeave={(e) => {
                               if (!executandoTarefa) {
                                 e.currentTarget.style.backgroundColor = '#3b82f6';
+                                e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+                                e.currentTarget.style.transform = 'translateY(0)';
                               }
                             }}
                           >
                             👁️ Visualizar/Editar
                           </button>
                           <button
-                            onClick={() => darBaixaRenovacao(tvbox)}
+                            onClick={() => abrirModalRenovar(tvbox)}
                             disabled={executandoTarefa}
                             style={{
-                              padding: '6px 12px',
+                              padding: '10px 16px',
                               backgroundColor: executandoTarefa ? '#6b7280' : '#10b981',
                               color: 'white',
                               border: 'none',
-                              borderRadius: '6px',
+                              borderRadius: '8px',
                               cursor: executandoTarefa ? 'not-allowed' : 'pointer',
-                              fontSize: '12px',
-                              fontWeight: '500'
+                              fontSize: '13px',
+                              fontWeight: '600',
+                              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                              transition: 'all 0.2s ease',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
                             }}
                             onMouseEnter={(e) => {
                               if (!executandoTarefa) {
                                 e.currentTarget.style.backgroundColor = '#059669';
+                                e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)';
+                                e.currentTarget.style.transform = 'translateY(-1px)';
                               }
                             }}
                             onMouseLeave={(e) => {
                               if (!executandoTarefa) {
                                 e.currentTarget.style.backgroundColor = '#10b981';
+                                e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+                                e.currentTarget.style.transform = 'translateY(0)';
                               }
                             }}
                           >
@@ -1695,48 +2108,107 @@ export default function TvBoxPage() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(4px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 999999,
-          fontFamily: 'Arial, sans-serif'
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          padding: '20px'
         }}>
           <div style={{
             backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '30px',
-            width: '90%',
-            maxWidth: '800px',
+            borderRadius: '20px',
+            padding: '0',
+            width: '100%',
+            maxWidth: '900px',
             maxHeight: '90vh',
-            overflow: 'auto'
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.1)'
           }}>
             {/* Header */}
             <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '24px',
-              borderBottom: '1px solid #e5e7eb',
-              paddingBottom: '16px'
+              background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+              padding: '32px',
+              color: 'white',
+              position: 'relative',
+              overflow: 'hidden'
             }}>
-              <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '600', color: '#111827' }}>
-                Editar Assinatura: {tvboxEditando.assinatura}
-              </h2>
-              <button
-                onClick={() => setShowModalEditar(false)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  color: '#6b7280',
-                  padding: '4px'
-                }}
-              >
-                ×
-              </button>
+              <div style={{
+                position: 'absolute',
+                top: '-50%',
+                right: '-10%',
+                width: '200px',
+                height: '200px',
+                background: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '50%',
+                filter: 'blur(40px)'
+              }} />
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                position: 'relative',
+                zIndex: 1
+              }}>
+                <div>
+                  <h2 style={{ 
+                    margin: '0 0 8px 0', 
+                    fontSize: '28px', 
+                    fontWeight: '700', 
+                    color: 'white',
+                    textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                  }}>
+                    ✏️ Editar Assinatura
+                  </h2>
+                  <p style={{
+                    margin: 0,
+                    fontSize: '16px',
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    fontWeight: '400'
+                  }}>
+                    {tvboxEditando.assinatura}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowModalEditar(false)}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    width: '44px',
+                    height: '44px',
+                    cursor: 'pointer',
+                    color: 'white',
+                    fontSize: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease',
+                    backdropFilter: 'blur(10px)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  ×
+                </button>
+              </div>
             </div>
+
+            {/* Conteúdo do Modal */}
+            <div style={{
+              padding: '40px',
+              maxHeight: 'calc(90vh - 140px)',
+              overflow: 'auto'
+            }}>
 
             {/* Conteúdo */}
             <div style={{ marginBottom: '24px' }}>
@@ -2016,6 +2488,703 @@ export default function TvBoxPage() {
                 {executandoTarefa ? '💾 Salvando...' : '💾 Salvar Alterações'}
               </button>
             </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Alerta - Renovação Duplicada */}
+      {showAlertaRenovacao && tvboxAlertaRenovacao && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999999,
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '20px',
+            padding: '0',
+            width: '100%',
+            maxWidth: '500px',
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.1)'
+          }}>
+            {/* Header */}
+            <div style={{
+              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              padding: '32px',
+              color: 'white',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: '-50%',
+                right: '-10%',
+                width: '200px',
+                height: '200px',
+                background: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '50%',
+                filter: 'blur(40px)'
+              }} />
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                position: 'relative',
+                zIndex: 1
+              }}>
+                <div>
+                  <h2 style={{ 
+                    margin: '0 0 8px 0', 
+                    fontSize: '28px', 
+                    fontWeight: '700', 
+                    color: 'white',
+                    textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                  }}>
+                    ⚠️ Renovação Já Realizada
+                  </h2>
+                  <p style={{
+                    margin: 0,
+                    fontSize: '16px',
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    fontWeight: '400'
+                  }}>
+                    Esta assinatura já foi renovada este mês
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowAlertaRenovacao(false);
+                    setTvboxAlertaRenovacao(null);
+                  }}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    width: '44px',
+                    height: '44px',
+                    cursor: 'pointer',
+                    color: 'white',
+                    fontSize: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease',
+                    backdropFilter: 'blur(10px)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Conteúdo do Modal */}
+            <div style={{
+              padding: '40px'
+            }}>
+              {/* Informações da Assinatura */}
+              <div style={{
+                backgroundColor: '#fef3c7',
+                borderRadius: '16px',
+                padding: '24px',
+                marginBottom: '32px',
+                border: '2px solid #fbbf24'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  marginBottom: '20px'
+                }}>
+                  <div style={{
+                    fontSize: '48px'
+                  }}>
+                    ⚠️
+                  </div>
+                  <div>
+                    <h3 style={{
+                      fontSize: '20px',
+                      fontWeight: '700',
+                      color: '#92400e',
+                      margin: '0 0 8px 0'
+                    }}>
+                      Renovação Duplicada Detectada
+                    </h3>
+                    <p style={{
+                      fontSize: '16px',
+                      color: '#b45309',
+                      margin: 0
+                    }}>
+                      A assinatura <strong>{tvboxAlertaRenovacao.assinatura}</strong> já foi renovada no mês atual.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{
+                  backgroundColor: 'white',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  border: '1px solid #fbbf24'
+                }}>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '16px'
+                  }}>
+                    <div>
+                      <div style={{
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        color: '#92400e',
+                        marginBottom: '4px',
+                        textTransform: 'uppercase'
+                      }}>
+                        Login
+                      </div>
+                      <div style={{
+                        fontSize: '16px',
+                        fontWeight: '700',
+                        color: '#1e293b',
+                        fontFamily: 'monospace',
+                        backgroundColor: '#f1f5f9',
+                        padding: '4px 8px',
+                        borderRadius: '6px'
+                      }}>
+                        {tvboxAlertaRenovacao.login}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div style={{
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        color: '#92400e',
+                        marginBottom: '4px',
+                        textTransform: 'uppercase'
+                      }}>
+                        Última Renovação
+                      </div>
+                      <div style={{
+                        fontSize: '16px',
+                        fontWeight: '700',
+                        color: '#1e293b'
+                      }}>
+                        {tvboxAlertaRenovacao.dataRenovacao || 'Data não disponível'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botão */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center'
+              }}>
+                <button
+                  onClick={() => {
+                    setShowAlertaRenovacao(false);
+                    setTvboxAlertaRenovacao(null);
+                  }}
+                  style={{
+                    padding: '16px 32px',
+                    backgroundColor: '#f59e0b',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    fontSize: '15px',
+                    fontWeight: '700',
+                    boxShadow: '0 4px 12px rgba(245, 158, 11, 0.25)',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#d97706';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 8px 20px rgba(245, 158, 11, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f59e0b';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.25)';
+                  }}
+                >
+                  ✓ Entendi
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Renovação */}
+      {showModalRenovar && tvboxParaRenovar && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999999,
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '20px',
+            padding: '0',
+            width: '100%',
+            maxWidth: '600px',
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.1)'
+          }}>
+            {/* Header */}
+            <div style={{
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              padding: '32px',
+              color: 'white',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: '-50%',
+                right: '-10%',
+                width: '200px',
+                height: '200px',
+                background: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '50%',
+                filter: 'blur(40px)'
+              }} />
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                position: 'relative',
+                zIndex: 1
+              }}>
+                <div>
+                  <h2 style={{ 
+                    margin: '0 0 8px 0', 
+                    fontSize: '28px', 
+                    fontWeight: '700', 
+                    color: 'white',
+                    textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                  }}>
+                    🔄 Renovar Mensalidade
+                  </h2>
+                  <p style={{
+                    margin: 0,
+                    fontSize: '16px',
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    fontWeight: '400'
+                  }}>
+                    Confirme os dados da renovação
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowModalRenovar(false);
+                    setTvboxParaRenovar(null);
+                  }}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    width: '44px',
+                    height: '44px',
+                    cursor: 'pointer',
+                    color: 'white',
+                    fontSize: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease',
+                    backdropFilter: 'blur(10px)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Conteúdo do Modal */}
+            <div style={{
+              padding: '40px'
+            }}>
+              {/* Dados da Assinatura em Destaque */}
+              <div style={{
+                backgroundColor: '#f8fafc',
+                borderRadius: '16px',
+                padding: '24px',
+                marginBottom: '32px',
+                border: '2px solid #e2e8f0'
+              }}>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '700',
+                  marginBottom: '20px',
+                  color: '#1e293b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <span style={{
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    borderRadius: '8px',
+                    padding: '8px',
+                    fontSize: '16px'
+                  }}>📋</span>
+                  Dados da Assinatura
+                </h3>
+
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '20px',
+                  marginBottom: '20px'
+                }}>
+                  <div style={{
+                    backgroundColor: 'white',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0'
+                  }}>
+                    <div style={{
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: '#64748b',
+                      marginBottom: '4px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      Assinatura
+                    </div>
+                    <div style={{
+                      fontSize: '18px',
+                      fontWeight: '700',
+                      color: '#1e293b'
+                    }}>
+                      {tvboxParaRenovar.assinatura}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    backgroundColor: 'white',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0'
+                  }}>
+                    <div style={{
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: '#64748b',
+                      marginBottom: '4px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      Login
+                    </div>
+                    <div style={{
+                      fontSize: '18px',
+                      fontWeight: '700',
+                      color: '#1e293b',
+                      fontFamily: 'monospace',
+                      backgroundColor: '#f1f5f9',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      display: 'inline-block'
+                    }}>
+                      {tvboxParaRenovar.login}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '20px'
+                }}>
+                  <div style={{
+                    backgroundColor: 'white',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0'
+                  }}>
+                    <div style={{
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: '#64748b',
+                      marginBottom: '4px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      Senha
+                    </div>
+                    <div style={{
+                      fontSize: '18px',
+                      fontWeight: '700',
+                      color: '#1e293b',
+                      fontFamily: 'monospace',
+                      backgroundColor: '#f1f5f9',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      display: 'inline-block'
+                    }}>
+                      {tvboxParaRenovar.senha}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    backgroundColor: 'white',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0'
+                  }}>
+                    <div style={{
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: '#64748b',
+                      marginBottom: '4px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      Vencimento Atual
+                    </div>
+                    <div style={{
+                      fontSize: '18px',
+                      fontWeight: '700',
+                      color: tvboxParaRenovar.renovacaoDia ? '#dc2626' : '#64748b'
+                    }}>
+                      {tvboxParaRenovar.renovacaoDia ? `Dia ${tvboxParaRenovar.renovacaoDia}` : 'Não definido'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Informações da Renovação */}
+              <div style={{
+                backgroundColor: '#f0fdf4',
+                borderRadius: '16px',
+                padding: '24px',
+                marginBottom: '32px',
+                border: '2px solid #bbf7d0'
+              }}>
+                <h4 style={{
+                  fontSize: '18px',
+                  fontWeight: '700',
+                  marginBottom: '16px',
+                  color: '#059669',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  💰 Detalhes da Renovação
+                </h4>
+                
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '16px'
+                }}>
+                  <div>
+                    <div style={{
+                      fontSize: '14px',
+                      color: '#065f46',
+                      fontWeight: '600',
+                      marginBottom: '4px'
+                    }}>
+                      Mês de Referência
+                    </div>
+                    <div style={{
+                      fontSize: '16px',
+                      fontWeight: '700',
+                      color: '#059669'
+                    }}>
+                      {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div style={{
+                      fontSize: '14px',
+                      color: '#065f46',
+                      fontWeight: '600',
+                      marginBottom: '4px'
+                    }}>
+                      Valor da Mensalidade
+                    </div>
+                    <div style={{
+                      fontSize: '24px',
+                      fontWeight: '700',
+                      color: '#059669'
+                    }}>
+                      R$ 10,00
+                    </div>
+                  </div>
+                </div>
+
+                {tvboxParaRenovar.renovacaoDia && (
+                  <div style={{
+                    marginTop: '16px',
+                    padding: '12px',
+                    backgroundColor: 'white',
+                    borderRadius: '8px',
+                    border: '1px solid #bbf7d0'
+                  }}>
+                    <div style={{
+                      fontSize: '14px',
+                      color: '#065f46',
+                      fontWeight: '600',
+                      marginBottom: '4px'
+                    }}>
+                      Próximo Vencimento
+                    </div>
+                    <div style={{
+                      fontSize: '16px',
+                      fontWeight: '700',
+                      color: '#059669'
+                    }}>
+                      {(() => {
+                        const hoje = new Date();
+                        let proximoVenc = new Date(hoje.getFullYear(), hoje.getMonth() + 1, tvboxParaRenovar.renovacaoDia);
+                        return proximoVenc.toLocaleDateString('pt-BR');
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Botões */}
+              <div style={{
+                display: 'flex',
+                gap: '16px',
+                justifyContent: 'flex-end'
+              }}>
+                <button
+                  onClick={() => {
+                    setShowModalRenovar(false);
+                    setTvboxParaRenovar(null);
+                  }}
+                  disabled={executandoTarefa}
+                  style={{
+                    padding: '16px 32px',
+                    border: '2px solid #e2e8f0',
+                    backgroundColor: 'white',
+                    color: '#64748b',
+                    borderRadius: '12px',
+                    cursor: executandoTarefa ? 'not-allowed' : 'pointer',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!executandoTarefa) {
+                      e.currentTarget.style.borderColor = '#cbd5e1';
+                      e.currentTarget.style.backgroundColor = '#f8fafc';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!executandoTarefa) {
+                      e.currentTarget.style.borderColor = '#e2e8f0';
+                      e.currentTarget.style.backgroundColor = 'white';
+                    }
+                  }}
+                >
+                  Cancelar
+                </button>
+                
+                <button
+                  onClick={darBaixaRenovacao}
+                  disabled={executandoTarefa}
+                  style={{
+                    padding: '16px 32px',
+                    backgroundColor: executandoTarefa ? '#6b7280' : '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    cursor: executandoTarefa ? 'not-allowed' : 'pointer',
+                    fontSize: '15px',
+                    fontWeight: '700',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!executandoTarefa) {
+                      e.currentTarget.style.backgroundColor = '#059669';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(16, 185, 129, 0.4)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!executandoTarefa) {
+                      e.currentTarget.style.backgroundColor = '#10b981';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.25)';
+                    }
+                  }}
+                >
+                  {executandoTarefa ? (
+                    <>
+                      <div style={{
+                        width: '16px',
+                        height: '16px',
+                        border: '2px solid rgba(255, 255, 255, 0.3)',
+                        borderTop: '2px solid white',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }} />
+                      Processando...
+                    </>
+                  ) : (
+                    <>
+                      🔄 Confirmar Renovação
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -2029,6 +3198,67 @@ export default function TvBoxPage() {
           setShowModalNovaAssinatura(false);
         }}
       />
+
+      {/* Toast de Sucesso */}
+      {showToast && (
+        <div style={{
+          position: 'fixed',
+          top: '24px',
+          right: '24px',
+          backgroundColor: '#10b981',
+          color: 'white',
+          padding: '20px 24px',
+          borderRadius: '16px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+          zIndex: 1000000,
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          fontSize: '16px',
+          fontWeight: '600',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          minWidth: '320px',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          backdropFilter: 'blur(10px)',
+          animation: showToast ? 'slideInRight 0.3s ease-out' : 'slideOutRight 0.3s ease-in'
+        }}>
+          <div style={{
+            fontSize: '24px'
+          }}>
+            ✅
+          </div>
+          <div style={{
+            flex: 1
+          }}>
+            {toastMessage}
+          </div>
+          <button
+            onClick={() => setShowToast(false)}
+            style={{
+              background: 'rgba(255, 255, 255, 0.2)',
+              border: 'none',
+              borderRadius: '8px',
+              width: '32px',
+              height: '32px',
+              cursor: 'pointer',
+              color: 'white',
+              fontSize: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
     </>
   );
 }
