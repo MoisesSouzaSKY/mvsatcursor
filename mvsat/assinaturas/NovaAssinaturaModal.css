@@ -1,0 +1,76 @@
+/* Layout principal do modal de nova assinatura */
+.nova-assinatura-modal {
+  width: min(920px, 90vw) !important;
+  max-height: 80vh !important;
+  border-radius: 16px !important;
+}
+
+.nova-assinatura-modal .form-grid {
+  display: grid !important;
+  grid-template-columns: repeat(12, 1fr) !important;
+  gap: 16px !important;
+}
+
+/* Proporções específicas para cada seção */
+.nova-assinatura-modal .form-grid .email-field {
+  grid-column: span 7 !important;
+}
+
+.nova-assinatura-modal .form-grid .telefone-field {
+  grid-column: span 5 !important;
+}
+
+.nova-assinatura-modal .form-grid .estado-field {
+  grid-column: span 3 !important;
+}
+
+.nova-assinatura-modal .form-grid .cidade-field {
+  grid-column: span 9 !important;
+}
+
+.nova-assinatura-modal .form-grid .bairro-field {
+  grid-column: span 6 !important;
+}
+
+.nova-assinatura-modal .form-grid .rua-field {
+  grid-column: span 6 !important;
+}
+
+.nova-assinatura-modal .form-grid .numero-field {
+  grid-column: span 3 !important;
+}
+
+.nova-assinatura-modal .form-grid .cep-field {
+  grid-column: span 3 !important;
+}
+
+/* Responsividade para o modal de nova assinatura */
+@media (max-width: 1024px) {
+  .nova-assinatura-modal .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .nova-assinatura-modal .modal-content {
+    width: 95vw !important;
+    max-width: 95vw !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .nova-assinatura-modal .form-grid {
+    gap: 12px !important;
+  }
+  
+  .nova-assinatura-modal .form-section {
+    gap: 16px !important;
+  }
+  
+  .nova-assinatura-modal .button-group {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  
+  .nova-assinatura-modal .button-group button {
+    width: 100% !important;
+  }
+}

@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { collection, addDoc } from 'firebase/firestore';
 import { getDb } from '../config/database.config';
 import { Modal } from '../shared/components/ui/Modal';
-import { Button } from '../shared/components/ui/Button';
 import { Input } from '../shared/components/ui/Input';
-import { formatPhoneNumber, normalizePhoneNumber, validatePhoneNumber } from '../shared/utils/phoneFormatter';
+import './NovaAssinaturaModal.css';
 
 interface NovaAssinaturaModalProps {
   isOpen: boolean;
@@ -33,6 +32,35 @@ interface NovaAssinatura {
 }
 
 export default function NovaAssinaturaModal({ isOpen, onClose, onSave }: NovaAssinaturaModalProps) {
+  // Adicionar estilos CSS para animações
+  React.useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideInRight {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      if (document.head.contains(style)) {
+        document.head.removeChild(style);
+      }
+    };
+  }, []);
+
   const [loading, setLoading] = useState(false);
   const [assinatura, setAssinatura] = useState<NovaAssinatura>({
     codigo: '',
@@ -141,81 +169,127 @@ export default function NovaAssinaturaModal({ isOpen, onClose, onSave }: NovaAss
       open={isOpen}
       onClose={onClose}
       title="Nova Assinatura"
-      size="xl"
+      size="lg"
     >
-      <form onSubmit={handleSubmit} style={{ padding: '20px 0' }}>
-        <div style={{ display: 'grid', gap: '20px' }}>
-          {/* Código da Assinatura */}
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-              Código da Assinatura*
-            </label>
-            <Input
-              type="text"
-              value={assinatura.codigo}
-              onChange={(e) => handleInputChange('codigo', e.target.value)}
-              placeholder="Digite o código da assinatura"
-              required
-            />
-          </div>
+      <form onSubmit={handleSubmit} style={{ padding: '20px' }}>
+            {/* Identificação */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '6px', 
+                  fontSize: '12px', 
+                  fontWeight: '600', 
+                  color: '#374151' 
+                }}>
+                  Código da Assinatura*
+                </label>
+                <Input
+                  type="text"
+                  value={assinatura.codigo}
+                  onChange={(e) => handleInputChange('codigo', e.target.value)}
+                  placeholder="Digite o código"
+                  required
+                  style={{ height: '36px', width: '100%' }}
+                />
+              </div>
+            </div>
 
-          {/* Nome Completo */}
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-              Nome Completo*
-            </label>
-            <Input
-              type="text"
-              value={assinatura.nomeCompleto}
-              onChange={(e) => handleInputChange('nomeCompleto', e.target.value)}
-              placeholder="Digite o nome completo"
-              required
-            />
-          </div>
-
-          {/* CPF e RG */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-                CPF*
+            {/* Nome Completo */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '6px', 
+                fontSize: '12px', 
+                fontWeight: '600', 
+                color: '#374151' 
+              }}>
+                Nome Completo*
               </label>
               <Input
                 type="text"
-                value={assinatura.cpf}
-                onChange={(e) => handleInputChange('cpf', e.target.value)}
-                placeholder="000.000.000-00"
+                value={assinatura.nomeCompleto}
+                onChange={(e) => handleInputChange('nomeCompleto', e.target.value)}
+                placeholder="Digite o nome completo"
                 required
+                style={{ height: '36px', width: '100%' }}
               />
             </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-                RG
+
+            {/* CPF e RG */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: '1fr 1fr', 
+              gap: '12px',
+              marginBottom: '20px'
+            }}>
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '6px', 
+                  fontSize: '12px', 
+                  fontWeight: '600', 
+                  color: '#374151' 
+                }}>
+                  CPF*
+                </label>
+                <Input
+                  type="text"
+                  value={assinatura.cpf}
+                  onChange={(e) => handleInputChange('cpf', e.target.value)}
+                  placeholder="000.000.000-00"
+                  required
+                  style={{ height: '36px', width: '100%' }}
+                />
+              </div>
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '6px', 
+                  fontSize: '12px', 
+                  fontWeight: '600', 
+                  color: '#374151' 
+                }}>
+                  RG
+                </label>
+                <Input
+                  type="text"
+                  value={assinatura.rg}
+                  onChange={(e) => handleInputChange('rg', e.target.value)}
+                  placeholder="Digite o RG"
+                  style={{ height: '36px', width: '100%' }}
+                />
+              </div>
+            </div>
+
+            {/* Data de Nascimento */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '6px', 
+                fontSize: '12px', 
+                fontWeight: '600', 
+                color: '#374151' 
+              }}>
+                Data de Nascimento
               </label>
               <Input
-                type="text"
-                value={assinatura.rg}
-                onChange={(e) => handleInputChange('rg', e.target.value)}
-                placeholder="Digite o RG"
+                type="date"
+                value={assinatura.dataNascimento}
+                onChange={(e) => handleInputChange('dataNascimento', e.target.value)}
+                style={{ height: '36px', width: '100%' }}
               />
             </div>
-          </div>
 
-          {/* Data de Nascimento */}
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-              Data de Nascimento
-            </label>
-            <Input
-              type="date"
-              value={assinatura.dataNascimento}
-              onChange={(e) => handleInputChange('dataNascimento', e.target.value)}
-            />
-          </div>
-
-          {/* E-mail e Telefone */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
+            {/* Contato e Plano */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '6px', 
+                fontSize: '12px', 
+                fontWeight: '600', 
+                color: '#374151' 
+              }}>
                 E-mail
               </label>
               <Input
@@ -223,92 +297,126 @@ export default function NovaAssinaturaModal({ isOpen, onClose, onSave }: NovaAss
                 value={assinatura.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
                 placeholder="exemplo@email.com"
+                style={{ height: '36px', width: '100%' }}
               />
             </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '6px', 
+                fontSize: '12px', 
+                fontWeight: '600', 
+                color: '#374151' 
+              }}>
                 Telefone
               </label>
               <Input
                 type="tel"
                 value={assinatura.telefone}
                 onChange={(e) => handleInputChange('telefone', e.target.value)}
-                placeholder="(91) 98548-0800"
+                placeholder="(00) 00000-0000"
+                style={{ height: '36px', width: '100%' }}
               />
             </div>
-          </div>
 
-          {/* Plano e Status */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-                Plano
-              </label>
-              <select
-                value={assinatura.plano}
-                onChange={(e) => handleInputChange('plano', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '2px solid #e5e7eb',
-                  borderRadius: '12px',
-                  fontSize: '16px',
-                  transition: 'all 0.3s ease',
-                  outline: 'none',
-                  backgroundColor: 'white'
-                }}
-              >
-                <option value="Básico">Básico</option>
-                <option value="Premium">Premium</option>
-                <option value="VIP">VIP</option>
-                <option value="Personalizado">Personalizado</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-                Status
-              </label>
-              <select
-                value={assinatura.status}
-                onChange={(e) => handleInputChange('status', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '2px solid #e5e7eb',
-                  borderRadius: '12px',
-                  fontSize: '16px',
-                  transition: 'all 0.3s ease',
-                  outline: 'none',
-                  backgroundColor: 'white'
-                }}
-              >
-                <option value="Ativa">Ativa</option>
-                <option value="Inativa">Inativa</option>
-                <option value="Suspensa">Suspensa</option>
-                <option value="Cancelada">Cancelada</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Endereço Detalhado */}
-          <div>
-            <h4 style={{ 
-              marginBottom: '16px', 
-              fontSize: '18px', 
-              fontWeight: '700', 
-              color: '#374151',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
+            {/* Plano e Status */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: '1fr 1fr', 
+              gap: '12px',
+              marginBottom: '20px'
             }}>
-              📍 Endereço Detalhado
-            </h4>
-            
-            <div style={{ display: 'grid', gap: '16px' }}>
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '6px', 
+                  fontSize: '12px', 
+                  fontWeight: '600', 
+                  color: '#374151' 
+                }}>
+                  Plano
+                </label>
+                <select
+                  value={assinatura.plano}
+                  onChange={(e) => handleInputChange('plano', e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: '36px',
+                    padding: '0 12px',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    outline: 'none',
+                    backgroundColor: 'white'
+                  }}
+                >
+                  <option value="Básico">Básico</option>
+                  <option value="Premium">Premium</option>
+                  <option value="VIP">VIP</option>
+                  <option value="Personalizado">Personalizado</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '6px', 
+                  fontSize: '12px', 
+                  fontWeight: '600', 
+                  color: '#374151' 
+                }}>
+                  Status
+                </label>
+                <select
+                  value={assinatura.status}
+                  onChange={(e) => handleInputChange('status', e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: '36px',
+                    padding: '0 12px',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    outline: 'none',
+                    backgroundColor: 'white'
+                  }}
+                >
+                  <option value="Ativa">Ativa</option>
+                  <option value="Inativa">Inativa</option>
+                  <option value="Suspensa">Suspensa</option>
+                  <option value="Cancelada">Cancelada</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Endereço Detalhado */}
+            <div style={{ marginBottom: '20px' }}>
+              <h4 style={{ 
+                marginBottom: '12px', 
+                fontSize: '14px', 
+                fontWeight: '600', 
+                color: '#374151',
+                borderBottom: '1px solid #e5e7eb',
+                paddingBottom: '6px'
+              }}>
+                Endereço Detalhado
+              </h4>
+              
               {/* Estado e Cidade */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: '1fr 2fr', 
+                gap: '12px',
+                marginBottom: '12px'
+              }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
+                  <label style={{ 
+                    display: 'block', 
+                    marginBottom: '6px', 
+                    fontSize: '12px', 
+                    fontWeight: '600', 
+                    color: '#374151' 
+                  }}>
                     Estado
                   </label>
                   <Input
@@ -316,10 +424,17 @@ export default function NovaAssinaturaModal({ isOpen, onClose, onSave }: NovaAss
                     value={assinatura.endereco.estado}
                     onChange={(e) => handleInputChange('endereco.estado', e.target.value)}
                     placeholder="Digite o estado"
+                    style={{ height: '36px', width: '100%' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
+                  <label style={{ 
+                    display: 'block', 
+                    marginBottom: '6px', 
+                    fontSize: '12px', 
+                    fontWeight: '600', 
+                    color: '#374151' 
+                  }}>
                     Cidade
                   </label>
                   <Input
@@ -327,51 +442,66 @@ export default function NovaAssinaturaModal({ isOpen, onClose, onSave }: NovaAss
                     value={assinatura.endereco.cidade}
                     onChange={(e) => handleInputChange('endereco.cidade', e.target.value)}
                     placeholder="Digite a cidade"
+                    style={{ height: '36px', width: '100%' }}
                   />
                 </div>
               </div>
 
-              {/* Bairro e CEP */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-                    Bairro
-                  </label>
-                  <Input
-                    type="text"
-                    value={assinatura.endereco.bairro}
-                    onChange={(e) => handleInputChange('endereco.bairro', e.target.value)}
-                    placeholder="Digite o bairro"
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-                    CEP
-                  </label>
-                  <Input
-                    type="text"
-                    value={assinatura.endereco.cep}
-                    onChange={(e) => handleInputChange('endereco.cep', e.target.value)}
-                    placeholder="00000-000"
-                  />
-                </div>
+              {/* Bairro */}
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '6px', 
+                  fontSize: '12px', 
+                  fontWeight: '600', 
+                  color: '#374151' 
+                }}>
+                  Bairro
+                </label>
+                <Input
+                  type="text"
+                  value={assinatura.endereco.bairro}
+                  onChange={(e) => handleInputChange('endereco.bairro', e.target.value)}
+                  placeholder="Digite o bairro"
+                  style={{ height: '36px', width: '100%' }}
+                />
               </div>
 
-              {/* Rua e Número */}
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
+              {/* Rua */}
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '6px', 
+                  fontSize: '12px', 
+                  fontWeight: '600', 
+                  color: '#374151' 
+                }}>
+                  Rua
+                </label>
+                <Input
+                  type="text"
+                  value={assinatura.endereco.rua}
+                  onChange={(e) => handleInputChange('endereco.rua', e.target.value)}
+                  placeholder="Digite a rua"
+                  style={{ height: '36px', width: '100%' }}
+                />
+              </div>
+
+              {/* Número e CEP */}
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: '1fr 1fr', 
+                gap: '12px',
+                marginBottom: '12px'
+              }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-                    Rua
-                  </label>
-                  <Input
-                    type="text"
-                    value={assinatura.endereco.rua}
-                    onChange={(e) => handleInputChange('endereco.rua', e.target.value)}
-                    placeholder="Digite a rua"
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
+                  <label style={{ 
+                    display: 'block', 
+                    marginBottom: '6px', 
+                    fontSize: '12px', 
+                    fontWeight: '600', 
+                    color: '#374151' 
+                  }}>
                     Número
                   </label>
                   <Input
@@ -379,46 +509,106 @@ export default function NovaAssinaturaModal({ isOpen, onClose, onSave }: NovaAss
                     value={assinatura.endereco.numero}
                     onChange={(e) => handleInputChange('endereco.numero', e.target.value)}
                     placeholder="Nº"
+                    style={{ height: '36px', width: '100%' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ 
+                    display: 'block', 
+                    marginBottom: '6px', 
+                    fontSize: '12px', 
+                    fontWeight: '600', 
+                    color: '#374151' 
+                  }}>
+                    CEP
+                  </label>
+                  <Input
+                    type="text"
+                    value={assinatura.endereco.cep}
+                    onChange={(e) => handleInputChange('endereco.cep', e.target.value)}
+                    placeholder="00000-000"
+                    style={{ height: '36px', width: '100%' }}
                   />
                 </div>
               </div>
 
               {/* Ponto de Referência */}
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '6px', 
+                  fontSize: '12px', 
+                  fontWeight: '600', 
+                  color: '#374151' 
+                }}>
                   Ponto de Referência
                 </label>
                 <Input
                   type="text"
                   placeholder="Ex: Próximo à padaria Silva"
+                  style={{ height: '36px', width: '100%' }}
                 />
               </div>
             </div>
-          </div>
-        </div>
 
+        {/* Botões de Ação */}
         <div style={{ 
           display: 'flex', 
           gap: '12px', 
           justifyContent: 'flex-end', 
-          marginTop: '32px',
-          paddingTop: '20px',
+          marginTop: '24px',
+          paddingTop: '16px',
           borderTop: '1px solid #e5e7eb'
         }}>
-          <Button
-            variant="outline"
+          <button
+            type="button"
             onClick={onClose}
             disabled={loading}
+            style={{
+              height: '36px',
+              padding: '0 20px',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              backgroundColor: 'white',
+              color: '#6b7280',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.6 : 1
+            }}
           >
             Cancelar
-          </Button>
-          <Button
+          </button>
+          <button
             type="submit"
-            loading={loading}
             disabled={loading}
+            style={{
+              height: '36px',
+              padding: '0 20px',
+              border: 'none',
+              borderRadius: '6px',
+              backgroundColor: loading ? '#9ca3af' : '#3b82f6',
+              color: 'white',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
           >
-            {loading ? 'Criando...' : 'Criar Assinatura'}
-          </Button>
+            {loading && (
+              <div style={{
+                width: '14px',
+                height: '14px',
+                border: '2px solid rgba(255, 255, 255, 0.3)',
+                borderTop: '2px solid white',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite'
+              }} />
+            )}
+            {loading ? 'Salvando...' : 'Salvar Assinatura'}
+          </button>
         </div>
       </form>
     </Modal>

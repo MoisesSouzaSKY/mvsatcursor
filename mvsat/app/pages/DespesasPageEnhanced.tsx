@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { collection, getDocs, updateDoc, doc, serverTimestamp, addDoc } from 'firebase/firestore';
 import { getDb } from '../../config/database.config';
 import { fileToBase64 } from '../../shared/base64';
@@ -6,20 +6,19 @@ import { fileToBase64 } from '../../shared/base64';
 // Enhanced Components
 import ResponsiveLayout from '../../despesas/components/ResponsiveLayout';
 import DespesasHeader from '../../despesas/components/DespesasHeader';
-import DespesasStatistics from '../../despesas/components/DespesasStatistics';
+import StatisticsSection from '../../despesas/components/StatisticsSection';
 import DespesasFilters from '../../despesas/components/DespesasFilters';
-import SimpleDespesasTable from '../../despesas/components/SimpleDespesasTable';
+import DespesasTable from '../../despesas/components/DespesasTable';
 import PaymentModal from '../../despesas/components/PaymentModal';
-import ViewDespesaModal from '../../despesas/components/ViewDespesaModal';
+import NovaDespesaModal from '../../despesas/components/NovaDespesaModal';
 import ToastContainer from '../../despesas/components/ToastContainer';
 import ErrorMessage from '../../despesas/components/ErrorMessage';
-import NovaDespesaModal from '../../despesas/components/NovaDespesaModal';
 
 // Hooks
 import { useToast } from '../../despesas/hooks/useToast';
 
 // Utils
-import { getDaysUntilDue } from '../../despesas/utils/despesas.formatters';
+import { formatDate, getDaysUntilDue } from '../../despesas/utils/despesas.formatters';
 
 interface Despesa {
   id: string;
@@ -50,18 +49,19 @@ interface NovaDespesaData {
   observacoes?: string;
 }
 
-export default function DespesasPage() {
+export default function DespesasPageEnhanced() {
   // State
   const [despesas, setDespesas] = useState<Despesa[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Filters state
+  // Filters
   const [monthFilter, setMonthFilter] = useState('');
   
-  // Modals
-  const [showViewModal, setShowViewModal] = useState(false);
+  // Modal
+  const [showPagamentoModal, setShowPagamentoModal] = useState(false);
   const [despesaSelecionada, setDespesaSelecionada] = useState<Despesa | null>(null);
+  const [submittingPayment, setSubmittingPayment] = useState(false);
   const [showNovaDespesaModal, setShowNovaDespesaModal] = useState(false);
   
   // Toast
@@ -80,61 +80,7 @@ export default function DespesasPage() {
       const snap = await getDocs(collection(getDb(), 'despesas'));
       const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as Despesa));
       
-      // Preencher campos faltantes automaticamente e atualizar no banco
-      const despesasProcessadas = await Promise.all(docs.map(async (despesa) => {
-        const despesaAtualizada = { ...despesa };
-        let needsUpdate = false;
-        const updates: any = {};
-        
-        // Se não tem competência, gerar baseado na data de vencimento
-        if (!despesaAtualizada.competencia && despesaAtualizada.dataVencimento) {
-          let dataVencimento: Date | null = null;
-          
-          if (despesaAtualizada.dataVencimento.toDate) {
-            dataVencimento = despesaAtualizada.dataVencimento.toDate();
-          } else if (despesaAtualizada.dataVencimento instanceof Date) {
-            dataVencimento = despesaAtualizada.dataVencimento;
-          } else if (typeof despesaAtualizada.dataVencimento === 'string') {
-            dataVencimento = new Date(despesaAtualizada.dataVencimento);
-          }
-          
-          if (dataVencimento) {
-            const year = dataVencimento.getFullYear();
-            const month = String(dataVencimento.getMonth() + 1).padStart(2, '0');
-            despesaAtualizada.competencia = `${year}-${month}`;
-            updates.competencia = despesaAtualizada.competencia;
-            needsUpdate = true;
-          }
-        }
-        
-        // Se está pago mas não tem data de pagamento, usar data de vencimento
-        if (String(despesaAtualizada.status || '').toLowerCase() === 'pago' && !despesaAtualizada.dataPagamento) {
-          despesaAtualizada.dataPagamento = despesaAtualizada.dataVencimento;
-          updates.dataPagamento = despesaAtualizada.dataPagamento;
-          needsUpdate = true;
-        }
-        
-        // Se não tem forma de pagamento mas está pago, definir como "Não informado"
-        if (String(despesaAtualizada.status || '').toLowerCase() === 'pago' && !despesaAtualizada.formaPagamento) {
-          despesaAtualizada.formaPagamento = 'Não informado';
-          updates.formaPagamento = despesaAtualizada.formaPagamento;
-          needsUpdate = true;
-        }
-        
-        // Atualizar no banco se necessário
-        if (needsUpdate) {
-          try {
-            updates.updatedAt = serverTimestamp();
-            await updateDoc(doc(getDb(), 'despesas', String(despesa.id)), updates);
-          } catch (updateError) {
-            console.warn('Erro ao atualizar despesa:', despesa.id, updateError);
-          }
-        }
-        
-        return despesaAtualizada;
-      }));
-      
-      setDespesas(despesasProcessadas);
+      setDespesas(docs);
     } catch (e: any) {
       const errorMessage = e?.message || 'Falha ao carregar despesas';
       setError(errorMessage);
@@ -143,10 +89,6 @@ export default function DespesasPage() {
       setLoading(false);
     }
   };
-
-  // Payment modal state
-  const [showPagamentoModal, setShowPagamentoModal] = useState(false);
-  const [submittingPayment, setSubmittingPayment] = useState(false);
 
   // Filter despesas
   const filteredDespesas = useMemo(() => {
@@ -290,7 +232,7 @@ export default function DespesasPage() {
 
       {/* Statistics */}
       <div className="responsive-card-grid">
-        <DespesasStatistics 
+        <StatisticsSection 
           despesas={filteredDespesas} 
           loading={loading} 
         />
@@ -318,14 +260,13 @@ export default function DespesasPage() {
 
       {/* Table */}
       <div className="responsive-table">
-        <SimpleDespesasTable
+        <DespesasTable
           despesas={filteredDespesas}
           loading={loading}
           error={error}
-          onVisualizar={(despesa) => {
-            setDespesaSelecionada(despesa);
-            setShowViewModal(true);
-          }}
+          onMarcarPago={handleMarcarPago}
+          onEditar={(despesa) => success(`Editar ${despesa.descricao} - Em desenvolvimento`)}
+          onVisualizar={(despesa) => success(`Visualizar ${despesa.descricao} - Em desenvolvimento`)}
         />
       </div>
 
@@ -339,16 +280,6 @@ export default function DespesasPage() {
         }}
         onConfirm={handleConfirmarPagamento}
         loading={submittingPayment}
-      />
-
-      {/* View Modal */}
-      <ViewDespesaModal
-        despesa={despesaSelecionada}
-        isOpen={showViewModal}
-        onClose={() => {
-          setShowViewModal(false);
-          setDespesaSelecionada(null);
-        }}
       />
 
       {/* Nova Despesa Modal */}

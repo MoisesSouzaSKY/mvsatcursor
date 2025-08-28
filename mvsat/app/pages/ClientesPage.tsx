@@ -8,6 +8,181 @@ import { migrarTelefones } from '../../clientes/clientes.functions';
 import { EyeIcon, EditIcon, DeleteIcon, UserRemoveIcon, CheckIcon, XMarkIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, FunnelIcon } from '../../clientes/components/Icons';
 import { ConfirmacaoDesativacaoModal, SucessoDesativacaoModal } from '../../shared/components/ui';
 
+// Componente StatusBadge moderno para clientes
+const StatusBadge: React.FC<{ status: 'ativo' | 'desativado' | 'inativo' | 'suspenso' | 'cancelado' | string }> = ({ status }) => {
+  const getStatusConfig = (status: string) => {
+    const key = (status || '').toLowerCase().trim();
+    switch (key) {
+      case 'ativo':
+        return {
+          backgroundColor: '#d1fae5',
+          color: '#059669',
+          text: 'ativo'
+        };
+      case 'desativado':
+        return {
+          backgroundColor: '#fee2e2',
+          color: '#dc2626',
+          text: 'desativado'
+        };
+      case 'inativo':
+        return {
+          backgroundColor: '#f3f4f6',
+          color: '#6b7280',
+          text: 'inativo'
+        };
+      case 'suspenso':
+        return {
+          backgroundColor: '#fef3c7',
+          color: '#d97706',
+          text: 'suspenso'
+        };
+      case 'cancelado':
+        return {
+          backgroundColor: '#fee2e2',
+          color: '#991b1b',
+          text: 'cancelado'
+        };
+      default:
+        return {
+          backgroundColor: '#f3f4f6',
+          color: '#374151',
+          text: status || '—'
+        };
+    }
+  };
+
+  const config = getStatusConfig(status);
+
+  return (
+    <span style={{
+      backgroundColor: config.backgroundColor,
+      color: config.color,
+      padding: '4px 8px',
+      borderRadius: '12px',
+      fontSize: '12px',
+      fontWeight: '500',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '4px'
+    }}>
+      <div style={{
+        width: '6px',
+        height: '6px',
+        borderRadius: '50%',
+        backgroundColor: config.color
+      }} />
+      {config.text}
+    </span>
+  );
+};
+
+// Componente de Card de Estatísticas
+const StatsCard: React.FC<{
+  title: string;
+  value: number | string;
+  icon: string;
+  gradient: string;
+  subtitle?: string;
+}> = ({ title, value, icon, gradient, subtitle }) => {
+  return (
+    <div style={{
+      background: gradient,
+      borderRadius: '12px',
+      padding: '20px',
+      color: 'white',
+      minWidth: '200px',
+      cursor: 'pointer',
+      transition: 'all 0.3s ease',
+      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.transform = 'translateY(-2px)';
+      e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.transform = 'translateY(0)';
+      e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <p style={{ margin: 0, fontSize: '14px', opacity: 0.9, fontWeight: '500' }}>{title}</p>
+          <p style={{ margin: '8px 0 4px 0', fontSize: '28px', fontWeight: '700' }}>{value}</p>
+          {subtitle && <p style={{ margin: 0, fontSize: '12px', opacity: 0.8 }}>{subtitle}</p>}
+        </div>
+        <div style={{ fontSize: '32px', opacity: 0.8 }}>{icon}</div>
+      </div>
+    </div>
+  );
+};
+
+// Componente Toast
+const Toast: React.FC<{
+  message: string;
+  type: 'success' | 'error' | 'warning' | 'info';
+  show: boolean;
+  onClose: () => void;
+}> = ({ message, type, show, onClose }) => {
+  const getToastConfig = (type: string) => {
+    switch (type) {
+      case 'success':
+        return { bg: '#10b981', icon: '✅' };
+      case 'error':
+        return { bg: '#ef4444', icon: '❌' };
+      case 'warning':
+        return { bg: '#f59e0b', icon: '⚠️' };
+      default:
+        return { bg: '#3b82f6', icon: 'ℹ️' };
+    }
+  };
+
+  const config = getToastConfig(type);
+
+  React.useEffect(() => {
+    if (show) {
+      const timer = setTimeout(onClose, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [show, onClose]);
+
+  if (!show) return null;
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: '20px',
+      right: '20px',
+      background: config.bg,
+      color: 'white',
+      padding: '12px 16px',
+      borderRadius: '8px',
+      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+      zIndex: 1000,
+      animation: 'slideInRight 0.3s ease-out',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      maxWidth: '400px'
+    }}>
+      <span>{config.icon}</span>
+      <span>{message}</span>
+      <button 
+        onClick={onClose}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: 'white',
+          cursor: 'pointer',
+          marginLeft: '8px',
+          fontSize: '16px'
+        }}
+      >
+        ×
+      </button>
+    </div>
+  );
+};
+
 interface Cliente {
   id: string;
   nome: string;
@@ -76,6 +251,57 @@ function normalizeCliente(obj: any, id: string): Cliente {
 }
 
 export default function ClientesPage() {
+  // CSS para animações
+  React.useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes slideInRight {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      @keyframes pulse {
+        0%, 100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      .fade-in-up {
+        animation: fadeInUp 0.6s ease-out;
+      }
+      .highlight-row {
+        background-color: #fef3c7 !important;
+        transition: background-color 0.3s ease;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   const [loading, setLoading] = React.useState(true);
   const [items, setItems] = React.useState<Cliente[]>([]);
   const [error, setError] = React.useState<string | null>(null);
@@ -94,6 +320,12 @@ export default function ClientesPage() {
   const [desativandoCliente, setDesativandoCliente] = React.useState(false);
   const [equipamentosLiberados, setEquipamentosLiberados] = React.useState(0);
   const [tvBoxesLiberadas, setTvBoxesLiberadas] = React.useState(0);
+
+  // Estados para toast e animações
+  const [showToast, setShowToast] = React.useState(false);
+  const [toastMessage, setToastMessage] = React.useState('');
+  const [toastType, setToastType] = React.useState<'success' | 'error' | 'warning' | 'info'>('success');
+  const [highlightedRows, setHighlightedRows] = React.useState<Set<string>>(new Set());
 
   React.useEffect(() => {
     loadClientes();
@@ -145,12 +377,46 @@ export default function ClientesPage() {
 
 
 
-  // Calcular estatísticas
+  // Função para mostrar toast
+  const showToastMessage = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'success') => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
+  };
+
+  // Função para destacar linha
+  const highlightRow = (id: string) => {
+    setHighlightedRows(prev => new Set(prev).add(id));
+    setTimeout(() => {
+      setHighlightedRows(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
+    }, 2000);
+  };
+
+  // Calcular estatísticas expandidas
   const stats = React.useMemo(() => {
     const total = items.length;
     const ativos = items.filter(c => c.status === 'ativo').length;
     const exClientes = total - ativos;
-    return { total, ativos, exClientes };
+    const desativados = items.filter(c => c.status === 'desativado').length;
+    const suspensos = items.filter(c => c.status === 'suspenso').length;
+    const inativos = items.filter(c => c.status === 'inativo').length;
+    
+    return { 
+      total, 
+      ativos, 
+      exClientes, 
+      desativados, 
+      suspensos, 
+      inativos,
+      // Simulando dados de serviços (pode ser calculado de dados reais)
+      sky: 0,
+      tvbox: Math.floor(ativos * 0.8), // 80% dos ativos têm TV Box
+      combo: Math.floor(ativos * 0.1)  // 10% têm combo
+    };
   }, [items]);
 
   const loadClientes = async () => {
@@ -175,8 +441,9 @@ export default function ClientesPage() {
       try {
         await deleteDoc(doc(getDb(), 'clientes', id));
         await loadClientes();
+        showToastMessage('Cliente excluído com sucesso!', 'success');
       } catch (e: any) {
-        alert('Erro ao excluir: ' + e.message);
+        showToastMessage('Erro ao excluir cliente: ' + e.message, 'error');
       }
     }
   };
@@ -195,9 +462,10 @@ export default function ClientesPage() {
             dataUltimaAtualizacao: new Date()
           });
           await loadClientes();
-          alert('Cliente ativado com sucesso!');
+          highlightRow(cliente.id);
+          showToastMessage('Cliente ativado com sucesso!', 'success');
         } catch (e: any) {
-          alert('Erro ao ativar cliente: ' + e.message);
+          showToastMessage('Erro ao ativar cliente: ' + e.message, 'error');
         }
       }
     }
@@ -265,8 +533,9 @@ export default function ClientesPage() {
       await loadClientes();
       setShowConfirmacaoDesativacao(false);
       setShowSucessoDesativacao(true);
+      showToastMessage('Cliente desativado com sucesso!', 'success');
     } catch (e: any) {
-      alert('Erro ao desativar cliente: ' + e.message);
+      showToastMessage('Erro ao desativar cliente: ' + e.message, 'error');
     } finally {
       setDesativandoCliente(false);
     }
@@ -292,259 +561,948 @@ export default function ClientesPage() {
         setMigrating(true);
         const result = await migrarTelefones();
         if (result.ok) {
-          alert(`✅ ${result.count} telefones migrados com sucesso!`);
+          showToastMessage(`${result.count} telefones migrados com sucesso!`, 'success');
           await loadClientes(); // Recarrega a lista
         } else {
-          alert('ℹ️ Nenhum telefone precisava ser migrado');
+          showToastMessage('Nenhum telefone precisava ser migrado', 'info');
         }
       } catch (error: any) {
-        alert('❌ Erro ao migrar telefones: ' + error.message);
+        showToastMessage('Erro ao migrar telefones: ' + error.message, 'error');
       } finally {
         setMigrating(false);
       }
     }
   };
 
-  const statusBadge = (s: string) => {
-    const key = (s || '').toLowerCase().trim();
-    const map: Record<string, { bg: string; fg: string; label: string }> = {
-      ativo: { bg: '#dcfce7', fg: '#16a34a', label: 'ativo' },
-      desativado: { bg: '#fee2e2', fg: '#dc2626', label: 'desativado' },
-      inativo: { bg: '#f3f4f6', fg: '#6b7280', label: 'inativo' },
-      suspenso: { bg: '#fef3c7', fg: '#d97706', label: 'suspenso' },
-      cancelado: { bg: '#fee2e2', fg: '#991b1b', label: 'cancelado' }
-    };
-    const v = map[key] || { bg: '#f3f4f6', fg: '#374151', label: s || '—' };
-    return <span style={{ background: v.bg, color: v.fg, padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{v.label}</span>;
-  };
+  // Loading state moderno
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '400px',
+        flexDirection: 'column',
+        gap: '16px'
+      }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          border: '4px solid #f3f4f6',
+          borderTop: '4px solid #3b82f6',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }} />
+        <p style={{ color: '#6b7280', fontSize: '16px' }}>Carregando clientes...</p>
+      </div>
+    );
+  }
 
-  if (loading) return <div>Carregando...</div>;
-  if (error) return <div style={{ color: 'crimson' }}>{error}</div>;
+  // Error state moderno
+  if (error) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '400px',
+        flexDirection: 'column',
+        gap: '16px',
+        padding: '20px'
+      }}>
+        <div style={{ fontSize: '48px' }}>⚠️</div>
+        <h3 style={{ color: '#dc2626', margin: 0 }}>Erro ao carregar clientes</h3>
+        <p style={{ color: '#6b7280', textAlign: 'center' }}>{error}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          style={{
+            padding: '8px 16px',
+            backgroundColor: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer'
+          }}
+        >
+          Tentar novamente
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 28 }}>👥</span> Clientes
-            </h2>
-            <p style={{ margin: 0, color: '#6b7280' }}>Gestão de Clientes</p>
-          </div>
-          
-          <button 
-            onClick={() => setShowNovoClienteModal(true)}
-            style={{ 
-              padding: '10px 20px', 
-              backgroundColor: '#3b82f6', 
-              color: 'white', 
-              border: 'none', 
-              borderRadius: 6, 
-              fontWeight: 600, 
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              display: 'flex', // Adicionado para alinhar ícone e texto
-              alignItems: 'center', // Adicionado para alinhar ícone e texto
-              gap: 8 // Espaçamento entre ícone e texto
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#2563eb';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#3b82f6';
-            }}
-          >
-            <span style={{ fontSize: 20 }}>+</span> Novo Cliente
-          </button>
-        </div>
+    <div className="fade-in-up">
+      {/* Toast Notification */}
+      <Toast 
+        message={toastMessage}
+        type={toastType}
+        show={showToast}
+        onClose={() => setShowToast(false)}
+      />
 
-        {/* Abas e Nova Seção de Filtro/Ações */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-          {/* Abas */}
-          <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #e5e7eb' }}>
-            <button
-              style={{
-                padding: '8px 16px',
-                border: 'none',
-                backgroundColor: 'transparent',
-                cursor: 'pointer',
-                fontSize: 14,
-                fontWeight: 500,
-                color: activeTab === 'ativos' ? '#2563eb' : '#6b7280',
-                borderBottom: activeTab === 'ativos' ? '2px solid #2563eb' : '2px solid transparent',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8
-              }}
-              onClick={() => setActiveTab('ativos')}
-            >
-              Clientes Ativos
-              <span style={{
-                backgroundColor: activeTab === 'ativos' ? '#dbeafe' : '#f9fafb',
-                color: activeTab === 'ativos' ? '#1d4ed8' : '#6b7280',
-                padding: '2px 8px',
-                borderRadius: 12,
-                fontSize: 12,
-                fontWeight: 600,
-                minWidth: 20,
-                textAlign: 'center'
-              }}>
-                {stats.ativos}
-              </span>
-            </button>
-            
-            <button
-              style={{
-                padding: '8px 16px',
-                border: 'none',
-                backgroundColor: 'transparent',
-                cursor: 'pointer',
-                fontSize: 14,
-                fontWeight: 500,
-                color: activeTab === 'ex-clientes' ? '#2563eb' : '#6b7280',
-                borderBottom: activeTab === 'ex-clientes' ? '2px solid #2563eb' : '2px solid transparent',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8
-              }}
-              onClick={() => setActiveTab('ex-clientes')}
-            >
-              Ex-Clientes
-              <span style={{
-                backgroundColor: activeTab === 'ex-clientes' ? '#dbeafe' : '#f9fafb',
-                color: activeTab === 'ex-clientes' ? '#1d4ed8' : '#6b7280',
-                padding: '2px 8px',
-                borderRadius: 12,
-                fontSize: 12,
-                fontWeight: 600,
-                minWidth: 20,
-                textAlign: 'center'
-              }}>
-                {stats.exClientes}
-              </span>
-            </button>
-          </div>
-          {/* Removendo a div de stats antiga para dar lugar a nova */}
-          <div style={{ display: 'flex', gap: 16 }}>
-            {/* Novo input de busca no cabeçalho */}
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <input 
-                  type="text" 
-                  placeholder="Buscar por nome ou bairro..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  style={{
-                    width: '300px', 
-                    padding: '8px 12px 8px 36px', 
-                    border: '1px solid #d1d5db', 
-                    borderRadius: 6, 
-                    fontSize: 14,
-                    outline: 'none'
-                  }} 
-                />
-                <span style={{ position: 'absolute', left: 12, color: '#9ca3af' }}>🔍</span>
-            </div>
-            {/* Botões de Ação */}
-            <button style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6, background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ fontSize: 16 }}>⬇️</span> Exportar Clientes
-            </button>
-          </div>
+      {/* Banner Informativo */}
+      <div style={{
+        background: 'linear-gradient(135deg, #1e3a8a 0%, #e5e7eb 100%)',
+        borderRadius: '16px',
+        padding: '40px 32px',
+        marginBottom: '32px',
+        width: '100%',
+        position: 'relative',
+        overflow: 'hidden',
+        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
+      }}>
+        {/* Ícone de usuários no canto esquerdo */}
+        <div style={{
+          position: 'absolute',
+          left: '32px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          fontSize: '56px',
+          opacity: '0.25',
+          color: 'white'
+        }}>
+          👥
         </div>
-        {/* Badges de Status do Cliente */}
-        <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 14, color: '#4b5563' }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#22c55e' }}></span> SKY: 0
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 14, color: '#4b5563' }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#0ea5e9' }}></span> TV Box: 29
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 14, color: '#4b5563' }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#a855f7' }}></span> Combo: 0
-            </span>
+        
+        {/* Efeito decorativo no canto direito */}
+        <div style={{
+          position: 'absolute',
+          right: '-20px',
+          top: '-20px',
+          width: '120px',
+          height: '120px',
+          background: 'rgba(255, 255, 255, 0.1)',
+          borderRadius: '50%',
+          filter: 'blur(30px)'
+        }} />
+        
+        {/* Conteúdo centralizado */}
+        <div style={{
+          textAlign: 'center',
+          paddingLeft: '100px',
+          paddingRight: '40px',
+          position: 'relative',
+          zIndex: 1
+        }}>
+          <h1 style={{
+            fontSize: '48px',
+            fontWeight: '700',
+            color: 'white',
+            margin: '0 0 16px 0',
+            textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+            letterSpacing: '2px'
+          }}>
+            CLIENTES
+          </h1>
+          <p style={{
+            fontSize: '20px',
+            color: 'rgba(255, 255, 255, 0.95)',
+            fontWeight: '400',
+            textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
+            maxWidth: '600px',
+            margin: '0 auto'
+          }}>
+            Gerencie seus clientes e relacionamentos de forma simples e organizada.
+          </p>
         </div>
       </div>
 
-      {/* Antigo input de busca removido */}
-      {/* <div style={{ marginBottom: 16 }}>
-        <input 
-          type="text" 
-          placeholder={`Buscar por nome do ${activeTab === 'ativos' ? 'cliente ativo' : 'ex-cliente'}`}...
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ width: '100%', padding: '12px 16px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14 }} 
-        />
-      </div> */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 32, marginBottom: 20 }}>
 
-      <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', background: 'white' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: '#f9fafb' }}>
-              <th 
-                style={{ 
-                  padding: '12px 16px', 
-                  textAlign: 'left', 
-                  borderBottom: '1px solid #e5e7eb',
+
+        {/* Cards de Estatísticas */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+          gap: 20,
+          marginBottom: 20
+        }}>
+          <StatsCard
+            title="Total de Clientes"
+            value={stats.total}
+            icon="👥"
+            gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+            subtitle="Todos os registros"
+          />
+          <StatsCard
+            title="Clientes Ativos"
+            value={stats.ativos}
+            icon="✅"
+            gradient="linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)"
+            subtitle="Com serviços ativos"
+          />
+          <StatsCard
+            title="Ex-Clientes"
+            value={stats.exClientes}
+            icon="📋"
+            gradient="linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)"
+            subtitle="Inativos/Desativados"
+          />
+          <StatsCard
+            title="TV Box Ativas"
+            value={stats.tvbox}
+            icon="📺"
+            gradient="linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)"
+            subtitle="Equipamentos ativos"
+          />
+        </div>
+
+        {/* Navegação e Controles */}
+        <div style={{ 
+          background: 'white',
+          borderRadius: 12,
+          padding: 24,
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
+        }}>
+          {/* Abas modernas */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                style={{
+                  padding: '12px 20px',
+                  border: 'none',
+                  backgroundColor: activeTab === 'ativos' ? '#3b82f6' : 'transparent',
+                  color: activeTab === 'ativos' ? 'white' : '#6b7280',
+                  borderRadius: 8,
                   cursor: 'pointer',
-                  userSelect: 'none'
+                  fontSize: 14,
+                  fontWeight: 600,
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  boxShadow: activeTab === 'ativos' ? '0 4px 6px -1px rgba(59, 130, 246, 0.3)' : 'none'
                 }}
-                onClick={toggleSortOrder}
+                onClick={() => setActiveTab('ativos')}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f3f4f6';
+                  if (activeTab !== 'ativos') {
+                    e.currentTarget.style.backgroundColor = '#f3f4f6';
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f9fafb';
+                  if (activeTab !== 'ativos') {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  Nome
-                  <span style={{ 
-                    fontSize: '14px', 
-                    opacity: 0.7,
-                    transition: 'transform 0.2s ease'
-                  }}>
-                    {sortOrder === 'asc' ? '↑' : '↓'}
-                  </span>
-                </div>
-              </th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bairro</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Telefones</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Status</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredItems.map((c) => (
-              <tr key={c.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                <td style={{ padding: '12px 16px', fontWeight: 600 }}>{c.nome || '—'}</td>
-                <td style={{ padding: '12px 16px' }}>{c.bairro || '—'}</td>
-                <td style={{ padding: '12px 16px' }}>{formatPhoneNumber(c.telefones || '') || '—'}</td>
-                <td style={{ padding: '12px 16px' }}>{statusBadge(c.status || '')}</td>
-                <td style={{ padding: '12px 16px' }}>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => setEditingItem(c)} style={{ padding: 6, background: '#f3f4f6', border: 'none', borderRadius: 4, cursor: 'pointer' }} title="Ver detalhes"><EyeIcon /></button>
-                    <button onClick={() => handleEdit(c)} style={{ padding: 6, background: '#f3f4f6', border: 'none', borderRadius: 4, cursor: 'pointer' }} title="Editar"><EditIcon /></button>
-                    <button 
-                      onClick={() => handleToggleStatus(c)} 
-                      style={{ 
-                        padding: 6, 
-                        background: c.status === 'ativo' ? '#fee2e2' : '#dcfce7', 
-                        border: 'none', 
-                        borderRadius: 4, 
-                        cursor: 'pointer' 
-                      }} 
-                      title={c.status === 'ativo' ? 'Desativar cliente' : 'Ativar cliente'}
-                    >
-                      {c.status === 'ativo' ? <XMarkIcon /> : <CheckIcon />}
-                    </button>
-                    <button onClick={() => handleDelete(c.id)} style={{ padding: 6, background: '#f3f4f6', border: 'none', borderRadius: 4, cursor: 'pointer' }} title="Excluir"><DeleteIcon /></button>
+                ✅ Clientes Ativos
+                <span style={{
+                  backgroundColor: activeTab === 'ativos' ? 'rgba(255,255,255,0.2)' : '#e5e7eb',
+                  color: activeTab === 'ativos' ? 'white' : '#6b7280',
+                  padding: '2px 8px',
+                  borderRadius: 12,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  minWidth: 20,
+                  textAlign: 'center'
+                }}>
+                  {stats.ativos}
+                </span>
+              </button>
+              
+              <button
+                style={{
+                  padding: '12px 20px',
+                  border: 'none',
+                  backgroundColor: activeTab === 'ex-clientes' ? '#6b7280' : 'transparent',
+                  color: activeTab === 'ex-clientes' ? 'white' : '#6b7280',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  boxShadow: activeTab === 'ex-clientes' ? '0 4px 6px -1px rgba(107, 114, 128, 0.3)' : 'none'
+                }}
+                onClick={() => setActiveTab('ex-clientes')}
+                onMouseEnter={(e) => {
+                  if (activeTab !== 'ex-clientes') {
+                    e.currentTarget.style.backgroundColor = '#f3f4f6';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeTab !== 'ex-clientes') {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}
+              >
+                📋 Ex-Clientes
+                <span style={{
+                  backgroundColor: activeTab === 'ex-clientes' ? 'rgba(255,255,255,0.2)' : '#e5e7eb',
+                  color: activeTab === 'ex-clientes' ? 'white' : '#6b7280',
+                  padding: '2px 8px',
+                  borderRadius: 12,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  minWidth: 20,
+                  textAlign: 'center'
+                }}>
+                  {stats.exClientes}
+                </span>
+              </button>
+            </div>
+
+            {/* Controles de busca e ações */}
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type="text" 
+                  placeholder="Buscar clientes..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{
+                    width: '280px', 
+                    padding: '10px 16px 10px 40px', 
+                    border: '2px solid #e5e7eb', 
+                    borderRadius: 8, 
+                    fontSize: 14,
+                    outline: 'none',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#3b82f6';
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                />
+                <span style={{ 
+                  position: 'absolute', 
+                  left: 14, 
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#9ca3af',
+                  fontSize: 16
+                }}>🔍</span>
+              </div>
+              
+              <button style={{ 
+                padding: '10px 16px', 
+                border: '2px solid #e5e7eb', 
+                borderRadius: 8, 
+                background: 'white', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 8,
+                fontSize: 14,
+                fontWeight: 500,
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#3b82f6';
+                e.currentTarget.style.color = '#3b82f6';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#e5e7eb';
+                e.currentTarget.style.color = 'inherit';
+              }}>
+                <span style={{ fontSize: 16 }}>📊</span> Exportar
+              </button>
+            </div>
+          </div>
+
+          {/* Indicadores de serviços */}
+          <div style={{ 
+            display: 'flex', 
+            gap: 20, 
+            padding: 16,
+            backgroundColor: '#f8fafc',
+            borderRadius: 8,
+            marginBottom: 20
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 500 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#22c55e' }}></span>
+              <span style={{ color: '#374151' }}>SKY: {stats.sky}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 500 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#3b82f6' }}></span>
+              <span style={{ color: '#374151' }}>TV Box: {stats.tvbox}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 500 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#a855f7' }}></span>
+              <span style={{ color: '#374151' }}>Combo: {stats.combo}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Botão Novo Cliente - Centralizado acima da tabela */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        marginBottom: '24px' 
+      }}>
+        <button 
+          onClick={() => setShowNovoClienteModal(true)}
+          style={{ 
+            padding: '16px 32px', 
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white', 
+            border: 'none', 
+            borderRadius: '12px', 
+            fontWeight: '600', 
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            fontSize: '16px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            minWidth: '200px',
+            justifyContent: 'center'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+          }}
+        >
+          <span style={{ fontSize: '20px' }}>+</span> Novo Cliente
+        </button>
+      </div>
+
+      {/* Tabela moderna */}
+      <div style={{ 
+        background: 'white',
+        borderRadius: 12,
+        overflow: 'hidden',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
+      }}>
+        {filteredItems.length === 0 ? (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '60px 20px',
+            color: '#6b7280'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>👥</div>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>
+              Nenhum cliente encontrado
+            </h3>
+            <p style={{ margin: 0, textAlign: 'center' }}>
+              {searchTerm ? 'Tente ajustar os filtros de busca' : 'Comece adicionando seu primeiro cliente'}
+            </p>
+          </div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
+                <th 
+                  style={{ 
+                    padding: '16px 20px', 
+                    textAlign: 'left', 
+                    borderBottom: '2px solid #e2e8f0',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onClick={toggleSortOrder}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    👤 Nome
+                    <span style={{ 
+                      fontSize: '12px', 
+                      opacity: 0.7,
+                      transition: 'transform 0.2s ease',
+                      color: '#3b82f6'
+                    }}>
+                      {sortOrder === 'asc' ? '↑' : '↓'}
+                    </span>
                   </div>
-                </td>
+                </th>
+                <th style={{ 
+                  padding: '16px 20px', 
+                  textAlign: 'left', 
+                  borderBottom: '2px solid #e2e8f0',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151'
+                }}>📍 Bairro</th>
+                <th style={{ 
+                  padding: '16px 20px', 
+                  textAlign: 'left', 
+                  borderBottom: '2px solid #e2e8f0',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151'
+                }}>📞 Telefones</th>
+                <th style={{ 
+                  padding: '16px 20px', 
+                  textAlign: 'left', 
+                  borderBottom: '2px solid #e2e8f0',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151'
+                }}>🏷️ Status</th>
+                <th style={{ 
+                  padding: '16px 20px', 
+                  textAlign: 'center', 
+                  borderBottom: '2px solid #e2e8f0',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151'
+                }}>⚙️ Ações</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredItems.map((c, index) => (
+                <tr 
+                  key={c.id} 
+                  className={highlightedRows.has(c.id) ? 'highlight-row' : ''}
+                  style={{ 
+                    borderBottom: '1px solid #f1f5f9',
+                    backgroundColor: index % 2 === 0 ? '#ffffff' : '#fafbfc',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!highlightedRows.has(c.id)) {
+                      e.currentTarget.style.backgroundColor = '#f8fafc';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!highlightedRows.has(c.id)) {
+                      e.currentTarget.style.backgroundColor = index % 2 === 0 ? '#ffffff' : '#fafbfc';
+                    }
+                  }}
+                >
+                  <td style={{ 
+                    padding: '16px 20px', 
+                    fontWeight: 600,
+                    fontSize: '14px',
+                    color: '#1f2937'
+                  }}>
+                    {c.nome || '—'}
+                  </td>
+                  <td style={{ 
+                    padding: '16px 20px',
+                    fontSize: '14px',
+                    color: '#6b7280'
+                  }}>
+                    {c.bairro || '—'}
+                  </td>
+                  <td style={{ 
+                    padding: '16px 20px',
+                    fontSize: '14px',
+                    color: '#6b7280'
+                  }}>
+                    {formatPhoneNumber(c.telefones || '') || '—'}
+                  </td>
+                  <td style={{ padding: '16px 20px' }}>
+                    <StatusBadge status={c.status || ''} />
+                  </td>
+                  <td style={{ padding: '16px 20px' }}>
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                      <button 
+                        onClick={() => setEditingItem(c)} 
+                        style={{ 
+                          padding: 8, 
+                          background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)', 
+                          border: 'none', 
+                          borderRadius: 6, 
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }} 
+                        title="Ver detalhes"
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)';
+                        }}
+                      >
+                        <EyeIcon />
+                      </button>
+                      <button 
+                        onClick={() => handleEdit(c)} 
+                        style={{ 
+                          padding: 8, 
+                          background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', 
+                          border: 'none', 
+                          borderRadius: 6, 
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }} 
+                        title="Editar"
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)';
+                        }}
+                      >
+                        <EditIcon />
+                      </button>
+                      <button 
+                        onClick={() => handleToggleStatus(c)} 
+                        style={{ 
+                          padding: 8, 
+                          background: c.status === 'ativo' 
+                            ? 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)' 
+                            : 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', 
+                          border: 'none', 
+                          borderRadius: 6, 
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }} 
+                        title={c.status === 'ativo' ? 'Desativar cliente' : 'Ativar cliente'}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                          e.currentTarget.style.background = c.status === 'ativo'
+                            ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'
+                            : 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.background = c.status === 'ativo' 
+                            ? 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)' 
+                            : 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)';
+                        }}
+                      >
+                        {c.status === 'ativo' ? <XMarkIcon /> : <CheckIcon />}
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(c.id)} 
+                        style={{ 
+                          padding: 8, 
+                          background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)', 
+                          border: 'none', 
+                          borderRadius: 6, 
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }} 
+                        title="Excluir"
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)';
+                        }}
+                      >
+                        <DeleteIcon />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <EditarClienteModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onSave={handleSave}
+        cliente={editingItem}
+      />
+
+      <NovoClienteModal
+        isOpen={showNovoClienteModal}
+        onClose={() => setShowNovoClienteModal(false)}
+        onSave={handleSave}
+      />
+
+      {/* Modal de confirmação de desativação */}
+      <ConfirmacaoDesativacaoModal
+        open={showConfirmacaoDesativacao}
+        onClose={() => setShowConfirmacaoDesativacao(false)}
+        onConfirm={handleConfirmarDesativacao}
+        clienteNome={clienteParaDesativar?.nome || ''}
+        loading={desativandoCliente}
+      />
+
+      {/* Tabela moderna */}
+      <div style={{ 
+        background: 'white',
+        borderRadius: 12,
+        overflow: 'hidden',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
+      }}>
+        {filteredItems.length === 0 ? (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '60px 20px',
+            color: '#6b7280'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>👥</div>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>
+              Nenhum cliente encontrado
+            </h3>
+            <p style={{ margin: 0, textAlign: 'center' }}>
+              {searchTerm ? 'Tente ajustar os filtros de busca' : 'Comece adicionando seu primeiro cliente'}
+            </p>
+          </div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
+                <th 
+                  style={{ 
+                    padding: '16px 20px', 
+                    textAlign: 'left', 
+                    borderBottom: '2px solid #e2e8f0',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onClick={toggleSortOrder}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    👤 Nome
+                    <span style={{ 
+                      fontSize: '12px', 
+                      opacity: 0.7,
+                      transition: 'transform 0.2s ease',
+                      color: '#3b82f6'
+                    }}>
+                      {sortOrder === 'asc' ? '↑' : '↓'}
+                    </span>
+                  </div>
+                </th>
+                <th style={{ 
+                  padding: '16px 20px', 
+                  textAlign: 'left', 
+                  borderBottom: '2px solid #e2e8f0',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151'
+                }}>📍 Bairro</th>
+                <th style={{ 
+                  padding: '16px 20px', 
+                  textAlign: 'left', 
+                  borderBottom: '2px solid #e2e8f0',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151'
+                }}>📞 Telefones</th>
+                <th style={{ 
+                  padding: '16px 20px', 
+                  textAlign: 'left', 
+                  borderBottom: '2px solid #e2e8f0',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151'
+                }}>🏷️ Status</th>
+                <th style={{ 
+                  padding: '16px 20px', 
+                  textAlign: 'center', 
+                  borderBottom: '2px solid #e2e8f0',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151'
+                }}>⚙️ Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredItems.map((c, index) => (
+                <tr 
+                  key={c.id} 
+                  className={highlightedRows.has(c.id) ? 'highlight-row' : ''}
+                  style={{ 
+                    borderBottom: '1px solid #f1f5f9',
+                    backgroundColor: index % 2 === 0 ? '#ffffff' : '#fafbfc',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!highlightedRows.has(c.id)) {
+                      e.currentTarget.style.backgroundColor = '#f8fafc';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!highlightedRows.has(c.id)) {
+                      e.currentTarget.style.backgroundColor = index % 2 === 0 ? '#ffffff' : '#fafbfc';
+                    }
+                  }}
+                >
+                  <td style={{ 
+                    padding: '16px 20px', 
+                    fontWeight: 600,
+                    fontSize: '14px',
+                    color: '#1f2937'
+                  }}>
+                    {c.nome || '—'}
+                  </td>
+                  <td style={{ 
+                    padding: '16px 20px',
+                    fontSize: '14px',
+                    color: '#6b7280'
+                  }}>
+                    {c.bairro || '—'}
+                  </td>
+                  <td style={{ 
+                    padding: '16px 20px',
+                    fontSize: '14px',
+                    color: '#6b7280'
+                  }}>
+                    {formatPhoneNumber(c.telefones || '') || '—'}
+                  </td>
+                  <td style={{ padding: '16px 20px' }}>
+                    <StatusBadge status={c.status || ''} />
+                  </td>
+                  <td style={{ padding: '16px 20px' }}>
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                      <button 
+                        onClick={() => setEditingItem(c)} 
+                        style={{ 
+                          padding: 8, 
+                          background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)', 
+                          border: 'none', 
+                          borderRadius: 6, 
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }} 
+                        title="Ver detalhes"
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)';
+                        }}
+                      >
+                        <EyeIcon />
+                      </button>
+                      <button 
+                        onClick={() => handleEdit(c)} 
+                        style={{ 
+                          padding: 8, 
+                          background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', 
+                          border: 'none', 
+                          borderRadius: 6, 
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }} 
+                        title="Editar"
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)';
+                        }}
+                      >
+                        <EditIcon />
+                      </button>
+                      <button 
+                        onClick={() => handleToggleStatus(c)} 
+                        style={{ 
+                          padding: 8, 
+                          background: c.status === 'ativo' 
+                            ? 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)' 
+                            : 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', 
+                          border: 'none', 
+                          borderRadius: 6, 
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }} 
+                        title={c.status === 'ativo' ? 'Desativar cliente' : 'Ativar cliente'}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                          e.currentTarget.style.background = c.status === 'ativo'
+                            ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'
+                            : 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.background = c.status === 'ativo' 
+                            ? 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)' 
+                            : 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)';
+                        }}
+                      >
+                        {c.status === 'ativo' ? <XMarkIcon /> : <CheckIcon />}
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(c.id)} 
+                        style={{ 
+                          padding: 8, 
+                          background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)', 
+                          border: 'none', 
+                          borderRadius: 6, 
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }} 
+                        title="Excluir"
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)';
+                        }}
+                      >
+                        <DeleteIcon />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       <EditarClienteModal

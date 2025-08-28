@@ -137,7 +137,6 @@ export default function TvBoxPage() {
   const [busca, setBusca] = useState<string>('');
   const [buscaDebounced, setBuscaDebounced] = useState<string>('');
   const [ordemFiltro, setOrdemFiltro] = useState<'numerica' | 'alfabetica' | 'renovacao'>('numerica');
-  const [filtroRenovacao, setFiltroRenovacao] = useState<string>('');
   const [showModalVisualizar, setShowModalVisualizar] = useState(false);
   const [tvboxSelecionado, setTvboxSelecionado] = useState<TVBox | null>(null);
   const [showModalEditar, setShowModalEditar] = useState(false);
@@ -433,14 +432,38 @@ export default function TvBoxPage() {
     fimSemana.setDate(inicioSemana.getDate() + 6);
     
     const vencimentos = tvboxes
-      .filter(t => t.status === 'ativa' && t.renovacaoDia !== null && t.renovacaoDia !== undefined)
+      .filter(t => t.status === 'ativa' && (t.renovacaoDia !== null && t.renovacaoDia !== undefined || t.renovacaoData))
       .map(t => {
-        const vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), t.renovacaoDia!);
-        if (vencimento < hoje) {
-          vencimento.setMonth(vencimento.getMonth() + 1);
+        let vencimento: Date;
+        
+        // Se tem renovacaoData (data completa), usar ela
+        if (t.renovacaoData && t.renovacaoData !== 'Data não definida') {
+          const [dia, mes, ano] = t.renovacaoData.split('/').map(n => parseInt(n));
+          vencimento = new Date(ano, mes - 1, dia);
+          
+          // Se a data já passou este ano, usar o próximo ano
+          if (vencimento < hoje) {
+            vencimento.setFullYear(vencimento.getFullYear() + 1);
+          }
+        } 
+        // Senão, usar renovacaoDia (só o dia do mês)
+        else if (t.renovacaoDia !== null && t.renovacaoDia !== undefined) {
+          vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), t.renovacaoDia);
+          if (vencimento < hoje) {
+            vencimento.setMonth(vencimento.getMonth() + 1);
+          }
+        } else {
+          return null; // Pular se não tem data válida
         }
-        return { assinatura: t.assinatura, data: vencimento, dias: Math.ceil((vencimento.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24)) };
-      });
+        
+        // Calcular diferença em dias, considerando apenas a parte da data (sem horas)
+        const hojeData = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+        const vencimentoData = new Date(vencimento.getFullYear(), vencimento.getMonth(), vencimento.getDate());
+        const dias = Math.floor((vencimentoData.getTime() - hojeData.getTime()) / (1000 * 60 * 60 * 24));
+        
+        return { assinatura: t.assinatura, data: vencimento, dias };
+      })
+      .filter(v => v !== null) as { assinatura: string; data: Date; dias: number }[];
     
     const vencimentosHoje = vencimentos.filter(v => v.dias === 0).length;
     const vencimentosEstaSemana = vencimentos.filter(v => v.dias >= 0 && v.dias <= 7).length;
@@ -1140,48 +1163,7 @@ export default function TvBoxPage() {
     }
   };
 
-  // Função para filtrar por renovação
-  const filtrarPorRenovacao = (tvbox: TVBox, filtro: string) => {
-    if (!filtro) return true;
-    
-    const hoje = new Date();
-    const inicioSemana = new Date(hoje);
-    inicioSemana.setDate(hoje.getDate() - hoje.getDay());
-    const fimSemana = new Date(inicioSemana);
-    fimSemana.setDate(inicioSemana.getDate() + 6);
-    
-    switch (filtro) {
-      case 'hoje':
-        if (!tvbox.renovacaoDia) return false;
-        return tvbox.renovacaoDia === hoje.getDate();
-        
-      case 'semana':
-        if (!tvbox.renovacaoDia) return false;
-        const vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), tvbox.renovacaoDia);
-        if (vencimento < hoje) {
-          vencimento.setMonth(vencimento.getMonth() + 1);
-        }
-        return vencimento >= inicioSemana && vencimento <= fimSemana;
-        
-      case 'mes':
-        if (!tvbox.renovacaoDia) return false;
-        return true; // Se tem dia de renovação, vence no mês
-        
-      case 'vencidas':
-        if (!tvbox.renovacaoDia || tvbox.status !== 'ativa') return false;
-        const vencimentoVencida = new Date(hoje.getFullYear(), hoje.getMonth(), tvbox.renovacaoDia);
-        return vencimentoVencida < hoje;
-        
-      case 'ativas':
-        return tvbox.status === 'ativa';
-        
-      case 'pendentes':
-        return tvbox.status === 'pendente';
-        
-      default:
-        return true;
-    }
-  };
+
 
   // Função para filtrar por nome, MAC, NDS, login ou senha
   const filtrarPorNomeMacNds = (tvbox: TVBox, termo: string) => {
@@ -1681,30 +1663,34 @@ export default function TvBoxPage() {
               </select>
             </div>
 
-            {/* Filtro por renovação */}
-            <div style={{ minWidth: '180px' }}>
-              <select
-                value={filtroRenovacao}
-                onChange={(e) => setFiltroRenovacao(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #d1d5db',
-                  fontSize: '14px',
-                  backgroundColor: 'white',
-                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                }}
-              >
-                <option value="">Todas as renovações</option>
-                <option value="hoje">Vencem hoje</option>
-                <option value="semana">Vencem esta semana</option>
-                <option value="mes">Vencem este mês</option>
-                <option value="vencidas">Vencidas</option>
-                <option value="ativas">Apenas ativas</option>
-                <option value="pendentes">Apenas pendentes</option>
-              </select>
-            </div>
+            {/* Botão para ordenar por vencimento (toggle) */}
+            <button
+              onClick={() => setOrdemFiltro(ordemFiltro === 'renovacao' ? 'numerica' : 'renovacao')}
+              style={{
+                padding: '12px 16px',
+                backgroundColor: ordemFiltro === 'renovacao' ? '#3b82f6' : '#f3f4f6',
+                color: ordemFiltro === 'renovacao' ? 'white' : '#374151',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+              }}
+              onMouseEnter={(e) => {
+                if (ordemFiltro !== 'renovacao') {
+                  e.currentTarget.style.backgroundColor = '#e5e7eb';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (ordemFiltro !== 'renovacao') {
+                  e.currentTarget.style.backgroundColor = '#f3f4f6';
+                }
+              }}
+            >
+              {ordemFiltro === 'renovacao' ? '📅 Vencimento Ativo' : '📅 Ordenar por Vencimento'}
+            </button>
           </div>
         </div>
 
@@ -1815,7 +1801,7 @@ export default function TvBoxPage() {
               <tbody>
                 {tvboxes
                   .filter(t => filtrarPorNomeMacNds(t, buscaDebounced))
-                  .filter(t => filtrarPorRenovacao(t, filtroRenovacao))
+
                   .sort((a, b) => {
                     if (ordemFiltro === 'numerica') {
                       const numA = parseInt(a.assinatura.match(/\d+/)?.[0] || '0');
