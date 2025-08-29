@@ -736,15 +736,15 @@ export default function AssinaturasPage() {
         <div style={{
           background: 'linear-gradient(135deg, #1e3a8a 0%, #e5e7eb 100%)',
           borderRadius: '16px',
-          padding: '50px 32px',
+          padding: '40px 32px',
           marginBottom: '32px',
           width: '100%',
-          minHeight: '170px',
+          minHeight: '160px',
           position: 'relative',
           overflow: 'hidden',
           boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
         }}>
-          {/* Ícone de documento/assinatura no canto esquerdo */}
+          {/* Ícone de assinaturas no canto esquerdo */}
           <div style={{
             position: 'absolute',
             left: '32px',
@@ -795,7 +795,7 @@ export default function AssinaturasPage() {
               maxWidth: '600px',
               margin: '0 auto'
             }}>
-              Gerencie contratos, equipamentos e clientes de forma organizada e eficiente.
+              Gerencie todas as assinaturas do sistema de forma centralizada e organizada
             </p>
           </div>
         </div>

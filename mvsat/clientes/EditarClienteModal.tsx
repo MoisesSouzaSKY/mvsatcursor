@@ -1,4 +1,5 @@
 import React from 'react';
+import { hasPermissionForCurrentUser } from '../shared/permissions';
 import { atualizarCliente } from './clientes.functions';
 import { formatPhoneNumber, normalizePhoneNumber, validatePhoneNumber } from '../shared/utils/phoneFormatter';
 
@@ -55,8 +56,12 @@ export default function EditarClienteModal({ isOpen, onClose, onSave, cliente }:
     status: 'ativo'
   });
   const [loading, setLoading] = React.useState(false);
+  const [canUpdate, setCanUpdate] = React.useState(false);
 
   React.useEffect(() => {
+    (async () => {
+      setCanUpdate(await hasPermissionForCurrentUser('clientes', 'update'));
+    })();
     if (cliente) {
       setFormData({
         id: cliente.id,
@@ -120,6 +125,7 @@ export default function EditarClienteModal({ isOpen, onClose, onSave, cliente }:
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canUpdate) return; // bloqueio hard
 
     // Validação dos telefones
     if (!validatePhoneNumber(formData.telefone || '')) {
@@ -894,7 +900,7 @@ export default function EditarClienteModal({ isOpen, onClose, onSave, cliente }:
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !canUpdate}
               style={{
                 padding: '12px 24px',
                 backgroundColor: '#3b82f6',
@@ -903,17 +909,17 @@ export default function EditarClienteModal({ isOpen, onClose, onSave, cliente }:
                 color: 'white',
                 fontSize: '14px',
                 fontWeight: '600',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.6 : 1,
+                cursor: (loading || !canUpdate) ? 'not-allowed' : 'pointer',
+                opacity: (loading || !canUpdate) ? 0.6 : 1,
                 transition: 'all 0.2s ease'
               }}
               onMouseEnter={(e) => {
-                if (!loading) {
+                if (!loading && canUpdate) {
                   e.currentTarget.style.backgroundColor = '#2563eb';
                 }
               }}
               onMouseLeave={(e) => {
-                if (!loading) {
+                if (!loading && canUpdate) {
                   e.currentTarget.style.backgroundColor = '#3b82f6';
                 }
               }}

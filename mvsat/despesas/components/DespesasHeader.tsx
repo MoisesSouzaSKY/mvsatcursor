@@ -19,6 +19,7 @@ const DespesasHeader: React.FC<DespesasHeaderProps> = ({
         padding: '40px 32px',
         marginBottom: '32px',
         width: '100%',
+        minHeight: '160px',
         position: 'relative',
         overflow: 'hidden',
         boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
@@ -29,25 +30,26 @@ const DespesasHeader: React.FC<DespesasHeaderProps> = ({
           left: '32px',
           top: '50%',
           transform: 'translateY(-50%)',
-          fontSize: '64px',
-          opacity: 0.9
+          fontSize: '56px',
+          opacity: '0.25',
+          color: 'white'
         }}>
           💸
         </div>
-
-        {/* Efeito de blur no fundo */}
+        
+        {/* Efeito decorativo no canto direito */}
         <div style={{
           position: 'absolute',
-          right: '-40px',
-          top: '-40px',
+          right: '-20px',
+          top: '-20px',
           width: '120px',
           height: '120px',
           background: 'rgba(255, 255, 255, 0.1)',
           borderRadius: '50%',
           filter: 'blur(30px)'
         }} />
-
-        {/* Conteúdo principal */}
+        
+        {/* Conteúdo centralizado */}
         <div style={{
           textAlign: 'center',
           paddingLeft: '100px',
@@ -56,26 +58,22 @@ const DespesasHeader: React.FC<DespesasHeaderProps> = ({
           zIndex: 1
         }}>
           <h1 style={{
-            margin: 0,
             fontSize: '48px',
-            fontWeight: '900',
+            fontWeight: '700',
             color: 'white',
-            marginBottom: '12px',
-            textShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            letterSpacing: '-0.025em'
+            margin: '0 0 16px 0',
+            textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+            letterSpacing: '2px'
           }}>
-            Despesas
+            DESPESAS
           </h1>
-          
           <p style={{
-            margin: 0,
-            fontSize: '18px',
-            color: 'rgba(255, 255, 255, 0.9)',
-            fontWeight: '500',
+            fontSize: '20px',
+            color: 'rgba(255, 255, 255, 0.95)',
+            fontWeight: '400',
+            textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
             maxWidth: '600px',
-            marginLeft: 'auto',
-            marginRight: 'auto',
-            lineHeight: '1.6'
+            margin: '0 auto'
           }}>
             Controle completo das suas despesas com relatórios detalhados e acompanhamento em tempo real
           </p>
@@ -96,26 +94,6 @@ const DespesasHeader: React.FC<DespesasHeaderProps> = ({
           flexDirection: 'column',
           gap: '8px'
         }}>
-          <h2 style={{
-            margin: 0,
-            fontSize: '32px',
-            fontWeight: '800',
-            color: '#111827',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px'
-          }}>
-            <span style={{ fontSize: '36px' }}>📋</span>
-            Lista de Despesas
-          </h2>
-          <p style={{
-            margin: 0,
-            color: '#6b7280',
-            fontSize: '16px',
-            fontWeight: '500'
-          }}>
-            Gerencie todas as suas despesas em um só lugar
-          </p>
         </div>
 
         <div style={{

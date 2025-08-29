@@ -1264,6 +1264,7 @@ export default function TvBoxPage() {
           padding: '40px 32px',
           marginBottom: '32px',
           width: '100%',
+          minHeight: '160px',
           position: 'relative',
           overflow: 'hidden',
           boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
@@ -1326,15 +1327,6 @@ export default function TvBoxPage() {
 
         {/* Header com título */}
         <div style={{ marginBottom: '24px' }}>
-          <h1 style={{ 
-            fontSize: '24px', 
-            fontWeight: '600', 
-            color: '#111827',
-            margin: '0 0 8px 0'
-          }}>
-            MV SAT Sistema de Gestão
-          </h1>
-          <p style={{ color: '#6b7280', margin: 0 }}>Gerenciamento de TV Box</p>
         </div>
 
         {/* Cards de Resumo Modernos */}

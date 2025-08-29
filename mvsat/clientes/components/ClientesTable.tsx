@@ -2,7 +2,7 @@ import React from 'react';
 import { Table, TableColumn, TableAction, PaginationConfig } from '../../shared/components/data/Table';
 import { StatusBadge } from './StatusBadge';
 import { Cliente } from '../types';
-import { EyeIcon, EditIcon, DeleteIcon, UserRemoveIcon } from './Icons';
+import { EditIcon, UserRemoveIcon } from './Icons';
 import { formatPhoneNumber } from '../../shared/utils/phoneFormatter';
 
 export interface ClientesTableProps {
@@ -10,7 +10,6 @@ export interface ClientesTableProps {
   loading: boolean;
   selectedClientes: string[];
   onSelectionChange: (selectedIds: string[]) => void;
-  onClienteView: (cliente: Cliente) => void;
   onClienteEdit: (cliente: Cliente) => void;
   onClienteDelete: (cliente: Cliente) => void;
   pagination: PaginationConfig;
@@ -21,7 +20,6 @@ export function ClientesTable({
   loading,
   selectedClientes,
   onSelectionChange,
-  onClienteView,
   onClienteEdit,
   onClienteDelete,
   pagination,
@@ -76,13 +74,6 @@ export function ClientesTable({
 
   const actions: TableAction<Cliente>[] = [
     {
-      key: 'view',
-      label: 'Visualizar',
-      icon: <EyeIcon />,
-      onClick: (record) => onClienteView(record),
-      variant: 'ghost',
-    },
-    {
       key: 'edit',
       label: 'Editar',
       icon: <EditIcon />,
@@ -94,13 +85,6 @@ export function ClientesTable({
       label: 'Desativar',
       icon: <UserRemoveIcon />,
       onClick: (record) => onClienteDelete(record), // Temporariamente usando delete, pode ser alterado para desativar
-      variant: 'ghost',
-    },
-    {
-      key: 'delete',
-      label: 'Excluir',
-      icon: <DeleteIcon />,
-      onClick: (record) => onClienteDelete(record),
       variant: 'ghost',
     },
   ];

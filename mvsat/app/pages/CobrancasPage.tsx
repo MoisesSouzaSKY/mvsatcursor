@@ -6,6 +6,8 @@ import { Card } from '../../shared/components/ui/Card';
 import { Input } from '../../shared/components/ui/Input';
 
 import { Modal } from '../../shared/components/ui/Modal';
+import CobrancasStatistics from '../../cobrancas/components/CobrancasStatistics';
+import { CobrancasHeader } from '../../cobrancas/components/CobrancasHeader';
 import { listarClientes } from '../../clientes/clientes.functions';
 import { 
   listarCobrancas, 
@@ -1413,130 +1415,18 @@ export default function CobrancasPage() {
       backgroundColor: 'var(--color-primary-50)',
       minHeight: '100vh'
     }}>
-      {/* Header com título */}
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ 
-          fontSize: '30px', 
-          fontWeight: 'bold', 
-          color: 'var(--text-primary)' 
-        }}>
-          Cobranças
-        </h1>
-      </div>
+      {/* Header Banner */}
+      <CobrancasHeader 
+        totalCobrancas={cobrancas.length}
+        valorTotal={cobrancas.reduce((acc, c) => acc + (c?.valor || 0), 0)}
+        loading={loadingCobrancas}
+      />
 
-      {/* Cards de resumo */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-        gap: '24px', 
-        marginBottom: '32px' 
-      }}>
-        {/* Total Recebido */}
-        <Card variant="elevated" padding="lg">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                Total Recebido
-              </p>
-              <p style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--color-success-500)' }}>
-                {formatCurrency(estatisticas.totalRecebido)}
-              </p>
-            </div>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              backgroundColor: 'var(--color-success-100)',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <svg style={{ width: '20px', height: '20px', color: 'var(--color-success-500)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
-          </div>
-        </Card>
-
-        {/* Em Atraso */}
-        <Card variant="elevated" padding="lg">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                Em Atraso
-              </p>
-              <p style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--color-error-600)' }}>
-                {formatCurrency(estatisticas.emAtraso)}
-              </p>
-            </div>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              backgroundColor: 'var(--color-error-100)',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <svg style={{ width: '20px', height: '20px', color: 'var(--color-error-600)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-            </div>
-          </div>
-        </Card>
-
-        {/* Pendentes */}
-        <Card variant="elevated" padding="lg">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                Pendentes
-              </p>
-              <p style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--color-warning-500)' }}>
-                {formatCurrency(estatisticas.pendentes)}
-              </p>
-            </div>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              backgroundColor: 'var(--color-warning-100)',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <svg style={{ width: '20px', height: '20px', color: 'var(--color-warning-500)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-          </div>
-        </Card>
-
-        {/* Taxa de Recebimento */}
-        <Card variant="elevated" padding="lg">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Taxa de Recebimento</p>
-                              <p style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--color-primary-600)' }}>
-                  {estatisticas.taxaRecebimento}%
-                </p>
-            </div>
-                          <div style={{
-                width: '40px',
-                height: '40px',
-                backgroundColor: 'var(--color-primary-100)',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                              <svg style={{ width: '20px', height: '20px', color: 'var(--color-primary-600)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-          </div>
-        </Card>
-      </div>
+      {/* Statistics Cards */}
+      <CobrancasStatistics 
+        cobrancas={cobrancas}
+        loading={loadingCobrancas}
+      />
 
       {/* Botões de ação */}
       <div style={{ 
