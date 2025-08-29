@@ -810,62 +810,78 @@ export default function ClientesPage() {
                     <StatusBadge status={c.status || ''} />
                   </td>
                   <td style={{ padding: '16px 20px' }}>
-                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
                       <button 
                         onClick={() => handleEdit(c)} 
                         style={{ 
-                          padding: 8, 
+                          padding: '12px 16px', 
                           background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', 
                           border: 'none', 
-                          borderRadius: 6, 
+                          borderRadius: 8, 
                           cursor: 'pointer',
                           transition: 'all 0.2s ease',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
+                          gap: '8px',
+                          minWidth: '120px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          color: '#92400e'
                         }} 
-                        title="Editar"
+                        title="Editar cliente"
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'scale(1.1)';
+                          e.currentTarget.style.transform = 'scale(1.05)';
                           e.currentTarget.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+                          e.currentTarget.style.color = '#ffffff';
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.transform = 'scale(1)';
                           e.currentTarget.style.background = 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)';
+                          e.currentTarget.style.color = '#92400e';
                         }}
                       >
                         <EditIcon />
+                        Editar
                       </button>
                       <button 
                         onClick={() => handleToggleStatus(c)} 
                         style={{ 
-                          padding: 8, 
+                          padding: '12px 16px', 
                           background: c.status === 'ativo' 
                             ? 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)' 
                             : 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', 
                           border: 'none', 
-                          borderRadius: 6, 
+                          borderRadius: 8, 
                           cursor: 'pointer',
                           transition: 'all 0.2s ease',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
+                          gap: '8px',
+                          minWidth: '140px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          color: c.status === 'ativo' ? '#dc2626' : '#15803d'
                         }} 
                         title={c.status === 'ativo' ? 'Desativar cliente' : 'Ativar cliente'}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'scale(1.1)';
+                          e.currentTarget.style.transform = 'scale(1.05)';
                           e.currentTarget.style.background = c.status === 'ativo'
                             ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'
                             : 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)';
+                          e.currentTarget.style.color = '#ffffff';
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.transform = 'scale(1)';
                           e.currentTarget.style.background = c.status === 'ativo' 
                             ? 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)' 
                             : 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)';
+                          e.currentTarget.style.color = c.status === 'ativo' ? '#dc2626' : '#15803d';
                         }}
                       >
                         {c.status === 'ativo' ? <XMarkIcon /> : <CheckIcon />}
+                        {c.status === 'ativo' ? 'Desativar' : 'Ativar'}
                       </button>
                     </div>
                   </td>

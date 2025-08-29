@@ -2,7 +2,7 @@ import React from 'react';
 import { Table, TableColumn, TableAction, PaginationConfig } from '../../shared/components/data/Table';
 import { StatusBadge } from './StatusBadge';
 import { Cliente } from '../types';
-import { EditIcon, UserRemoveIcon } from './Icons';
+import { EditIcon, CheckIcon, XMarkIcon } from './Icons';
 import { formatPhoneNumber } from '../../shared/utils/phoneFormatter';
 
 export interface ClientesTableProps {
@@ -75,15 +75,15 @@ export function ClientesTable({
   const actions: TableAction<Cliente>[] = [
     {
       key: 'edit',
-      label: 'Editar',
+      label: 'Editar Cliente',
       icon: <EditIcon />,
       onClick: (record) => onClienteEdit(record),
       variant: 'ghost',
     },
     {
-      key: 'deactivate',
-      label: 'Desativar',
-      icon: <UserRemoveIcon />,
+      key: 'toggleStatus',
+      label: (record) => record.status === 'ativo' ? 'Desativar Cliente' : 'Ativar Cliente',
+      icon: (record) => record.status === 'ativo' ? <XMarkIcon /> : <CheckIcon />,
       onClick: (record) => onClienteDelete(record), // Temporariamente usando delete, pode ser alterado para desativar
       variant: 'ghost',
     },
