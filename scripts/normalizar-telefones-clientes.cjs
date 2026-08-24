@@ -162,6 +162,7 @@ async function verificarStatusTelefones() {
     let telefones8Digitos = 0;
     let telefones9Digitos = 0;
     let telefonesInvalidos = 0;
+    let clientesComTelefonesInvalidos = [];
     
     snapshot.forEach((doc) => {
       const cliente = doc.data();
@@ -169,6 +170,11 @@ async function verificarStatusTelefones() {
       
       if (!telefone) {
         telefonesInvalidos++;
+        clientesComTelefonesInvalidos.push({
+          nome: cliente.nome || 'Sem nome',
+          telefone: telefone,
+          motivo: 'Telefone vazio ou nulo'
+        });
         return;
       }
       
@@ -181,6 +187,11 @@ async function verificarStatusTelefones() {
         telefones9Digitos++;
       } else {
         telefonesInvalidos++;
+        clientesComTelefonesInvalidos.push({
+          nome: cliente.nome || 'Sem nome',
+          telefone: telefone,
+          motivo: `Telefone com ${cleaned.length} dígitos (inválido)`
+        });
       }
     });
     
@@ -189,6 +200,19 @@ async function verificarStatusTelefones() {
     console.log(`   📱 Telefones com 9 dígitos: ${telefones9Digitos}`);
     console.log(`   ❌ Telefones inválidos: ${telefonesInvalidos}`);
     console.log(`   📱 Total de clientes: ${snapshot.size}`);
+    
+    // Mostrar detalhes dos telefones inválidos
+    if (clientesComTelefonesInvalidos.length > 0) {
+      console.log('\n❌ CLIENTES COM TELEFONES INVÁLIDOS:');
+      console.log('=' .repeat(80));
+      clientesComTelefonesInvalidos.forEach((cliente, index) => {
+        console.log(`${index + 1}. Nome: ${cliente.nome}`);
+        console.log(`   Telefone: "${cliente.telefone}"`);
+        console.log(`   Motivo: ${cliente.motivo}`);
+        console.log('   ' + '-'.repeat(40));
+      });
+      console.log('=' .repeat(80));
+    }
     
   } catch (error) {
     console.error('❌ Erro ao verificar status:', error);

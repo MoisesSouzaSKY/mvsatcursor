@@ -1,6 +1,7 @@
 import React from 'react';
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { getDb } from '../../config/database.config';
+import { tenantCollection, tenantDoc } from '../../shared/saas/firestoreTenant';
 import { useSearchParams } from 'react-router-dom';
 
 const REQUIRED_KEY = 'mvsat-seed-2025';
@@ -21,9 +22,9 @@ export default function SeedAssinaturas() {
         const db = getDb();
 
         // Apaga documentos existentes
-        const snap = await getDocs(collection(db, 'assinaturas'));
+        const snap = await getDocs(tenantCollection(db, 'assinaturas'));
         const batchDelete = writeBatch(db);
-        snap.forEach(d => batchDelete.delete(doc(db, 'assinaturas', d.id)));
+        snap.forEach(d => batchDelete.delete(tenantDoc(db, 'assinaturas', d.id)));
         await batchDelete.commit();
 
         // Insere novos documentos
@@ -112,7 +113,7 @@ export default function SeedAssinaturas() {
 
         const batchInsert = writeBatch(db);
         for (const it of items) {
-          batchInsert.set(doc(db, 'assinaturas', it.id), it);
+          batchInsert.set(tenantDoc(db, 'assinaturas', it.id), it);
         }
         await batchInsert.commit();
         setMessage('Seed concluído com sucesso.');

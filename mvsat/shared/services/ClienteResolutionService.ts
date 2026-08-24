@@ -1,5 +1,6 @@
-import { collection, getDocs, query, where, documentId } from 'firebase/firestore';
+import { getDocs, query, where, documentId } from 'firebase/firestore';
 import { getDb } from '../../config/database.config';
+import { tenantCollection } from '../saas/firestoreTenant';
 
 export interface Cliente {
   id: string;
@@ -101,18 +102,18 @@ export class ClienteResolutionService {
 
     // Se todos estão em cache, retorna
     if (idsToFetch.length === 0) {
-      console.log(`💾 [ClienteResolutionService] Todos os ${clienteIds.length} clientes carregados do cache`);
+      // console.log(`💾 [ClienteResolutionService] Todos os ${clienteIds.length} clientes carregados do cache`);
       return result;
     }
 
     try {
-      console.log(`🔍 [ClienteResolutionService] Buscando ${idsToFetch.length} clientes no Firestore`);
+      // console.log(`🔍 [ClienteResolutionService] Buscando ${idsToFetch.length} clientes no Firestore`);
       
       this.stats.firestoreQueries++;
       
       // Busca em lote usando documentId()
       const clientesQuery = query(
-        collection(this.db, 'clientes'),
+        tenantCollection(this.db, 'clientes'),
         where(documentId(), 'in', idsToFetch)
       );
       
@@ -150,7 +151,7 @@ export class ClienteResolutionService {
       const endTime = performance.now();
       const duration = endTime - startTime;
       
-      console.log(`✅ [ClienteResolutionService] Resolvidos ${result.size} clientes (${snapshot.docs.length} do Firestore, ${clienteIds.length - idsToFetch.length} do cache) em ${duration.toFixed(2)}ms`);
+      // console.log(`✅ [ClienteResolutionService] Resolvidos ${result.size} clientes (${snapshot.docs.length} do Firestore, ${clienteIds.length - idsToFetch.length} do cache) em ${duration.toFixed(2)}ms`);
       
       return result;
       
@@ -178,7 +179,7 @@ export class ClienteResolutionService {
   clearCache(): void {
     const size = this.cache.size;
     this.cache.clear();
-    console.log(`🗑️ [ClienteResolutionService] Cache limpo: ${size} entradas removidas`);
+    // console.log(`🗑️ [ClienteResolutionService] Cache limpo: ${size} entradas removidas`);
   }
 
   /**
@@ -235,7 +236,7 @@ export class ClienteResolutionService {
       firestoreQueries: 0,
       totalResolvedClientes: 0
     };
-    console.log('📊 [ClienteResolutionService] Estatísticas resetadas');
+    // console.log('📊 [ClienteResolutionService] Estatísticas resetadas');
   }
 
   /**
@@ -253,7 +254,7 @@ export class ClienteResolutionService {
     }
     
     if (removed > 0) {
-      console.log(`🧹 [ClienteResolutionService] Removidas ${removed} entradas expiradas do cache`);
+      // console.log(`🧹 [ClienteResolutionService] Removidas ${removed} entradas expiradas do cache`);
     }
   }
 

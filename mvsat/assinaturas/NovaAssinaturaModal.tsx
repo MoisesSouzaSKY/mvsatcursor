@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { collection, addDoc } from 'firebase/firestore';
+import { addDoc } from 'firebase/firestore';
 import { getDb } from '../config/database.config';
+import { tenantCollection } from '../shared/saas/firestoreTenant';
 import { Modal } from '../shared/components/ui/Modal';
 import { Input } from '../shared/components/ui/Input';
+import { applyCEPMask, buscarEnderecoPorCEP, validateCEP } from '../shared/services/cepService';
+import { formatNomePadrao } from '../shared/utils/nameFormatter';
 import './NovaAssinaturaModal.css';
 
 interface NovaAssinaturaModalProps {
@@ -19,8 +22,6 @@ interface NovaAssinatura {
   dataNascimento: string;
   email: string;
   telefone: string;
-  plano: string;
-  status: string;
   endereco: {
     estado: string;
     cidade: string;
@@ -62,6 +63,9 @@ export default function NovaAssinaturaModal({ isOpen, onClose, onSave }: NovaAss
   }, []);
 
   const [loading, setLoading] = useState(false);
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepError, setCepError] = useState<string | null>(null);
+  const [lastCepSearched, setLastCepSearched] = useState<string>('');
   const [assinatura, setAssinatura] = useState<NovaAssinatura>({
     codigo: '',
     nomeCompleto: '',
@@ -70,8 +74,6 @@ export default function NovaAssinaturaModal({ isOpen, onClose, onSave }: NovaAss
     dataNascimento: '',
     email: '',
     telefone: '',
-    plano: 'Básico',
-    status: 'Ativa',
     endereco: {
       estado: '',
       cidade: '',
@@ -85,15 +87,24 @@ export default function NovaAssinaturaModal({ isOpen, onClose, onSave }: NovaAss
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!assinatura.codigo || !assinatura.nomeCompleto || !assinatura.cpf) {
-      alert('Por favor, preencha os campos obrigatórios (Código, Nome Completo e CPF)');
+    if (!assinatura.codigo || !assinatura.nomeCompleto || !assinatura.cpf || !assinatura.telefone || !assinatura.email) {
+      alert('Por favor, preencha os campos obrigatórios (Código, Nome, CPF, Telefone e E-mail).');
+      return;
+    }
+    if (!assinatura.endereco?.cep || !validateCEP(assinatura.endereco.cep)) {
+      alert('Informe um CEP válido (00000-000).');
+      return;
+    }
+    if (!assinatura.endereco?.rua || !assinatura.endereco?.bairro || !assinatura.endereco?.cidade || !assinatura.endereco?.estado) {
+      alert('Digite o CEP para preencher o endereço (rua, bairro, cidade e estado).');
       return;
     }
 
     try {
       setLoading(true);
-      await addDoc(collection(getDb(), 'assinaturas'), {
+      await addDoc(tenantCollection(getDb(), 'assinaturas'), {
         ...assinatura,
+        nomeCompleto: formatNomePadrao(assinatura.nomeCompleto),
         createdAt: new Date(),
         updatedAt: new Date()
       });
@@ -110,8 +121,6 @@ export default function NovaAssinaturaModal({ isOpen, onClose, onSave }: NovaAss
         dataNascimento: '',
         email: '',
         telefone: '',
-        plano: 'Básico',
-        status: 'Ativa',
         endereco: {
           estado: '',
           cidade: '',
@@ -147,6 +156,16 @@ export default function NovaAssinaturaModal({ isOpen, onClose, onSave }: NovaAss
       }
     }
 
+    if (field === 'endereco.cep') {
+      const masked = applyCEPMask(value);
+      setCepError(null);
+      setAssinatura((prev) => ({
+        ...prev,
+        endereco: { ...prev.endereco, cep: masked }
+      }));
+      return;
+    }
+
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
       setAssinatura(prev => ({
@@ -161,6 +180,43 @@ export default function NovaAssinaturaModal({ isOpen, onClose, onSave }: NovaAss
         ...prev,
         [field]: value
       }));
+    }
+  };
+
+  const handleBuscarCep = async (rawCep?: string) => {
+    const cep = String(rawCep ?? assinatura.endereco.cep ?? '');
+    const cepClean = cep.replace(/\D/g, '');
+    if (!validateCEP(cep)) {
+      setCepError('CEP inválido. Informe 8 dígitos.');
+      return;
+    }
+    if (cepClean === lastCepSearched && assinatura.endereco.rua && assinatura.endereco.cidade) {
+      return;
+    }
+    try {
+      setCepLoading(true);
+      setCepError(null);
+      const endereco = await buscarEnderecoPorCEP(cep);
+      if (!endereco) {
+        setCepError('CEP não encontrado.');
+        return;
+      }
+      setLastCepSearched(cepClean);
+      setAssinatura((prev) => ({
+        ...prev,
+        endereco: {
+          ...prev.endereco,
+          cep: endereco.cep,
+          rua: endereco.rua || prev.endereco.rua,
+          bairro: endereco.bairro || prev.endereco.bairro,
+          cidade: endereco.cidade || prev.endereco.cidade,
+          estado: endereco.estado || prev.endereco.estado,
+        }
+      }));
+    } catch (e: any) {
+      setCepError(e?.message || 'Erro ao buscar CEP');
+    } finally {
+      setCepLoading(false);
     }
   };
 
@@ -320,75 +376,6 @@ export default function NovaAssinaturaModal({ isOpen, onClose, onSave }: NovaAss
               />
             </div>
 
-            {/* Plano e Status */}
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '1fr 1fr', 
-              gap: '12px',
-              marginBottom: '20px'
-            }}>
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: '6px', 
-                  fontSize: '12px', 
-                  fontWeight: '600', 
-                  color: '#374151' 
-                }}>
-                  Plano
-                </label>
-                <select
-                  value={assinatura.plano}
-                  onChange={(e) => handleInputChange('plano', e.target.value)}
-                  style={{
-                    width: '100%',
-                    height: '36px',
-                    padding: '0 12px',
-                    border: '2px solid #e5e7eb',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    backgroundColor: 'white'
-                  }}
-                >
-                  <option value="Básico">Básico</option>
-                  <option value="Premium">Premium</option>
-                  <option value="VIP">VIP</option>
-                  <option value="Personalizado">Personalizado</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: '6px', 
-                  fontSize: '12px', 
-                  fontWeight: '600', 
-                  color: '#374151' 
-                }}>
-                  Status
-                </label>
-                <select
-                  value={assinatura.status}
-                  onChange={(e) => handleInputChange('status', e.target.value)}
-                  style={{
-                    width: '100%',
-                    height: '36px',
-                    padding: '0 12px',
-                    border: '2px solid #e5e7eb',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    backgroundColor: 'white'
-                  }}
-                >
-                  <option value="Ativa">Ativa</option>
-                  <option value="Inativa">Inativa</option>
-                  <option value="Suspensa">Suspensa</option>
-                  <option value="Cancelada">Cancelada</option>
-                </select>
-              </div>
-            </div>
-
             {/* Endereço Detalhado */}
             <div style={{ marginBottom: '20px' }}>
               <h4 style={{ 
@@ -401,6 +388,54 @@ export default function NovaAssinaturaModal({ isOpen, onClose, onSave }: NovaAss
               }}>
                 Endereço Detalhado
               </h4>
+
+              {/* CEP (primeiro) */}
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '6px', 
+                  fontSize: '12px', 
+                  fontWeight: '600', 
+                  color: '#374151' 
+                }}>
+                  CEP*
+                </label>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <Input
+                    type="text"
+                    value={assinatura.endereco.cep}
+                    onChange={(e) => handleInputChange('endereco.cep', e.target.value)}
+                    onBlur={() => handleBuscarCep()}
+                    placeholder="00000-000"
+                    required
+                    style={{ height: '36px', width: '100%' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleBuscarCep()}
+                    disabled={cepLoading}
+                    style={{
+                      height: '36px',
+                      padding: '0 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      backgroundColor: 'white',
+                      color: '#111827',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: cepLoading ? 'not-allowed' : 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {cepLoading ? 'Buscando...' : 'Buscar CEP'}
+                  </button>
+                </div>
+                {cepError && (
+                  <div style={{ marginTop: 6, fontSize: 12, color: '#dc2626', fontWeight: 600 }}>
+                    {cepError}
+                  </div>
+                )}
+              </div>
               
               {/* Estado e Cidade */}
               <div style={{ 
@@ -512,24 +547,7 @@ export default function NovaAssinaturaModal({ isOpen, onClose, onSave }: NovaAss
                     style={{ height: '36px', width: '100%' }}
                   />
                 </div>
-                <div>
-                  <label style={{ 
-                    display: 'block', 
-                    marginBottom: '6px', 
-                    fontSize: '12px', 
-                    fontWeight: '600', 
-                    color: '#374151' 
-                  }}>
-                    CEP
-                  </label>
-                  <Input
-                    type="text"
-                    value={assinatura.endereco.cep}
-                    onChange={(e) => handleInputChange('endereco.cep', e.target.value)}
-                    placeholder="00000-000"
-                    style={{ height: '36px', width: '100%' }}
-                  />
-                </div>
+                <div />
               </div>
 
               {/* Ponto de Referência */}

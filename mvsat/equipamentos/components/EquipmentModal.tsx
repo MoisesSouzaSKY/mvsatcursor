@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { getDb } from '../../config/database.config';
+import { getEmpresaIdFromSession } from '../../shared/saas/session';
 
 interface Equipamento {
   id: string;
@@ -20,11 +23,13 @@ interface Assinatura {
   id: string;
   codigo: string;
   nomeCompleto: string;
+  clienteId?: string;
 }
 
 interface Cliente {
   id: string;
   nome: string;
+  nomeCompleto?: string;
 }
 
 interface ModalHeaderProps {
@@ -306,28 +311,247 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
   assinaturas,
   clientes
 }) => {
+  console.log('🎯 EquipmentModal renderizado com props:', {
+    isOpen,
+    hasEquipment: !!equipment,
+    equipmentId: equipment?.id,
+    clientesCount: clientes.length,
+    assinaturasCount: assinaturas.length
+  });
+
   const [editingEquipment, setEditingEquipment] = useState<Equipamento | null>(null);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [filteredAssinaturas, setFilteredAssinaturas] = useState<Assinatura[]>([]);
+  const [activeTab, setActiveTab] = useState<'dados' | 'trocas'>('dados');
+  const [trocasLoading, setTrocasLoading] = useState(false);
+  const [trocasError, setTrocasError] = useState<string | null>(null);
+  const [trocas, setTrocas] = useState<any[]>([]);
 
   useEffect(() => {
     if (isOpen && equipment) {
-      setEditingEquipment({ ...equipment });
+      console.log('🔧 Inicializando modal com equipamento:', equipment);
+      console.log('👥 Clientes disponíveis:', clientes.length);
+      console.log('📋 Assinaturas disponíveis:', assinaturas.length);
+      
+      // Garantir que os dados do cliente estejam atualizados
+      let equipamentoAtualizado = { ...equipment };
+      
+      // Primeiro, tentar resolver clienteId se não existir mas temos nome do cliente
+      if (!equipamentoAtualizado.clienteId && equipamentoAtualizado.cliente) {
+        console.log('🔍 Tentando encontrar clienteId pelo nome:', equipamentoAtualizado.cliente);
+        const cliente = clientes.find(c => {
+          const nomeCompleto = (c.nomeCompleto || '').toLowerCase();
+          const nome = (c.nome || '').toLowerCase();
+          const clienteNome = (equipamentoAtualizado.cliente || '').toLowerCase();
+          
+          return nomeCompleto === clienteNome || 
+                 nome === clienteNome ||
+                 nomeCompleto.includes(clienteNome) ||
+                 nome.includes(clienteNome);
+        });
+        
+        if (cliente) {
+          console.log('✅ Cliente encontrado pelo nome:', cliente);
+          equipamentoAtualizado.clienteId = cliente.id;
+          equipamentoAtualizado.cliente = cliente.nomeCompleto || cliente.nome;
+          equipamentoAtualizado.nomeCompleto = cliente.nomeCompleto || cliente.nome;
+        } else {
+          console.log('❌ Cliente não encontrado pelo nome');
+        }
+      }
+      
+      // Se tem clienteId, garantir que o nome esteja correto
+      if (equipamentoAtualizado.clienteId) {
+        console.log('🔍 Buscando dados do cliente com ID:', equipamentoAtualizado.clienteId);
+        const cliente = clientes.find(c => c.id === equipamentoAtualizado.clienteId);
+        console.log('👤 Cliente encontrado por ID:', cliente);
+        if (cliente) {
+          equipamentoAtualizado.cliente = cliente.nomeCompleto || cliente.nome;
+          equipamentoAtualizado.nomeCompleto = cliente.nomeCompleto || cliente.nome;
+          console.log('✅ Nome do cliente atualizado:', equipamentoAtualizado.cliente);
+        } else {
+          console.log('❌ Cliente com ID não encontrado, limpando clienteId');
+          equipamentoAtualizado.clienteId = null;
+        }
+      }
+      
+      // Resolver assinaturaId se não existir mas temos código
+      if (!equipamentoAtualizado.assinaturaId && equipamentoAtualizado.codigo) {
+        console.log('🔍 Buscando assinatura pelo código:', equipamentoAtualizado.codigo);
+        const assinatura = assinaturas.find(a => a.codigo === equipamentoAtualizado.codigo);
+        console.log('📄 Assinatura encontrada por código:', assinatura);
+        if (assinatura) {
+          equipamentoAtualizado.assinaturaId = assinatura.id;
+          equipamentoAtualizado.assinatura = {
+            codigo: assinatura.codigo,
+            nomeAssinatura: assinatura.nomeCompleto
+          };
+          console.log('✅ Dados da assinatura atualizados por código:', equipamentoAtualizado.assinatura);
+        }
+      }
+      
+      // Se tem assinaturaId, garantir que os dados da assinatura estejam corretos
+      if (equipamentoAtualizado.assinaturaId) {
+        const assinatura = assinaturas.find(a => a.id === equipamentoAtualizado.assinaturaId);
+        if (assinatura) {
+          equipamentoAtualizado.assinatura = {
+            codigo: assinatura.codigo,
+            nomeAssinatura: assinatura.nomeCompleto
+          };
+          equipamentoAtualizado.codigo = assinatura.codigo;
+          console.log('✅ Dados da assinatura atualizados por ID:', equipamentoAtualizado.assinatura);
+        } else {
+          console.log('❌ Assinatura com ID não encontrada, mantendo dados existentes');
+          // Não limpar se não encontrar - pode ser que a assinatura não esteja carregada ainda
+        }
+      }
+      
+      console.log('📝 Equipamento final para o modal:', equipamentoAtualizado);
+      setEditingEquipment(equipamentoAtualizado);
       setErrors({});
+      setActiveTab('dados');
+      setTrocas([]);
+      setTrocasError(null);
     }
-  }, [isOpen, equipment]);
+  }, [isOpen, equipment, clientes, assinaturas]);
 
-  if (!isOpen || !editingEquipment) return null;
+  const canLoadTrocas = Boolean(editingEquipment?.id);
 
-  const validateForm = (): boolean => {
+  const loadTrocas = async () => {
+    if (!editingEquipment?.id) return;
+    const empresaId = getEmpresaIdFromSession();
+    if (!empresaId) {
+      setTrocasError('Empresa não definida na sessão. Faça login novamente.');
+      return;
+    }
+    setTrocasLoading(true);
+    setTrocasError(null);
+    try {
+      const q = query(
+        collection(getDb(), 'empresas', empresaId, 'equipamentos', editingEquipment.id, 'trocas'),
+        orderBy('createdAt', 'desc')
+      );
+      const snap = await getDocs(q);
+      setTrocas(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    } catch (e: any) {
+      setTrocasError(String(e?.message || 'Falha ao carregar histórico de trocas.'));
+    } finally {
+      setTrocasLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (activeTab !== 'trocas') return;
+    if (!canLoadTrocas) return;
+    loadTrocas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, isOpen, editingEquipment?.id]);
+
+  const formatDateTime = (value: any): string => {
+    try {
+      const v = value?.seconds ? new Date(value.seconds * 1000) : value instanceof Date ? value : null;
+      if (!v) return '—';
+      return v.toLocaleString('pt-BR');
+    } catch {
+      return '—';
+    }
+  };
+
+  const tabButtonStyle = (active: boolean): React.CSSProperties => ({
+    padding: '10px 12px',
+    borderRadius: 10,
+    border: active ? '1px solid #111827' : '1px solid #e5e7eb',
+    background: active ? '#111827' : 'white',
+    color: active ? 'white' : '#111827',
+    fontWeight: 800,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    fontSize: 13,
+  });
+
+  // Filtrar assinaturas baseado no cliente selecionado
+  useEffect(() => {
+    if (!editingEquipment) {
+      setFilteredAssinaturas([]);
+      return;
+    }
+
+    console.log('🔄 Filtrando assinaturas - ClienteId:', editingEquipment.clienteId);
+    console.log('📋 Total de assinaturas disponíveis:', assinaturas.length);
+    console.log('🎯 Assinatura atual do equipamento:', editingEquipment.assinaturaId, editingEquipment.codigo);
+    
+    let filtered: Assinatura[] = [];
+    
+    // SEMPRE incluir a assinatura atual primeiro se ela existir
+    if (editingEquipment.assinaturaId) {
+      const assinaturaAtual = assinaturas.find(a => a.id === editingEquipment.assinaturaId);
+      if (assinaturaAtual) {
+        console.log('📌 Incluindo assinatura atual na lista:', assinaturaAtual);
+        filtered = [assinaturaAtual];
+      }
+    }
+    
+    if (editingEquipment.clienteId) {
+      // Cliente selecionado - mostrar assinaturas deste cliente
+      const assinaturasDoCliente = assinaturas.filter(a => 
+        a.clienteId === editingEquipment.clienteId && 
+        a.id !== editingEquipment.assinaturaId // Evitar duplicatas
+      );
+      filtered = [...filtered, ...assinaturasDoCliente];
+      console.log('✅ Assinaturas encontradas para o cliente:', assinaturasDoCliente);
+    } else {
+      // Sem cliente - mostrar todas as assinaturas (exceto a atual que já foi incluída)
+      const outrasAssinaturas = assinaturas.filter(a => a.id !== editingEquipment.assinaturaId);
+      filtered = [...filtered, ...outrasAssinaturas];
+      console.log('📋 Sem cliente vinculado - mostrando todas as assinaturas');
+    }
+    
+    setFilteredAssinaturas(filtered);
+  }, [editingEquipment?.clienteId, editingEquipment?.assinaturaId, assinaturas]);
+
+  if (!isOpen || !editingEquipment) {
+    console.log('🚫 Modal não será exibido:', {
+      isOpen,
+      hasEditingEquipment: !!editingEquipment,
+      editingEquipmentId: editingEquipment?.id
+    });
+    return null;
+  }
+
+  console.log('✅ Modal será exibido com equipamento:', editingEquipment.id);
+
+  const validateForm = async (): Promise<boolean> => {
     const newErrors: Record<string, string> = {};
 
+    // Validações básicas
     if (!editingEquipment.nds.trim()) {
       newErrors.nds = 'NDS é obrigatório';
+    } else if (editingEquipment.nds.trim().length < 8) {
+      newErrors.nds = 'NDS deve ter pelo menos 8 caracteres';
     }
 
     if (!editingEquipment.smartcard.trim()) {
       newErrors.smartcard = 'Smart Card é obrigatório';
+    } else if (editingEquipment.smartcard.trim().length < 8) {
+      newErrors.smartcard = 'Smart Card deve ter pelo menos 8 caracteres';
+    }
+
+    if (!editingEquipment.status) {
+      newErrors.status = 'Status é obrigatório';
+    }
+
+    // Verificar duplicatas (simulação - em produção seria uma consulta ao Firestore)
+    // Por enquanto vamos apenas validar formato
+    const ndsPattern = /^[A-Za-z0-9]+$/;
+    if (editingEquipment.nds.trim() && !ndsPattern.test(editingEquipment.nds.trim())) {
+      newErrors.nds = 'NDS deve conter apenas letras e números';
+    }
+
+    const smartcardPattern = /^[0-9\s]+$/;
+    if (editingEquipment.smartcard.trim() && !smartcardPattern.test(editingEquipment.smartcard.trim().replace(/\s/g, ''))) {
+      newErrors.smartcard = 'Smart Card deve conter apenas números';
     }
 
     setErrors(newErrors);
@@ -335,14 +559,40 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
   };
 
   const handleSave = async () => {
-    if (!validateForm()) return;
+    console.log('💾 Iniciando salvamento do modal com dados:', {
+      id: editingEquipment?.id,
+      nds: editingEquipment?.nds,
+      smartcard: editingEquipment?.smartcard,
+      status: editingEquipment?.status,
+      clienteId: editingEquipment?.clienteId,
+      cliente: editingEquipment?.cliente,
+      assinaturaId: editingEquipment?.assinaturaId,
+      codigo: editingEquipment?.codigo,
+      assinatura: editingEquipment?.assinatura
+    });
+    
+    const isValid = await validateForm();
+    if (!isValid) {
+      console.log('❌ Validação falhou:', errors);
+      return;
+    }
 
     setSaving(true);
     try {
+      console.log('🚀 Chamando função onSave com equipamento validado...');
       await onSave(editingEquipment);
+      console.log('✅ Salvamento concluído com sucesso');
       onClose();
-    } catch (error) {
-      console.error('Erro ao salvar equipamento:', error);
+    } catch (error: any) {
+      console.error('❌ Erro ao salvar equipamento:', error);
+      // Mostrar erro específico se for de duplicata ou validação
+      if (error.message.includes('NDS')) {
+        setErrors(prev => ({ ...prev, nds: error.message }));
+      } else if (error.message.includes('Smart Card')) {
+        setErrors(prev => ({ ...prev, smartcard: error.message }));
+      } else {
+        alert(`Erro ao salvar: ${error.message}`);
+      }
     } finally {
       setSaving(false);
     }
@@ -356,26 +606,49 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
     }
   };
 
+  // Validação em tempo real simplificada
+  const handleFieldValidation = (field: string, value: string) => {
+    // Validação em tempo real apenas para campos críticos
+    if (field === 'nds' && value.trim() && value.trim().length < 8) {
+      setErrors(prev => ({ ...prev, nds: 'NDS deve ter pelo menos 8 caracteres' }));
+    } else if (field === 'smartcard' && value.trim() && value.trim().length < 8) {
+      setErrors(prev => ({ ...prev, smartcard: 'Smart Card deve ter pelo menos 8 caracteres' }));
+    }
+  };
+
   const statusOptions = [
     { value: 'disponivel', label: 'Disponível', icon: '🟢' },
-    { value: 'alugado', label: 'Alugado', icon: '🔵' },
-    { value: 'problema', label: 'Com Problema', icon: '🔴' }
+    { value: 'em_uso', label: 'Em Uso', icon: '🔵' },
+    { value: 'reserva', label: 'Reserva', icon: '🟣' },
+    { value: 'defeito', label: 'Defeito', icon: '🔴' },
+    { value: 'descartado', label: 'Descartado', icon: '⚫' },
+    { value: 'inativo', label: 'Inativo (Excluído)', icon: '🗑️' },
+    // compat (mantém seleção ao editar itens legados)
+    { value: 'alugado', label: 'Alugado (legado)', icon: '🔵' },
+    { value: 'problema', label: 'Com Problema (legado)', icon: '🔴' }
   ];
 
   const assinaturaOptions = [
-    { value: '', label: 'Selecione uma assinatura' },
-    ...assinaturas.map(a => ({ 
-      value: a.codigo, 
+    { value: '', label: editingEquipment.clienteId ? 'Selecione uma assinatura' : 'Selecione um cliente primeiro' },
+    ...filteredAssinaturas.map(a => ({ 
+      value: a.id, 
       label: `${a.codigo} - ${a.nomeCompleto}` 
     }))
   ];
 
   const clienteOptions = [
     { value: '', label: 'Selecione um cliente' },
-    ...clientes.map(c => ({ 
-      value: c.id, 
-      label: c.nome 
-    }))
+    // Se tem nome do cliente mas não tem ID, mostrar como opção especial
+    ...(editingEquipment.cliente && !editingEquipment.clienteId ? [{
+      value: 'current_client',
+      label: `${editingEquipment.cliente}`
+    }] : []),
+    ...clientes
+      .map(c => ({ 
+        value: c.id, 
+        label: c.nomeCompleto || c.nome 
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'))
   ];
 
   return (
@@ -405,6 +678,31 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
           onClose={onClose}
         />
 
+        <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
+          <button
+            type="button"
+            onClick={() => setActiveTab('dados')}
+            style={tabButtonStyle(activeTab === 'dados')}
+          >
+            Dados
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('trocas')}
+            disabled={!canLoadTrocas}
+            style={{
+              ...tabButtonStyle(activeTab === 'trocas'),
+              opacity: canLoadTrocas ? 1 : 0.5,
+              cursor: canLoadTrocas ? 'pointer' : 'not-allowed',
+            }}
+            title={!canLoadTrocas ? 'Salve o equipamento para ver histórico' : 'Ver histórico de trocas'}
+          >
+            Histórico de Trocas
+          </button>
+        </div>
+
+        {activeTab === 'dados' && (
+          <>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
           <FormField label="Número do NDS" required error={errors.nds}>
             <Input
@@ -434,33 +732,126 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
 
           <FormField label="Cliente">
             <Select
-              value={editingEquipment.clienteId || ''}
+              value={editingEquipment.clienteId || (editingEquipment.cliente && !editingEquipment.clienteId ? 'current_client' : '')}
               onChange={(value) => {
+                console.log('🔄 Cliente selecionado:', value);
+                
+                if (value === 'current_client') {
+                  // Manter o cliente atual sem ID
+                  console.log('📌 Mantendo cliente atual sem ID');
+                  return;
+                }
+                
+                if (value === '' || !value) {
+                  // Limpar cliente - mas PRESERVAR a assinatura
+                  console.log('🗑️ Limpando cliente mas preservando assinatura');
+                  updateField('clienteId', null);
+                  updateField('cliente', '');
+                  updateField('nomeCompleto', '');
+                  // NÃO limpar assinatura - deixar o usuário decidir
+                  console.log('📌 Assinatura preservada:', editingEquipment.assinaturaId);
+                  return;
+                }
+                
                 const cliente = clientes.find(c => c.id === value);
-                updateField('clienteId', value || null);
-                updateField('cliente', cliente?.nome || '');
+                console.log('👤 Cliente encontrado:', cliente);
+                
+                if (cliente) {
+                  const clienteNome = cliente.nomeCompleto || cliente.nome;
+                  updateField('clienteId', value);
+                  updateField('cliente', clienteNome);
+                  updateField('nomeCompleto', clienteNome);
+                  
+                  // SEMPRE manter a assinatura atual - não limpar automaticamente
+                  console.log('📌 Assinatura preservada durante mudança de cliente:', editingEquipment.assinaturaId);
+                  
+                  console.log('✅ Cliente atualizado:', clienteNome);
+                }
               }}
               options={clienteOptions}
             />
+
           </FormField>
         </div>
 
         <FormField label="Pertence à Assinatura">
           <Select
-            value={editingEquipment.codigo || editingEquipment.assinatura?.codigo || ''}
+            value={editingEquipment.assinaturaId || ''}
             onChange={(value) => {
-              const assinatura = assinaturas.find(a => a.codigo === value);
-              updateField('codigo', value);
-              updateField('nomeCompleto', assinatura?.nomeCompleto || '');
-              updateField('assinatura', assinatura ? {
-                codigo: assinatura.codigo,
-                nomeAssinatura: assinatura.nomeCompleto
-              } : null);
-              updateField('assinaturaId', assinatura?.id || null);
+              console.log('🔄 Assinatura selecionada:', value);
+              
+              if (value === '' || !value) {
+                console.log('🗑️ Limpando assinatura');
+                updateField('assinaturaId', null);
+                updateField('codigo', '');
+                updateField('assinatura', null);
+                return;
+              }
+              
+              const assinatura = filteredAssinaturas.find(a => a.id === value);
+              console.log('📄 Assinatura encontrada:', assinatura);
+              
+              if (assinatura) {
+                updateField('assinaturaId', value);
+                updateField('codigo', assinatura.codigo);
+                updateField('assinatura', {
+                  codigo: assinatura.codigo,
+                  nomeAssinatura: assinatura.nomeCompleto
+                });
+                console.log('✅ Assinatura atualizada:', assinatura.codigo);
+              }
             }}
-            options={assinaturaOptions}
+            options={[
+              { 
+                value: '', 
+                label: 'Nenhuma assinatura' 
+              },
+              ...filteredAssinaturas.map(a => ({ 
+                value: a.id, 
+                label: `${a.codigo} - ${a.nomeCompleto}${a.id === editingEquipment.assinaturaId ? ' ✓ (ATUAL)' : ''}` 
+              }))
+            ]}
+            disabled={filteredAssinaturas.length === 0 && !editingEquipment.assinatura}
           />
+
+          {!editingEquipment.assinaturaId && (
+            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+              {editingEquipment.clienteId 
+                ? 'Selecione uma assinatura ou deixe em branco' 
+                : 'Você pode vincular a qualquer assinatura ou deixar em branco'
+              }
+            </div>
+          )}
         </FormField>
+
+        {Object.keys(errors).length > 0 && (
+          <div style={{
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '8px',
+            padding: '12px',
+            marginBottom: '20px'
+          }}>
+            <div style={{
+              color: '#dc2626',
+              fontSize: '14px',
+              fontWeight: '600',
+              marginBottom: '8px'
+            }}>
+              Por favor, corrija os seguintes erros:
+            </div>
+            <ul style={{
+              margin: 0,
+              paddingLeft: '20px',
+              color: '#dc2626',
+              fontSize: '12px'
+            }}>
+              {Object.entries(errors).map(([field, error]) => (
+                <li key={field}>{error}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <ModalFooter 
           onCancel={onClose}
@@ -468,6 +859,117 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
           saving={saving}
           canSave={editingEquipment.nds.trim() !== '' && editingEquipment.smartcard.trim() !== ''}
         />
+          </>
+        )}
+
+        {activeTab === 'trocas' && (
+          <div style={{ marginTop: 6 }}>
+            <div
+              style={{
+                background: '#f9fafb',
+                border: '1px solid #e5e7eb',
+                borderRadius: 12,
+                padding: 14,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <div style={{ fontWeight: 800, color: '#111827' }}>Histórico de trocas</div>
+                <button
+                  type="button"
+                  onClick={loadTrocas}
+                  disabled={trocasLoading}
+                  style={{
+                    background: trocasLoading ? '#9ca3af' : '#111827',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 10,
+                    padding: '10px 12px',
+                    cursor: trocasLoading ? 'not-allowed' : 'pointer',
+                    fontWeight: 800,
+                    fontSize: 13,
+                  }}
+                >
+                  {trocasLoading ? 'Atualizando...' : 'Atualizar'}
+                </button>
+              </div>
+
+              {trocasError && (
+                <div style={{ marginTop: 12, background: '#fee2e2', border: '1px solid #fecaca', color: '#991b1b', padding: 10, borderRadius: 10, fontWeight: 700 }}>
+                  {trocasError}
+                </div>
+              )}
+
+              {trocasLoading && (
+                <div style={{ marginTop: 12, color: '#6b7280', fontWeight: 700 }}>Carregando histórico...</div>
+              )}
+
+              {!trocasLoading && !trocasError && trocas.length === 0 && (
+                <div style={{ marginTop: 12, color: '#6b7280', fontWeight: 700 }}>
+                  Nenhuma troca registrada para este equipamento.
+                </div>
+              )}
+
+              {!trocasLoading && !trocasError && trocas.length > 0 && (
+                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {trocas.map((t) => (
+                    <div
+                      key={t.id}
+                      style={{
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 12,
+                        padding: 12,
+                        background: 'white',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                        <div style={{ fontWeight: 900, color: '#111827' }}>{formatDateTime(t.createdAt)}</div>
+                        <div style={{ fontWeight: 800, color: '#374151' }}>
+                          {String(t?.performedBy?.nome || 'Usuário')} {t?.performedBy?.tipo ? `(${t.performedBy.tipo})` : ''}
+                        </div>
+                      </div>
+
+                      <div style={{ marginTop: 8, fontSize: 13, color: '#111827' }}>
+                        <div><strong>Cliente:</strong> {t.clienteNome || '—'}</div>
+                        <div><strong>Assinatura:</strong> {t.assinaturaCodigo || '—'}</div>
+                        <div><strong>Motivo:</strong> {t.motivo}{t.motivoOutroTexto ? ` — ${t.motivoOutroTexto}` : ''}</div>
+                      </div>
+
+                      <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: 10 }}>
+                          <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 800 }}>Equipamento antigo</div>
+                          <div style={{ fontWeight: 900, color: '#111827' }}>{t.equipamentoAntigoNds || '—'}</div>
+                          <div style={{ fontSize: 12, color: '#374151', fontWeight: 800 }}>{t.equipamentoAntigoSmartcard || '—'}</div>
+                        </div>
+                        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: 10 }}>
+                          <div style={{ fontSize: 12, color: '#065f46', fontWeight: 800 }}>Equipamento novo</div>
+                          <div style={{ fontWeight: 900, color: '#064e3b' }}>{t.equipamentoNovoNds || '—'}</div>
+                          <div style={{ fontSize: 12, color: '#065f46', fontWeight: 800 }}>{t.equipamentoNovoSmartcard || '—'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
+              <button
+                type="button"
+                onClick={onClose}
+                style={{
+                  padding: '12px 24px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 10,
+                  background: 'white',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                }}
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

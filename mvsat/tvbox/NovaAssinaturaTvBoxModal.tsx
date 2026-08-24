@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { collection, addDoc, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, query, where, doc, setDoc, increment, arrayUnion } from 'firebase/firestore';
 import { getDb } from '../config/database.config';
 import { listarClientes } from '../clientes/clientes.functions';
 import { Cliente } from '../clientes/types';
+import { tenantCollection, tenantConfigDoc } from '../shared/saas/firestoreTenant';
 
 interface NovaAssinaturaTvBoxModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ interface NovaAssinaturaTvBox {
   equipamentos: {
     nds: string;
     mac: string;
+      deviceId?: string;
     cliente_id: string | null;
     cliente_nome: string;
   }[];
@@ -36,8 +38,8 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
     senha: '',
     renovacaoDia: null,
     equipamentos: [
-      { nds: '', mac: '', cliente_id: null, cliente_nome: 'Disponível' },
-      { nds: '', mac: '', cliente_id: null, cliente_nome: 'Disponível' }
+      { nds: '', mac: '', deviceId: '', cliente_id: null, cliente_nome: 'Disponível' },
+      { nds: '', mac: '', deviceId: '', cliente_id: null, cliente_nome: 'Disponível' }
     ]
   });
 
@@ -45,7 +47,7 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
   const verificarAssinaturaExistente = async (nomeAssinatura: string): Promise<boolean> => {
     try {
       const db = getDb();
-      const q = query(collection(db, 'tvbox_assinaturas'), where('assinatura', '==', nomeAssinatura));
+      const q = query(tenantCollection(db, 'tvbox_assinaturas'), where('assinatura', '==', nomeAssinatura));
       const querySnapshot = await getDocs(q);
       return !querySnapshot.empty;
     } catch (error) {
@@ -58,7 +60,7 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
   const verificarLoginExistente = async (login: string): Promise<boolean> => {
     try {
       const db = getDb();
-      const q = query(collection(db, 'tvbox_assinaturas'), where('login', '==', login));
+      const q = query(tenantCollection(db, 'tvbox_assinaturas'), where('login', '==', login));
       const querySnapshot = await getDocs(q);
       return !querySnapshot.empty;
     } catch (error) {
@@ -71,7 +73,7 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
   const obterProximoNumeroAssinatura = async (): Promise<number> => {
     try {
       const db = getDb();
-      const querySnapshot = await getDocs(collection(db, 'tvbox_assinaturas'));
+      const querySnapshot = await getDocs(tenantCollection(db, 'tvbox_assinaturas'));
       const assinaturas = querySnapshot.docs.map(doc => doc.data().assinatura);
       
       // Extrair números das assinaturas existentes
@@ -208,6 +210,7 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
       const equipamentosProcessados = assinatura.equipamentos.map((eq, index) => ({
         nds: eq.nds || `NDS-${Date.now()}-${index + 1}`,
         mac: eq.mac || `MAC-${Date.now()}-${index + 1}`,
+        deviceId: (eq.deviceId || '').trim(),
         cliente_id: eq.cliente_id,
         cliente_nome: eq.cliente_nome,
         slotIndex: index + 1
@@ -217,8 +220,30 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
 
       // Salvar no Firestore
       console.log('💾 Salvando assinatura no Firestore:', dadosParaSalvar);
-      const docRef = await addDoc(collection(db, 'tvbox_assinaturas'), dadosParaSalvar);
+      const docRef = await addDoc(tenantCollection(db, 'tvbox_assinaturas'), dadosParaSalvar);
       console.log('✅ Assinatura salva com sucesso! ID:', docRef.id);
+      
+      // Abater 1 crédito quando criar com login e data de renovação
+      try {
+        const temLogin = typeof assinatura.login === 'string' && assinatura.login.trim().length > 0;
+        const temDataRenovacao = !!dadosParaSalvar.data_renovacao;
+        if (temLogin && temDataRenovacao) {
+          const creditosRef = tenantConfigDoc(db, 'creditos_tvbox');
+          await setDoc(
+            creditosRef,
+            {
+              disponiveis: increment(-1),
+              historico: arrayUnion({ quantidade: -1, data: Date.now(), origem: 'criacao_assinatura' })
+            },
+            { merge: true }
+          );
+          console.log('💳 1 crédito abatido pela criação da assinatura.');
+        } else {
+          console.log('ℹ️ Crédito não abatido: login ou data de renovação ausentes.');
+        }
+      } catch (erroCredito) {
+        console.error('❌ Falha ao abater crédito na criação:', erroCredito);
+      }
       
       onSave();
       onClose();
@@ -232,8 +257,8 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
         senha: '',
         renovacaoDia: null,
         equipamentos: [
-          { nds: '', mac: '', cliente_id: null, cliente_nome: 'Disponível' },
-          { nds: '', mac: '', cliente_id: null, cliente_nome: 'Disponível' }
+          { nds: '', mac: '', deviceId: '', cliente_id: null, cliente_nome: 'Disponível' },
+          { nds: '', mac: '', deviceId: '', cliente_id: null, cliente_nome: 'Disponível' }
         ]
       });
       
@@ -430,7 +455,7 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
                 Dados da Assinatura
               </h3>
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                                   <div>
                     <label style={{ 
                       display: 'block', 
@@ -727,6 +752,25 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
                         </div>
                       )}
                     </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151' }}>
+                      Device ID (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={equipamento.deviceId || ''}
+                      onChange={(e) => handleEquipamentoChange(index, 'deviceId', e.target.value)}
+                      placeholder="Ex: DEVICE-12345"
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
                   </div>
 
                   <div>

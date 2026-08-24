@@ -17,7 +17,9 @@ interface Despesa {
   formaPagamento?: string;
   competencia?: string;
   comprovante?: {
-    base64: string;
+    storageUrl?: string;
+    storagePath?: string;
+    base64?: string;
     mimeType: string;
     filename: string;
     uploadedAt: any;
@@ -61,10 +63,36 @@ const ViewDespesaModal: React.FC<ViewDespesaModalProps> = ({
     }
   };
 
-  const handleDownloadComprovante = () => {
+  const handleDownloadComprovante = async () => {
     if (!despesa.comprovante) return;
     
     try {
+      if (despesa.comprovante.storageUrl) {
+        try {
+          const response = await fetch(despesa.comprovante.storageUrl);
+          if (!response.ok) {
+            throw new Error('Falha ao baixar comprovante');
+          }
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = despesa.comprovante.filename || 'comprovante';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          return;
+        } catch (downloadError) {
+          console.warn('Falha no download direto, abrindo em nova aba:', downloadError);
+          window.open(despesa.comprovante.storageUrl, '_blank');
+          return;
+        }
+      }
+
+      if (!despesa.comprovante.base64) {
+        throw new Error('Comprovante indisponível');
+      }
       const link = document.createElement('a');
       link.href = `data:${despesa.comprovante.mimeType};base64,${despesa.comprovante.base64}`;
       link.download = despesa.comprovante.filename;
@@ -346,7 +374,7 @@ const ViewDespesaModal: React.FC<ViewDespesaModalProps> = ({
                 </div>
               )}
 
-              {despesa.origemNome && (
+              {(despesa.origemTipo || despesa.origemNome || despesa.descricao) && (
                 <div>
                   <label style={{
                     display: 'block',
@@ -355,13 +383,15 @@ const ViewDespesaModal: React.FC<ViewDespesaModalProps> = ({
                     color: '#374151',
                     marginBottom: '6px'
                   }}>
-                    Origem
+                  Origem
                   </label>
                   <div style={{
                     fontSize: '16px',
                     color: '#111827'
                   }}>
-                    {despesa.origemNome}
+                    {despesa.origemTipo === 'ASSINATURA_TVBOX' && `Login: ${despesa.origemNome || despesa.descricao?.replace('Renovação TV Box — login ', '') || '—'}`}
+                    {despesa.origemTipo === 'ASSINATURA' && `Assinatura: ${despesa.origemNome || despesa.origemId || '—'}`}
+                    {!despesa.origemTipo && (despesa.origemNome || despesa.descricao || '—')}
                   </div>
                 </div>
               )}

@@ -1,8 +1,28 @@
 import { getDb } from '../config/database.config';
 import { addDoc, collection, doc, getDoc, getDocs, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { adjustDueDate, adjustDueDateString } from './utils/dateAdjustment';
+import { tenantCollection, tenantDoc } from '../shared/saas/firestoreTenant';
 
 export async function criarCobranca(payload: any) {
-  const ref = await addDoc(collection(getDb(), 'cobrancas'), payload);
+  // Apply date adjustment to data_vencimento if present
+  if (payload.data_vencimento) {
+    payload.data_vencimento = adjustDueDateString(payload.data_vencimento);
+    console.log('[CRIAR COBRANÇA] Data de vencimento ajustada:', payload.data_vencimento);
+  }
+  
+  // Apply date adjustment to vencimento if present
+  if (payload.vencimento) {
+    if (payload.vencimento instanceof Date) {
+      payload.vencimento = adjustDueDate(payload.vencimento);
+    } else if (payload.vencimento.seconds) {
+      // Handle Firestore Timestamp
+      const date = new Date(payload.vencimento.seconds * 1000);
+      payload.vencimento = adjustDueDate(date);
+    }
+    console.log('[CRIAR COBRANÇA] Campo vencimento ajustado:', payload.vencimento);
+  }
+  
+  const ref = await addDoc(tenantCollection(getDb(), 'cobrancas'), payload);
   const snap = await getDoc(ref);
   return { ok: true, id: ref.id, cobranca: snap.data() };
 }
@@ -10,7 +30,7 @@ export async function criarCobranca(payload: any) {
 export async function listarCobrancas() {
   try {
     const db = getDb();
-    const cobrancasRef = collection(db, 'cobrancas');
+    const cobrancasRef = tenantCollection(db, 'cobrancas');
     const snap = await getDocs(cobrancasRef);
     
     const dados = snap.docs.map(d => {
@@ -26,11 +46,29 @@ export async function listarCobrancas() {
 }
 
 export async function atualizarCobranca(id: string, dados: any) {
-  await updateDoc(doc(getDb(), 'cobrancas', id), { 
+  // Apply date adjustment to data_vencimento if being updated
+  if (dados.data_vencimento) {
+    dados.data_vencimento = adjustDueDateString(dados.data_vencimento);
+    console.log('[ATUALIZAR COBRANÇA] Data de vencimento ajustada:', dados.data_vencimento);
+  }
+  
+  // Apply date adjustment to vencimento if being updated
+  if (dados.vencimento) {
+    if (dados.vencimento instanceof Date) {
+      dados.vencimento = adjustDueDate(dados.vencimento);
+    } else if (dados.vencimento.seconds) {
+      // Handle Firestore Timestamp
+      const date = new Date(dados.vencimento.seconds * 1000);
+      dados.vencimento = adjustDueDate(date);
+    }
+    console.log('[ATUALIZAR COBRANÇA] Campo vencimento ajustado:', dados.vencimento);
+  }
+  
+  await updateDoc(tenantDoc(getDb(), 'cobrancas', id), { 
     ...dados, 
     data_atualizacao: new Date() 
   });
-  const snap = await getDoc(doc(getDb(), 'cobrancas', id));
+  const snap = await getDoc(tenantDoc(getDb(), 'cobrancas', id));
   return { ok: true, id, cobranca: snap.data() };
 }
 
@@ -97,14 +135,18 @@ function computeNextDueDateKeepingDay(currentDue: Date): Date {
     throw new Error('Erro no cálculo da próxima data');
   }
   
-  console.log('✅ [COMPUTE DATE] Resultado final:', result);
+  // Apply date adjustment to the computed next due date
+  const adjustedResult = adjustDueDate(result);
   
-  return result;
+  console.log('✅ [COMPUTE DATE] Resultado final:', result);
+  console.log('✅ [COMPUTE DATE] Resultado ajustado:', adjustedResult);
+  
+  return adjustedResult;
 }
 
 async function findExistingNextCharge(params: { clienteId?: string | null; contratoId?: string | null; tipo?: string | null; referenciaAno: number; referenciaMes: number; }): Promise<any | null> {
   const db = getDb();
-  const ref = collection(db, 'cobrancas');
+  const ref = tenantCollection(db, 'cobrancas');
   const filters = [] as any[];
   if (params.clienteId) filters.push(where('cliente_id', '==', params.clienteId));
   if (params.contratoId) filters.push(where('contrato_id', '==', params.contratoId));
@@ -128,7 +170,9 @@ export async function marcarComoPaga(
     pagoEm?: Date;
     diasAtraso?: number;
     comprovante?: {
-      base64: string;
+      storageUrl?: string;
+      storagePath?: string;
+      base64?: string;
       mimeType: string;
       filename: string;
       uploadedAt: Date;
@@ -136,7 +180,7 @@ export async function marcarComoPaga(
   }
 ) {
   const db = getDb();
-  const cobrancaRef = doc(db, 'cobrancas', id);
+  const cobrancaRef = tenantDoc(db, 'cobrancas', id);
   const snapBefore = await getDoc(cobrancaRef);
   const before = snapBefore.data() || {};
 
@@ -152,8 +196,16 @@ export async function marcarComoPaga(
     multa: data.multa ?? null,
     diasAtraso: data.diasAtraso ?? null,
     ...(data.comprovante
-      ? { comprovante: {
-            base64: data.comprovante.base64,
+      ? {
+          comprovante: {
+            ...(data.comprovante.storageUrl
+              ? {
+                  storageUrl: data.comprovante.storageUrl,
+                  storagePath: data.comprovante.storagePath || null
+                }
+              : data.comprovante.base64
+                ? { base64: data.comprovante.base64 }
+                : {}),
             mimeType: data.comprovante.mimeType,
             filename: data.comprovante.filename,
             uploadedAt: data.comprovante.uploadedAt
@@ -320,7 +372,7 @@ export async function marcarComoPaga(
       referenciaMes: payload.referenciaMes
     });
     
-    const novaCobrancaRef = await addDoc(collection(db, 'cobrancas'), payload);
+    const novaCobrancaRef = await addDoc(tenantCollection(db, 'cobrancas'), payload);
     console.log('✅ [PRÓXIMA FATURA] Nova cobrança criada com ID:', novaCobrancaRef.id);
   } else {
     console.log('ℹ️ [PRÓXIMA FATURA] Cobrança já existe, não criando duplicata');
@@ -335,7 +387,7 @@ export async function reabrirCobranca(
   novoStatus: 'PENDENTE' | 'EM_DIAS' | 'VENCIDO'
 ) {
   const db = getDb();
-  const cobrancaRef = doc(db, 'cobrancas', id);
+  const cobrancaRef = tenantDoc(db, 'cobrancas', id);
   const snapBefore = await getDoc(cobrancaRef);
   const before = snapBefore.data() || {};
 
@@ -389,7 +441,7 @@ export async function reabrirCobranca(
   });
 
   if (next && next.geradoAutomaticamente === true && next.status !== 'PAGO') {
-    await deleteDoc(doc(db, 'cobrancas', next.id));
+    await deleteDoc(tenantDoc(db, 'cobrancas', next.id));
     const snapAfter = await getDoc(cobrancaRef);
     const current = snapAfter.data() || {};
     await updateDoc(cobrancaRef, {
@@ -407,7 +459,7 @@ export async function reabrirCobranca(
 }
 
 export async function removerCobranca(id: string) {
-  await deleteDoc(doc(getDb(), 'cobrancas', id));
+  await deleteDoc(tenantDoc(getDb(), 'cobrancas', id));
   return { ok: true, id };
 }
 

@@ -21,12 +21,6 @@ export interface ModernSidebarProps {
 
 const defaultItems: SidebarItem[] = [
   {
-    key: 'dashboard',
-    label: 'Dashboard',
-    icon: '📊',
-    path: '/',
-  },
-  {
     key: 'clientes',
     label: 'Clientes',
     icon: '👥',

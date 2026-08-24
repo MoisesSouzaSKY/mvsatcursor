@@ -27,6 +27,7 @@ export function ClientesHeader({
         overflow: 'hidden',
         boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
       }}>
+        {/* Botão Novo Cliente foi movido para acima da lista na página */}
         {/* Ícone de clientes no canto esquerdo */}
         <div style={{
           position: 'absolute',
@@ -80,75 +81,6 @@ export function ClientesHeader({
           }}>
             Gerencie seus clientes e relacionamentos de forma simples e organizada
           </p>
-        </div>
-      </div>
-
-      {/* Header com ações */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: '32px',
-        flexWrap: 'wrap',
-        gap: '16px'
-      }}>
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px'
-        }}>
-        </div>
-
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          alignItems: 'center',
-          flexWrap: 'wrap'
-        }}>
-          <button
-            onClick={onNewClient}
-            disabled={loading}
-            style={{
-              backgroundColor: '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '12px',
-              padding: '16px 32px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
-              transition: 'all 0.2s ease',
-              outline: 'none',
-              opacity: loading ? 0.6 : 1
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) {
-                e.currentTarget.style.backgroundColor = '#059669';
-                e.currentTarget.style.boxShadow = '0 8px 20px rgba(16, 185, 129, 0.4)';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) {
-                e.currentTarget.style.backgroundColor = '#10b981';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.25)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.3)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.25)';
-            }}
-          >
-            <span style={{ fontSize: '16px' }}>➕</span>
-            Novo Cliente
-          </button>
         </div>
       </div>
     </>

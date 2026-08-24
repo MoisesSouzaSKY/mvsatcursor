@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
+import { clearTenantSession, loadTenantSession } from '../../shared/saas/session';
 
 const linkBaseStyle: React.CSSProperties = {
   display: 'block',
@@ -20,67 +21,107 @@ const activeStyle: React.CSSProperties = {
   fontWeight: 600
 };
 
-export default function Sidebar() {
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+interface SidebarProps {
+  className?: string;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ className = 'sidebar', onClose }: SidebarProps) {
   const [displayName, setDisplayName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [role, setRole] = useState<string>('');
+  const [isMobile, setIsMobile] = useState(false);
+
+  const updateIsMobile = () => {
+    setIsMobile(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+  };
 
   useEffect(() => {
     const auth = getAuth();
     return onAuthStateChanged(auth, async (u) => {
-      if (!u) { setIsAdmin(false); return; }
-      const token = await u.getIdTokenResult();
-      console.log('Token claims:', token.claims); // Debug
-      const isAdm = token.claims?.role === 'Admin' || token.claims?.role === 'admin';
-      setIsAdmin(isAdm);
-      setRole(isAdm ? 'Admin' : (token.claims?.role || 'Usuário'));
-      setDisplayName(u.displayName || u.email || 'Usuário');
-      setEmail(u.email || '');
+      if (!u) { return; }
+      const session = loadTenantSession();
+      const tipo = session?.tipo || '';
+      setRole(tipo ? (tipo.charAt(0).toUpperCase() + tipo.slice(1)) : 'Usuário');
+      setDisplayName(session?.nome || u.displayName || u.email || 'Usuário');
+      setEmail(session?.email || u.email || '');
     });
+  }, []);
+
+  useEffect(() => {
+    updateIsMobile();
+    window.addEventListener('resize', updateIsMobile);
+    return () => window.removeEventListener('resize', updateIsMobile);
   }, []);
 
   const handleLogout = async () => {
     const auth = getAuth();
+    clearTenantSession();
     await signOut(auth);
   };
 
+  const handleMaybeClose = () => {
+    if (isMobile && onClose) onClose();
+  };
+
   return (
-    <aside style={{ 
-      width: 240, 
-      backgroundColor: '#1f2937',
-      padding: 12, 
-      height: '100vh', 
-      position: 'sticky', 
-      top: 0
-    }}>
+    <aside
+      className={className}
+      style={{
+        padding: 12,
+        boxSizing: 'border-box',
+        // position sticky já cria contexto para o bloco inferior absoluto
+      }}
+    >
       <div style={{ 
-        fontSize: 18, 
-        fontWeight: 700, 
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
+        fontSize: 18,
+        fontWeight: 700,
         marginBottom: 12,
         color: 'white',
         padding: '8px 0'
       }}>
-        MV SAT
+        <span>MV SAT</span>
+        {/* Botão de fechar visível no mobile (quando sidebar está ativa) */}
+        {isMobile && onClose && (
+          <button
+            onClick={onClose}
+            aria-label="Fechar menu"
+            title="Fechar"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: 'rgba(255,255,255,0.08)',
+              color: 'white',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1px solid rgba(255,255,255,0.12)',
+            }}
+          >
+            ✕
+          </button>
+        )}
       </div>
       <nav>
-        <NavLink to="/dashboard" style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>Dashboard</NavLink>
-        <NavLink to="/clientes" style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>Clientes</NavLink>
-        <NavLink to="/assinaturas" style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>Assinaturas</NavLink>
-        <NavLink to="/equipamentos" style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>Equipamentos</NavLink>
-        <NavLink to="/cobrancas" style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>Cobranças</NavLink>
-        <NavLink to="/despesas" style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>Despesas</NavLink>
-        <NavLink to="/tvbox" style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>TVBox</NavLink>
-        {isAdmin && (
-          <NavLink to="/funcionarios" style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>Funcionários</NavLink>
-        )}
+
+        <NavLink to="/assinaturas" onClick={handleMaybeClose} style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>Assinaturas</NavLink>
+        <NavLink to="/equipamentos" onClick={handleMaybeClose} style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>Equipamentos</NavLink>
+        <NavLink to="/clientes" onClick={handleMaybeClose} style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>Clientes</NavLink>
+        <NavLink to="/cobrancas" onClick={handleMaybeClose} style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>Cobranças</NavLink>
+        <NavLink to="/tvbox" onClick={handleMaybeClose} style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>TVBox</NavLink>
+        <NavLink to="/despesas" onClick={handleMaybeClose} style={({ isActive }) => ({ ...linkBaseStyle, ...(isActive ? activeStyle : {}) })}>Despesas</NavLink>
       </nav>
       {/* User info na parte inferior */}
       <div style={{ 
-        position: 'absolute', 
-        bottom: 12, 
-        left: 12, 
-        right: 12, 
+        position: 'absolute',
+        bottom: 12,
+        left: 12,
+        right: 12,
         background: '#111827', 
         borderRadius: 8, 
         padding: 10, 

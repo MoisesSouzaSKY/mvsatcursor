@@ -1,16 +1,18 @@
 import React from 'react';
-import { collection, getDocs, doc, updateDoc, query, where, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, query, where, writeBatch } from 'firebase/firestore';
 import { getDb } from '../../config/database.config';
 import EditarClienteModal from '../../clientes/EditarClienteModal';
 import NovoClienteModal from '../../clientes/NovoClienteModal';
 import { formatPhoneNumber } from '../../shared/utils/phoneFormatter';
 import { migrarTelefones } from '../../clientes/clientes.functions';
-import { EditIcon, CheckIcon, XMarkIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, FunnelIcon } from '../../clientes/components/Icons';
+import { EyeIcon, EditIcon, DeleteIcon, UserRemoveIcon, CheckIcon, XMarkIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, FunnelIcon } from '../../clientes/components/Icons';
 import { ConfirmacaoDesativacaoModal, SucessoDesativacaoModal } from '../../shared/components/ui';
 import { ClientesHeader } from '../../clientes/components/ClientesHeader';
 import ResponsiveLayout from '../../clientes/components/ResponsiveLayout';
 import ClientesStatistics from '../../clientes/components/ClientesStatistics';
 import ClientesFilters from '../../clientes/components/ClientesFilters';
+import { tenantCollection, tenantDoc } from '../../shared/saas/firestoreTenant';
+import { formatNomePadrao } from '../../shared/utils/nameFormatter';
 
 // Componente StatusBadge moderno para clientes
 const StatusBadge: React.FC<{ status: 'ativo' | 'desativado' | 'inativo' | 'suspenso' | 'cancelado' | string }> = ({ status }) => {
@@ -100,14 +102,14 @@ const StatsCard: React.FC<{
       transition: 'all 0.3s ease',
       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
     }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.transform = 'translateY(-2px)';
-      e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.transform = 'translateY(0)';
-      e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
-    }}>
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+      }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <p style={{ margin: 0, fontSize: '14px', opacity: 0.9, fontWeight: '500' }}>{title}</p>
@@ -170,7 +172,7 @@ const Toast: React.FC<{
     }}>
       <span>{config.icon}</span>
       <span>{message}</span>
-      <button 
+      <button
         onClick={onClose}
         style={{
           background: 'none',
@@ -223,16 +225,17 @@ function pick(obj: any, keys: string[], fallback: any = '') {
 }
 
 function normalizeCliente(obj: any, id: string): Cliente {
-  const nome = pick(obj, ['nome', 'name', 'fullName', 'nome_completo'], '');
+  const nomeRaw = pick(obj, ['nome', 'name', 'fullName', 'nome_completo'], '');
+  const nome = formatNomePadrao(nomeRaw);
   const bairro = pick(obj, ['bairro', 'district', 'neighborhood'], '');
   const tel = pick(obj, ['telefone', 'telefone1', 'telefones', 'phone', 'celular'], '');
   const status = pick(obj, ['status', 'situacao', 'state'], 'ativo');
-  
-  return { 
-    id, 
-    nome: String(nome), 
+
+  return {
+    id,
+    nome: String(nome),
     nomeCompleto: String(nome),
-    bairro: String(bairro), 
+    bairro: String(bairro),
     telefones: String(tel),
     telefone: String(tel),
     telefoneSecundario: pick(obj, ['telefone2', 'telefone_secundario'], ''),
@@ -250,7 +253,7 @@ function normalizeCliente(obj: any, id: string): Cliente {
       pontoReferencia: pick(obj, ['ponto_referencia', 'referencia'], '')
     },
     observacoes: pick(obj, ['observacoes', 'obs', 'notas'], ''),
-    status: String(status) 
+    status: String(status)
   };
 }
 
@@ -300,7 +303,7 @@ export default function ClientesPage() {
       }
     `;
     document.head.appendChild(style);
-    
+
     return () => {
       document.head.removeChild(style);
     };
@@ -316,7 +319,7 @@ export default function ClientesPage() {
   const [activeTab, setActiveTab] = React.useState<'ativos' | 'ex-clientes'>('ativos');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
-  
+
   // Estados para os modais de desativação
   const [showConfirmacaoDesativacao, setShowConfirmacaoDesativacao] = React.useState(false);
   const [showSucessoDesativacao, setShowSucessoDesativacao] = React.useState(false);
@@ -358,22 +361,22 @@ export default function ClientesPage() {
     if (filtered.length === 0) {
       return filtered;
     }
-    
+
     const sortedFiltered = [...filtered].sort((a, b) => {
       const nameA = String(a.nome || '').toLowerCase().trim();
       const nameB = String(b.nome || '').toLowerCase().trim();
-      
+
       if (sortOrder === 'asc') {
         return nameA.localeCompare(nameB, 'pt-BR');
       } else {
         return nameB.localeCompare(nameA, 'pt-BR');
       }
     });
-    
+
     return sortedFiltered;
   }, [items, activeTab, searchTerm, sortOrder]);
 
-    // Função para alternar a ordem de classificação
+  // Função para alternar a ordem de classificação
   const toggleSortOrder = () => {
     const newOrder = sortOrder === 'asc' ? 'desc' : 'asc';
     setSortOrder(newOrder);
@@ -408,13 +411,13 @@ export default function ClientesPage() {
     const desativados = items.filter(c => c.status === 'desativado').length;
     const suspensos = items.filter(c => c.status === 'suspenso').length;
     const inativos = items.filter(c => c.status === 'inativo').length;
-    
-    return { 
-      total, 
-      ativos, 
-      exClientes, 
-      desativados, 
-      suspensos, 
+
+    return {
+      total,
+      ativos,
+      exClientes,
+      desativados,
+      suspensos,
       inativos,
       // Simulando dados de serviços (pode ser calculado de dados reais)
       sky: 0,
@@ -425,7 +428,8 @@ export default function ClientesPage() {
 
   const loadClientes = async () => {
     try {
-      const snap = await getDocs(collection(getDb(), 'clientes'));
+      const db = getDb();
+      const snap = await getDocs(tenantCollection(db, 'clientes'));
       const docs = snap.docs.map(d => normalizeCliente(d.data(), d.id));
       setItems(docs);
     } catch (e: any) {
@@ -440,7 +444,18 @@ export default function ClientesPage() {
     setShowModal(true);
   };
 
-
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir este cliente?')) {
+      try {
+        const db = getDb();
+        await deleteDoc(tenantDoc(db, 'clientes', id));
+        await loadClientes();
+        showToastMessage('Cliente excluído com sucesso!', 'success');
+      } catch (e: any) {
+        showToastMessage('Erro ao excluir cliente: ' + e.message, 'error');
+      }
+    }
+  };
 
   const handleToggleStatus = async (cliente: Cliente) => {
     // Se for para desativar, mostrar modal de confirmação
@@ -451,7 +466,8 @@ export default function ClientesPage() {
       // Se for para ativar, usar o fluxo antigo (mais simples)
       if (window.confirm(`Tem certeza que deseja ativar o cliente ${cliente.nome}?`)) {
         try {
-          await updateDoc(doc(getDb(), 'clientes', cliente.id), {
+          const db = getDb();
+          await updateDoc(tenantDoc(db, 'clientes', cliente.id), {
             status: 'ativo',
             dataUltimaAtualizacao: new Date()
           });
@@ -468,24 +484,25 @@ export default function ClientesPage() {
   // Função para confirmar desativação
   const handleConfirmarDesativacao = async () => {
     if (!clienteParaDesativar) return;
-    
+
     try {
       setDesativandoCliente(true);
-      
+
       // 1) Desativa o cliente
-      await updateDoc(doc(getDb(), 'clientes', clienteParaDesativar.id), {
+      const db = getDb();
+      await updateDoc(tenantDoc(db, 'clientes', clienteParaDesativar.id), {
         status: 'desativado',
         dataUltimaAtualizacao: new Date()
       });
-      
+
       // 2) Libera equipamentos vinculados (coleção 'equipamentos')
       const equipamentosQueryRef = query(
-        collection(getDb(), 'equipamentos'),
+        tenantCollection(db, 'equipamentos'),
         where('cliente_id', '==', clienteParaDesativar.id)
       );
       const equipamentosSnap = await getDocs(equipamentosQueryRef);
       if (!equipamentosSnap.empty) {
-        const batch = writeBatch(getDb());
+        const batch = writeBatch(db);
         equipamentosSnap.docs.forEach((d) => {
           batch.update(d.ref, {
             cliente_id: null,
@@ -498,15 +515,15 @@ export default function ClientesPage() {
         });
         await batch.commit();
       }
-      
+
       // 3) Libera TV Boxes vinculadas (coleção 'tvbox')
       const tvboxQueryRef = query(
-        collection(getDb(), 'tvbox'),
+        tenantCollection(db, 'tvbox'),
         where('cliente_id', '==', clienteParaDesativar.id)
       );
       const tvboxSnap = await getDocs(tvboxQueryRef);
       if (!tvboxSnap.empty) {
-        const batch = writeBatch(getDb());
+        const batch = writeBatch(db);
         tvboxSnap.docs.forEach((d) => {
           batch.update(d.ref, {
             cliente_id: null,
@@ -519,11 +536,11 @@ export default function ClientesPage() {
         });
         await batch.commit();
       }
-      
+
       // 4) Guarda totais para o modal de sucesso
       setEquipamentosLiberados(equipamentosSnap.size);
       setTvBoxesLiberadas(tvboxSnap.size);
-      
+
       await loadClientes();
       setShowConfirmacaoDesativacao(false);
       setShowSucessoDesativacao(true);
@@ -607,7 +624,7 @@ export default function ClientesPage() {
         <div style={{ fontSize: '48px' }}>⚠️</div>
         <h3 style={{ color: '#dc2626', margin: 0 }}>Erro ao carregar clientes</h3>
         <p style={{ color: '#6b7280', textAlign: 'center' }}>{error}</p>
-        <button 
+        <button
           onClick={() => window.location.reload()}
           style={{
             padding: '8px 16px',
@@ -627,7 +644,7 @@ export default function ClientesPage() {
   return (
     <ResponsiveLayout>
       {/* Toast Notification */}
-      <Toast 
+      <Toast
         message={toastMessage}
         type={toastType}
         show={showToast}
@@ -646,9 +663,9 @@ export default function ClientesPage() {
 
       {/* Statistics */}
       <div className="responsive-card-grid">
-        <ClientesStatistics 
-          clientes={items} 
-          loading={loading} 
+        <ClientesStatistics
+          clientes={items}
+          loading={loading}
         />
       </div>
 
@@ -669,8 +686,60 @@ export default function ClientesPage() {
         />
       </div>
 
+      {/* Botão Novo Cliente Centralizado */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        marginBottom: '24px'
+      }}>
+        <button
+          onClick={() => setShowNovoClienteModal(true)}
+          disabled={loading}
+          style={{
+            backgroundColor: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '12px',
+            padding: '16px 32px',
+            fontSize: '16px',
+            fontWeight: '600',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+            transition: 'all 0.2s ease',
+            outline: 'none',
+            opacity: loading ? 0.6 : 1
+          }}
+          onMouseEnter={(e) => {
+            if (!loading) {
+              e.currentTarget.style.backgroundColor = '#059669';
+              e.currentTarget.style.boxShadow = '0 8px 20px rgba(16, 185, 129, 0.4)';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!loading) {
+              e.currentTarget.style.backgroundColor = '#10b981';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.25)';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.3)';
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.25)';
+          }}
+        >
+          <span style={{ fontSize: '16px' }}>➕</span>
+          Novo Cliente
+        </button>
+      </div>
+
       {/* Tabela moderna */}
-      <div style={{ 
+      <div style={{
         background: 'white',
         borderRadius: 12,
         overflow: 'hidden',
@@ -697,10 +766,10 @@ export default function ClientesPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
-                <th 
-                  style={{ 
-                    padding: '16px 20px', 
-                    textAlign: 'left', 
+                <th
+                  style={{
+                    padding: '16px 20px',
+                    textAlign: 'left',
                     borderBottom: '2px solid #e2e8f0',
                     cursor: 'pointer',
                     userSelect: 'none',
@@ -719,8 +788,8 @@ export default function ClientesPage() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     👤 Nome
-                    <span style={{ 
-                      fontSize: '12px', 
+                    <span style={{
+                      fontSize: '12px',
                       opacity: 0.7,
                       transition: 'transform 0.2s ease',
                       color: '#3b82f6'
@@ -729,33 +798,33 @@ export default function ClientesPage() {
                     </span>
                   </div>
                 </th>
-                <th style={{ 
-                  padding: '16px 20px', 
-                  textAlign: 'left', 
+                <th style={{
+                  padding: '16px 20px',
+                  textAlign: 'left',
                   borderBottom: '2px solid #e2e8f0',
                   fontSize: '14px',
                   fontWeight: '600',
                   color: '#374151'
                 }}>📍 Bairro</th>
-                <th style={{ 
-                  padding: '16px 20px', 
-                  textAlign: 'left', 
+                <th style={{
+                  padding: '16px 20px',
+                  textAlign: 'left',
                   borderBottom: '2px solid #e2e8f0',
                   fontSize: '14px',
                   fontWeight: '600',
                   color: '#374151'
                 }}>📞 Telefones</th>
-                <th style={{ 
-                  padding: '16px 20px', 
-                  textAlign: 'left', 
+                <th style={{
+                  padding: '16px 20px',
+                  textAlign: 'left',
                   borderBottom: '2px solid #e2e8f0',
                   fontSize: '14px',
                   fontWeight: '600',
                   color: '#374151'
                 }}>🏷️ Status</th>
-                <th style={{ 
-                  padding: '16px 20px', 
-                  textAlign: 'center', 
+                <th style={{
+                  padding: '16px 20px',
+                  textAlign: 'center',
                   borderBottom: '2px solid #e2e8f0',
                   fontSize: '14px',
                   fontWeight: '600',
@@ -765,10 +834,10 @@ export default function ClientesPage() {
             </thead>
             <tbody>
               {filteredItems.map((c, index) => (
-                <tr 
-                  key={c.id} 
+                <tr
+                  key={c.id}
                   className={highlightedRows.has(c.id) ? 'highlight-row' : ''}
-                  style={{ 
+                  style={{
                     borderBottom: '1px solid #f1f5f9',
                     backgroundColor: index % 2 === 0 ? '#ffffff' : '#fafbfc',
                     transition: 'all 0.2s ease'
@@ -784,22 +853,22 @@ export default function ClientesPage() {
                     }
                   }}
                 >
-                  <td style={{ 
-                    padding: '16px 20px', 
+                  <td style={{
+                    padding: '16px 20px',
                     fontWeight: 600,
                     fontSize: '14px',
                     color: '#1f2937'
                   }}>
                     {c.nome || '—'}
                   </td>
-                  <td style={{ 
+                  <td style={{
                     padding: '16px 20px',
                     fontSize: '14px',
                     color: '#6b7280'
                   }}>
                     {c.bairro || '—'}
                   </td>
-                  <td style={{ 
+                  <td style={{
                     padding: '16px 20px',
                     fontSize: '14px',
                     color: '#6b7280'
@@ -810,89 +879,107 @@ export default function ClientesPage() {
                     <StatusBadge status={c.status || ''} />
                   </td>
                   <td style={{ padding: '16px 20px' }}>
-                    <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-                      <button 
-                        onClick={() => handleEdit(c)} 
-                        style={{ 
-                          padding: '12px 16px', 
-                          background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', 
-                          border: 'none', 
-                          borderRadius: 8, 
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                      <button
+                        onClick={() => handleEdit(c)}
+                        style={{
+                          padding: '8px 16px',
+                          background: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 6,
                           cursor: 'pointer',
                           transition: 'all 0.2s ease',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          gap: '8px',
-                          minWidth: '120px',
+                          gap: '6px',
                           fontSize: '14px',
                           fontWeight: '500',
-                          color: '#92400e'
-                        }} 
+                          minWidth: '80px',
+                          height: '32px'
+                        }}
                         title="Editar cliente"
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'scale(1.05)';
-                          e.currentTarget.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
-                          e.currentTarget.style.color = '#ffffff';
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.backgroundColor = '#2563eb';
+                          e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)';
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'scale(1)';
-                          e.currentTarget.style.background = 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)';
-                          e.currentTarget.style.color = '#92400e';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.backgroundColor = '#3b82f6';
+                          e.currentTarget.style.boxShadow = 'none';
                         }}
                       >
                         <EditIcon />
                         Editar
                       </button>
-                      <button 
-                        onClick={() => handleToggleStatus(c)} 
-                        style={{ 
-                          padding: '12px 16px', 
-                          background: c.status === 'ativo' 
-                            ? 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)' 
-                            : 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', 
-                          border: 'none', 
-                          borderRadius: 8, 
+                      <button
+                        onClick={() => handleToggleStatus(c)}
+                        style={{
+                          padding: 8,
+                          background: c.status === 'ativo'
+                            ? 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'
+                            : 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)',
+                          border: 'none',
+                          borderRadius: 6,
                           cursor: 'pointer',
                           transition: 'all 0.2s ease',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '8px',
-                          minWidth: '140px',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          color: c.status === 'ativo' ? '#dc2626' : '#15803d'
-                        }} 
+                          justifyContent: 'center'
+                        }}
                         title={c.status === 'ativo' ? 'Desativar cliente' : 'Ativar cliente'}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'scale(1.05)';
+                          e.currentTarget.style.transform = 'scale(1.1)';
                           e.currentTarget.style.background = c.status === 'ativo'
                             ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'
                             : 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)';
-                          e.currentTarget.style.color = '#ffffff';
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.transform = 'scale(1)';
-                          e.currentTarget.style.background = c.status === 'ativo' 
-                            ? 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)' 
+                          e.currentTarget.style.background = c.status === 'ativo'
+                            ? 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'
                             : 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)';
-                          e.currentTarget.style.color = c.status === 'ativo' ? '#dc2626' : '#15803d';
                         }}
                       >
                         {c.status === 'ativo' ? <XMarkIcon /> : <CheckIcon />}
-                        {c.status === 'ativo' ? 'Desativar' : 'Ativar'}
                       </button>
+                    <button
+                      onClick={() => handleDelete(c.id)}
+                      style={{
+                        padding: 8,
+                        background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)',
+                        border: 'none',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      title="Excluir"
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.1)';
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)';
+                      }}
+                    >
+                      <DeleteIcon />
+                    </button>
                     </div>
                   </td>
                 </tr>
               ))}
-            </tbody>
+          </tbody>
           </table>
         )}
-      </div>
+    </div>
 
-      {/* Modals */}
+      {/* Modals */ }
       <EditarClienteModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
@@ -906,24 +993,24 @@ export default function ClientesPage() {
         onSave={handleSave}
       />
 
-      {/* Modal de confirmação de desativação */}
-      <ConfirmacaoDesativacaoModal
-        open={showConfirmacaoDesativacao}
-        onClose={() => setShowConfirmacaoDesativacao(false)}
-        onConfirm={handleConfirmarDesativacao}
-        clienteNome={clienteParaDesativar?.nome || ''}
-        loading={desativandoCliente}
-      />
+  {/* Modal de confirmação de desativação */ }
+  <ConfirmacaoDesativacaoModal
+    open={showConfirmacaoDesativacao}
+    onClose={() => setShowConfirmacaoDesativacao(false)}
+    onConfirm={handleConfirmarDesativacao}
+    clienteNome={clienteParaDesativar?.nome || ''}
+    loading={desativandoCliente}
+  />
 
-      {/* Modal de sucesso na desativação */}
-      <SucessoDesativacaoModal
-        open={showSucessoDesativacao}
-        onClose={handleFecharSucesso}
-        clienteNome={clienteParaDesativar?.nome || ''}
-        equipamentosLiberados={equipamentosLiberados}
-        tvBoxesLiberadas={tvBoxesLiberadas}
-      />
-    </ResponsiveLayout>
+  {/* Modal de sucesso na desativação */ }
+  <SucessoDesativacaoModal
+    open={showSucessoDesativacao}
+    onClose={handleFecharSucesso}
+    clienteNome={clienteParaDesativar?.nome || ''}
+    equipamentosLiberados={equipamentosLiberados}
+    tvBoxesLiberadas={tvBoxesLiberadas}
+  />
+    </ResponsiveLayout >
   );
 }
 

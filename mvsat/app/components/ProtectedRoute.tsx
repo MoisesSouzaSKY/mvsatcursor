@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { Navigate } from 'react-router-dom';
+import { loadTenantSession } from '../../shared/saas/session';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -22,20 +23,16 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
       }
 
       try {
-        const token = await user.getIdTokenResult();
-        const role = token.claims?.role || '';
-        console.log('ProtectedRoute - Token claims:', token.claims); // Debug
-        console.log('ProtectedRoute - Role:', role); // Debug
-        console.log('ProtectedRoute - Required role:', requiredRole); // Debug
-        setUserRole(role);
-        
-        // Verificar se o usuário tem o cargo necessário
+        const session = loadTenantSession();
+        const tipo = session?.tipo || '';
+        setUserRole(tipo || '—');
+
         if (requiredRole === 'Admin') {
-          const hasAdminAccess = role === 'Admin' || role === 'admin';
-          console.log('ProtectedRoute - Has admin access:', hasAdminAccess); // Debug
-          setHasAccess(hasAdminAccess);
+          setHasAccess(tipo === 'admin');
+        } else if (requiredRole === 'Gerente') {
+          setHasAccess(tipo === 'admin' || tipo === 'gerente');
         } else {
-          setHasAccess(true); // Para outras rotas, qualquer usuário autenticado pode acessar
+          setHasAccess(true);
         }
       } catch (error) {
         console.error('Erro ao verificar permissões:', error);

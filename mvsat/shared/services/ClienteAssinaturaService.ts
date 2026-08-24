@@ -1,5 +1,6 @@
-import { collection, getDocs, query, where, doc, getDoc, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { getDocs, query, where, doc, getDoc, onSnapshot, Unsubscribe, documentId } from 'firebase/firestore';
 import { getDb } from '../../config/database.config';
+import { tenantCollection, tenantDoc } from '../saas/firestoreTenant';
 
 export interface ClienteAssinatura {
   id: string;
@@ -104,29 +105,54 @@ export class ClienteAssinaturaService {
 
     try {
       console.log(`🔍 [ClienteAssinaturaService] Buscando clientes para assinatura: ${assinaturaId}`);
-      
-      // Busca clientes diretamente pela assinatura_id
-      const clientesQuery = query(
-        collection(this.db, 'clientes'),
-        where('assinatura_id', '==', assinaturaId)
+
+      // Modelo SaaS: clientes não guardam assinatura_id.
+      // Fonte de verdade: equipamentos vinculados à assinatura -> coletar cliente_id.
+      const equipamentos = await this.getEquipamentosByAssinaturaId(assinaturaId);
+      const clienteIds = Array.from(
+        new Set(
+          equipamentos
+            .map((e) => e.cliente_id || null)
+            .filter((id): id is string => Boolean(id))
+        )
       );
-      
-      const clientesSnap = await getDocs(clientesQuery);
+
+      if (clienteIds.length === 0) {
+        this.setCached(cacheKey, []);
+        return [];
+      }
+
+      // Buscar clientes em chunks (Firestore: 'in' até 10)
+      const clientesMap = new Map<string, any>();
+      for (let i = 0; i < clienteIds.length; i += 10) {
+        const slice = clienteIds.slice(i, i + 10);
+        const qClientes = query(
+          tenantCollection(this.db, 'clientes'),
+          where(documentId(), 'in', slice)
+        );
+        const snap = await getDocs(qClientes);
+        snap.docs.forEach((d) => clientesMap.set(d.id, d.data()));
+      }
+
+      // Agrupar equipamentos por cliente_id
+      const eqByCliente = new Map<string, Equipamento[]>();
+      for (const eq of equipamentos) {
+        const cid = eq.cliente_id || null;
+        if (!cid) continue;
+        if (!eqByCliente.has(cid)) eqByCliente.set(cid, []);
+        eqByCliente.get(cid)!.push(eq);
+      }
+
       const clientes: ClienteAssinatura[] = [];
-      
-      for (const clienteDoc of clientesSnap.docs) {
-        const clienteData = clienteDoc.data();
-        
-        // Busca equipamentos associados a este cliente (com cache)
-        const equipamentos = await this.getEquipamentosByClienteId(clienteDoc.id);
-        
+      for (const cid of clienteIds) {
+        const data = clientesMap.get(cid) || {};
         clientes.push({
-          id: clienteDoc.id,
-          assinatura_id: clienteData.assinatura_id || assinaturaId,
-          cliente_id: clienteDoc.id,
-          cliente_nome: clienteData.nomeCompleto || clienteData.nome || 'Cliente sem nome',
-          equipamentos,
-          status: clienteData.status || 'ativo'
+          id: cid,
+          assinatura_id: assinaturaId,
+          cliente_id: cid,
+          cliente_nome: data.nomeCompleto || data.nome || 'Cliente sem nome',
+          equipamentos: eqByCliente.get(cid) || [],
+          status: data.status || 'ativo',
         });
       }
       
@@ -156,7 +182,7 @@ export class ClienteAssinaturaService {
 
     try {
       const equipamentosQuery = query(
-        collection(this.db, 'equipamentos'),
+        tenantCollection(this.db, 'equipamentos'),
         where('cliente_id', '==', clienteId)
       );
       
@@ -195,7 +221,7 @@ export class ClienteAssinaturaService {
       console.log(`🔍 [ClienteAssinaturaService] Buscando dados completos da assinatura: ${assinaturaId}`);
       
       // Busca dados da assinatura
-      const assinaturaDoc = await getDoc(doc(this.db, 'assinaturas', assinaturaId));
+      const assinaturaDoc = await getDoc(tenantDoc(this.db, 'assinaturas', assinaturaId));
       
       if (!assinaturaDoc.exists()) {
         console.warn(`⚠️ [ClienteAssinaturaService] Assinatura ${assinaturaId} não encontrada`);
@@ -233,22 +259,11 @@ export class ClienteAssinaturaService {
    */
   async getEquipamentosByAssinaturaId(assinaturaId: string): Promise<Equipamento[]> {
     try {
-      // Busca por assinatura_id
-      const equipamentosQuery1 = query(
-        collection(this.db, 'equipamentos'),
-        where('assinatura_id', '==', assinaturaId)
-      );
-      
-      // Busca por legacy_id (compatibilidade)
-      const equipamentosQuery2 = query(
-        collection(this.db, 'equipamentos'),
-        where('legacy_id', '==', assinaturaId)
-      );
-      
-      const [snap1, snap2] = await Promise.all([
-        getDocs(equipamentosQuery1),
-        getDocs(equipamentosQuery2)
-      ]);
+      // Busca por assinatura_id / assinaturaId (compatibilidade)
+      const equipamentosQuery1 = query(tenantCollection(this.db, 'equipamentos'), where('assinatura_id', '==', assinaturaId));
+      const equipamentosQuery2 = query(tenantCollection(this.db, 'equipamentos'), where('assinaturaId', '==', assinaturaId));
+
+      const [snap1, snap2] = await Promise.all([getDocs(equipamentosQuery1), getDocs(equipamentosQuery2)]);
       
       const equipamentos: Equipamento[] = [];
       const processedIds = new Set<string>();

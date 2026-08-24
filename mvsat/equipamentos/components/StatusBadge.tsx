@@ -10,26 +10,53 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
     
     switch (normalizedStatus) {
       case 'disponivel':
+      case 'disponível':
         return {
           backgroundColor: '#dcfce7',
           color: '#166534',
           text: 'Disponível',
           icon: '🟢'
         };
-      case 'alugado':
+      case 'em_uso':
+      case 'em uso':
+      case 'alugado': // legado
         return {
           backgroundColor: '#e0e7ff',
           color: '#3730a3',
-          text: 'Alugado',
+          text: 'Em Uso',
           icon: '🔵'
         };
-      case 'problema':
-      case 'com_problema':
+      case 'reserva':
+        return {
+          backgroundColor: '#f5f3ff',
+          color: '#5b21b6',
+          text: 'Reserva',
+          icon: '🟣'
+        };
+      case 'defeito':
+      case 'problema': // legado
+      case 'com_problema': // legado
         return {
           backgroundColor: '#fee2e2',
           color: '#991b1b',
-          text: 'Com Problema',
+          text: 'Defeito',
           icon: '🔴'
+        };
+      case 'descartado':
+        return {
+          backgroundColor: '#f3f4f6',
+          color: '#111827',
+          text: 'Descartado',
+          icon: '⚫'
+        };
+      case 'inativo':
+      case 'excluido':
+      case 'excluído':
+        return {
+          backgroundColor: '#f1f5f9',
+          color: '#475569',
+          text: 'Inativo',
+          icon: '🗑️'
         };
       default:
         return {

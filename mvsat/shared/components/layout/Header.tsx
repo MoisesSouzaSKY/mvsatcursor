@@ -211,12 +211,6 @@ export function usePageHeader() {
     
     switch (path) {
       case '/':
-      case '/dashboard':
-        return {
-          title: 'Dashboard',
-          subtitle: 'Visão geral do sistema MVSAT',
-          icon: '📊',
-        };
       case '/clientes':
         return {
           title: 'Clientes',

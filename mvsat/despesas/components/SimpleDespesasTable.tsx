@@ -185,7 +185,7 @@ const SimpleDespesasTable: React.FC<SimpleDespesasTableProps> = ({
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
         overflow: 'hidden'
       }}>
-        <div style={{ overflowX: 'auto' }}>
+        <div className="table-container" style={{ overflowX: 'auto' }}>
           <table style={{
             width: '100%',
             borderCollapse: 'collapse'
@@ -316,6 +316,18 @@ const SimpleDespesasTable: React.FC<SimpleDespesasTableProps> = ({
                     fontWeight: '500'
                   }}>
                     {getTipoNome(despesa.origemTipo || '')}
+                    {/* Linha complementar de origem para qualquer despesa */}
+                    <div style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px' }}>
+                      {despesa.origemTipo === 'ASSINATURA_TVBOX' && (
+                        <>Login: {despesa.origemNome || despesa.descricao?.replace('Renovação TV Box — login ', '') || '—'}</>
+                      )}
+                      {despesa.origemTipo === 'ASSINATURA' && (
+                        <>Assinatura: {despesa.origemNome || despesa.origemId || '—'}</>
+                      )}
+                      {!despesa.origemTipo && despesa.descricao && (
+                        <>{despesa.descricao}</>
+                      )}
+                    </div>
                   </td>
 
                   {/* Valor */}

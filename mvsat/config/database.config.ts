@@ -38,7 +38,11 @@ export async function initFirebase(): Promise<void> {
       if (typeof window !== 'undefined') {
         const isHosting = /\.web\.app$|\.firebaseapp\.com$/i.test(window.location.host);
         if (isHosting) {
-          const res = await fetch('/__/firebase/init.json');
+          // Evitar travar o app por fetch lento/pendurado
+          const controller = new AbortController();
+          const timer = window.setTimeout(() => controller.abort(), 3500);
+          const res = await fetch('/__/firebase/init.json', { signal: controller.signal });
+          window.clearTimeout(timer);
           if (res.ok) {
             config = await res.json();
           }
@@ -49,8 +53,8 @@ export async function initFirebase(): Promise<void> {
   }
 
   authInstance = getAuth(app!);
-  dbInstance = getFirestore(app!);
-  storageInstance = getStorage(app!);
+  // IMPORTANTE: não inicializar Firestore/Storage aqui para não travar a renderização.
+  // Esses serviços serão inicializados sob demanda em `getDb()` / `getStorageInstance()`.
 }
 
 export function getApp(): FirebaseApp {

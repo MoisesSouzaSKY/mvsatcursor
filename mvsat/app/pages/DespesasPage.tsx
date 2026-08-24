@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { collection, getDocs, updateDoc, doc, serverTimestamp, addDoc } from 'firebase/firestore';
 import { getDb } from '../../config/database.config';
-import { fileToBase64 } from '../../shared/base64';
+import { uploadFileToStorage } from '../../shared/services/storageUpload';
+import { tenantCollection, tenantDoc } from '../../shared/saas/firestoreTenant';
 
 // Enhanced Components
 import ResponsiveLayout from '../../despesas/components/ResponsiveLayout';
@@ -34,6 +35,15 @@ interface Despesa {
   origemNome?: string;
   formaPagamento?: string;
   competencia?: string;
+  comprovante?: {
+    storageUrl?: string;
+    storagePath?: string;
+    base64?: string;
+    mimeType: string;
+    filename: string;
+    uploadedAt: any;
+  };
+  observacoes?: string;
 }
 
 interface PaymentData {
@@ -77,7 +87,8 @@ export default function DespesasPage() {
       setLoading(true);
       setError(null);
       
-      const snap = await getDocs(collection(getDb(), 'despesas'));
+      const db = getDb();
+      const snap = await getDocs(tenantCollection(db, 'despesas'));
       const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as Despesa));
       
       // Preencher campos faltantes automaticamente e atualizar no banco
@@ -125,7 +136,7 @@ export default function DespesasPage() {
         if (needsUpdate) {
           try {
             updates.updatedAt = serverTimestamp();
-            await updateDoc(doc(getDb(), 'despesas', String(despesa.id)), updates);
+            await updateDoc(tenantDoc(db, 'despesas', String(despesa.id)), updates);
           } catch (updateError) {
             console.warn('Erro ao atualizar despesa:', despesa.id, updateError);
           }
@@ -188,16 +199,22 @@ export default function DespesasPage() {
       }
       
       if (paymentData.comprovante) {
-        const base64 = await fileToBase64(paymentData.comprovante);
+        const uploaded = await uploadFileToStorage({
+          folder: 'comprovantes/despesas',
+          entityId: String(despesaSelecionada.id),
+          file: paymentData.comprovante
+        });
         updates.comprovante = {
-          base64,
-          mimeType: paymentData.comprovante.type,
-          filename: paymentData.comprovante.name,
-          uploadedAt: serverTimestamp()
+          storageUrl: uploaded.storageUrl,
+          storagePath: uploaded.storagePath,
+          mimeType: uploaded.mimeType,
+          filename: uploaded.filename,
+          uploadedAt: uploaded.uploadedAt
         };
       }
       
-      await updateDoc(doc(getDb(), 'despesas', String(despesaSelecionada.id)), updates);
+      const db = getDb();
+      await updateDoc(tenantDoc(db, 'despesas', String(despesaSelecionada.id)), updates);
       
       // Update local state
       setDespesas(prev => prev.map(d => 
@@ -256,7 +273,7 @@ export default function DespesasPage() {
       };
       
       // Salvar no Firebase
-      const docRef = await addDoc(collection(getDb(), 'despesas'), novaDespesa);
+      const docRef = await addDoc(tenantCollection(getDb(), 'despesas'), novaDespesa);
       
       // Adicionar à lista local
       const despesaComId = { ...novaDespesa, id: docRef.id } as Despesa;
@@ -314,6 +331,58 @@ export default function DespesasPage() {
           onMonthFilterChange={setMonthFilter}
           loading={loading}
         />
+      </div>
+
+      {/* Botão Nova Despesa Centralizado */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        marginBottom: '24px'
+      }}>
+        <button
+          onClick={handleNovaDesepsa}
+          disabled={loading}
+          style={{
+            backgroundColor: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '12px',
+            padding: '16px 32px',
+            fontSize: '16px',
+            fontWeight: '600',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+            transition: 'all 0.2s ease',
+            outline: 'none',
+            opacity: loading ? 0.6 : 1
+          }}
+          onMouseEnter={(e) => {
+            if (!loading) {
+              e.currentTarget.style.backgroundColor = '#059669';
+              e.currentTarget.style.boxShadow = '0 8px 20px rgba(16, 185, 129, 0.4)';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!loading) {
+              e.currentTarget.style.backgroundColor = '#10b981';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.25)';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.3)';
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.25)';
+          }}
+        >
+          <span style={{ fontSize: '16px' }}>➕</span>
+          Nova Despesa
+        </button>
       </div>
 
       {/* Table */}

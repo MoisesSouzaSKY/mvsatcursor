@@ -4,6 +4,7 @@ export interface CobrancasHeaderProps {
   totalCobrancas: number;
   valorTotal: number;
   onNewCobranca?: () => void;
+  onResumo?: () => void;
   loading?: boolean;
 }
 
@@ -11,6 +12,7 @@ export function CobrancasHeader({
   totalCobrancas, 
   valorTotal,
   onNewCobranca,
+  onResumo,
   loading = false
 }: CobrancasHeaderProps) {
   const formatCurrency = (value: number) => {
@@ -112,6 +114,49 @@ export function CobrancasHeader({
           alignItems: 'center',
           flexWrap: 'wrap'
         }}>
+          {onResumo && (
+            <button
+              onClick={onResumo}
+              disabled={loading}
+              style={{
+                backgroundColor: '#2563eb',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '16px 28px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+                transition: 'all 0.2s ease',
+                outline: 'none',
+                opacity: loading ? 0.6 : 1
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.backgroundColor = '#1d4ed8';
+                  e.currentTarget.style.boxShadow = '0 8px 20px rgba(37, 99, 235, 0.4)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.backgroundColor = '#2563eb';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.25)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }
+              }}
+              aria-label="Abrir resumo financeiro"
+              title="Resumo financeiro"
+            >
+              <span style={{ fontSize: '16px' }}>📊</span>
+              Resumo
+            </button>
+          )}
+
           {onNewCobranca && (
             <button
               onClick={onNewCobranca}

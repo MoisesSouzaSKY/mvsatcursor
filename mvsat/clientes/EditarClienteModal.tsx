@@ -2,6 +2,7 @@ import React from 'react';
 import { hasPermissionForCurrentUser } from '../shared/permissions';
 import { atualizarCliente } from './clientes.functions';
 import { formatPhoneNumber, normalizePhoneNumber, validatePhoneNumber } from '../shared/utils/phoneFormatter';
+import { formatNomePadrao } from '../shared/utils/nameFormatter';
 
 interface Cliente {
   id: string;
@@ -142,11 +143,13 @@ export default function EditarClienteModal({ isOpen, onClose, onSave, cliente }:
 
     try {
       setLoading(true);
+
+      const nomePadrao = formatNomePadrao(formData.nomeCompleto || '');
       
       // Preparar dados para salvar - normaliza os telefones para armazenamento
       const dadosParaSalvar = {
-        nome: formData.nomeCompleto,
-        nomeCompleto: formData.nomeCompleto,
+        nome: nomePadrao,
+        nomeCompleto: nomePadrao,
         telefone: normalizePhoneNumber(formData.telefone || ''),
         telefoneSecundario: normalizePhoneNumber(formData.telefoneSecundario || ''),
         email: formData.email || '',

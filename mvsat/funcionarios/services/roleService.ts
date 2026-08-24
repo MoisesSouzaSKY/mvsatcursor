@@ -1,6 +1,7 @@
 import { Role, RolePermission, DEFAULT_ROLES } from '../types';
 import { PermissionUtils } from '../utils';
 import { getDb } from '../../config/database.config';
+import { getEmpresaIdOrThrow } from '../../shared/saas/firestoreTenant';
 import {
   collection,
   doc,
@@ -300,7 +301,8 @@ export class RoleService {
 
   private static async findRoleByName(name: string): Promise<Role | null> {
     const db = getDb();
-    const ref = collection(db, 'roles');
+    const empresaId = getEmpresaIdOrThrow();
+    const ref = collection(db, 'empresas', empresaId, 'roles');
     const q = query(ref, where('name', '==', name));
     const snap = await getDocs(q);
     if (snap.empty) return null;
@@ -312,7 +314,8 @@ export class RoleService {
 
   private static async findRoleById(id: string): Promise<Role | null> {
     const db = getDb();
-    const ref = doc(db, 'roles', id);
+    const empresaId = getEmpresaIdOrThrow();
+    const ref = doc(db, 'empresas', empresaId, 'roles', id);
     const snap = await getDoc(ref);
     if (!snap.exists()) return null;
     const role = { id: snap.id, ...snap.data() } as unknown as Role;
@@ -322,7 +325,8 @@ export class RoleService {
 
   private static async findAllRoles(): Promise<Role[]> {
     const db = getDb();
-    const ref = collection(db, 'roles');
+    const empresaId = getEmpresaIdOrThrow();
+    const ref = collection(db, 'empresas', empresaId, 'roles');
     const snap = await getDocs(ref);
     const roles: Role[] = [];
     for (const d of snap.docs) {
@@ -335,7 +339,8 @@ export class RoleService {
 
   private static async findDefaultRoles(): Promise<Role[]> {
     const db = getDb();
-    const ref = collection(db, 'roles');
+    const empresaId = getEmpresaIdOrThrow();
+    const ref = collection(db, 'empresas', empresaId, 'roles');
     const q = query(ref, where('isDefault', '==', true));
     const snap = await getDocs(q);
     const roles: Role[] = [];
@@ -349,7 +354,8 @@ export class RoleService {
 
   private static async insertRole(data: { name: string; description: string; isDefault: boolean }): Promise<Role> {
     const db = getDb();
-    const ref = collection(db, 'roles');
+    const empresaId = getEmpresaIdOrThrow();
+    const ref = collection(db, 'empresas', empresaId, 'roles');
     const docRef = await addDoc(ref, {
       name: data.name,
       description: data.description,
@@ -363,14 +369,16 @@ export class RoleService {
 
   private static async updateRoleBasicData(roleId: string, data: { name: string; description: string }): Promise<void> {
     const db = getDb();
-    const ref = doc(db, 'roles', roleId);
+    const empresaId = getEmpresaIdOrThrow();
+    const ref = doc(db, 'empresas', empresaId, 'roles', roleId);
     await updateDoc(ref, { ...data, updatedAt: new Date() });
   }
 
   private static async updateRolePermissions(roleId: string, permissions: string[]): Promise<void> {
     const db = getDb();
+    const empresaId = getEmpresaIdOrThrow();
     // Apaga subcoleção role_permissions
-    const sub = collection(db, 'roles', roleId, 'permissions');
+    const sub = collection(db, 'empresas', empresaId, 'roles', roleId, 'permissions');
     const existing = await getDocs(sub);
     await Promise.all(existing.docs.map(d => deleteDoc(d.ref)));
 
@@ -388,19 +396,22 @@ export class RoleService {
 
   private static async deleteRolePermissions(roleId: string): Promise<void> {
     const db = getDb();
-    const sub = collection(db, 'roles', roleId, 'permissions');
+    const empresaId = getEmpresaIdOrThrow();
+    const sub = collection(db, 'empresas', empresaId, 'roles', roleId, 'permissions');
     const snap = await getDocs(sub);
     await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
   }
 
   private static async deleteRoleRecord(roleId: string): Promise<void> {
     const db = getDb();
-    await deleteDoc(doc(db, 'roles', roleId));
+    const empresaId = getEmpresaIdOrThrow();
+    await deleteDoc(doc(db, 'empresas', empresaId, 'roles', roleId));
   }
 
   private static async countEmployeesWithRole(roleId: string): Promise<number> {
     const db = getDb();
-    const ref = collection(db, 'employees');
+    const empresaId = getEmpresaIdOrThrow();
+    const ref = collection(db, 'empresas', empresaId, 'funcionarios');
     const q = query(ref, where('roleId', '==', roleId));
     const snap = await getDocs(q);
     return snap.size;

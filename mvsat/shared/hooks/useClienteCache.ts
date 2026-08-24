@@ -41,7 +41,7 @@ export const useClienteCache = (): ClienteCacheHook => {
     updateState({ isLoading: true, error: null });
 
     try {
-      console.log(`🔄 [useClienteCache] Resolvendo ${validIds.length} clientes`);
+      // console.log(`🔄 [useClienteCache] Resolvendo ${validIds.length} clientes`);
       
       const resolvedClientes = await clienteResolutionService.batchResolveClientes(validIds);
       
@@ -60,7 +60,7 @@ export const useClienteCache = (): ClienteCacheHook => {
         error: null
       });
 
-      console.log(`✅ [useClienteCache] Cache atualizado com ${resolvedClientes.size} clientes`);
+      // console.log(`✅ [useClienteCache] Cache atualizado com ${resolvedClientes.size} clientes`);
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
@@ -119,7 +119,7 @@ export const useClienteCache = (): ClienteCacheHook => {
   }, [updateState]);
 
   const clearCache = useCallback(() => {
-    console.log('🗑️ [useClienteCache] Limpando cache local');
+    // console.log('🗑️ [useClienteCache] Limpando cache local');
     
     cacheRef.current.clear();
     clienteResolutionService.clearCache();

@@ -102,17 +102,7 @@ const DespesasHeader: React.FC<DespesasHeaderProps> = ({
           alignItems: 'center',
           flexWrap: 'wrap'
         }}>
-          {onNovaDesepsa && (
-            <EnhancedButton
-              variant="success"
-              size="md"
-              onClick={onNovaDesepsa}
-              disabled={loading}
-            >
-              <span style={{ fontSize: '16px' }}>➕</span>
-              Nova Despesa
-            </EnhancedButton>
-          )}
+          {/* Botão removido - será posicionado centralizado acima da lista */}
         </div>
       </div>
     </>

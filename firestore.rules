@@ -1,0 +1,308 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // ===== MULTIEMPRESA (SaaS) =====
+    // Fonte de verdade do tenant: usuarios/{uid}
+    function userDocPath() {
+      return /databases/$(database)/documents/usuarios/$(request.auth.uid);
+    }
+
+    function userDoc() {
+      return get(userDocPath());
+    }
+
+    function hasUserDoc() {
+      return isAuthenticated() && exists(userDocPath());
+    }
+
+    function userIsActive() {
+      return hasUserDoc() && userDoc().data.ativo == true;
+    }
+
+    function userEmpresaId() {
+      return hasUserDoc() ? userDoc().data.empresaId : null;
+    }
+
+    function userTipo() {
+      return hasUserDoc() ? userDoc().data.tipo : null;
+    }
+
+    function isTenantMember(empresaId) {
+      return userIsActive() && userEmpresaId() == empresaId;
+    }
+
+    function isTenantAdmin(empresaId) {
+      return isTenantMember(empresaId) && userTipo() == 'admin';
+    }
+
+    function isTenantAdminOrGerente(empresaId) {
+      return isTenantMember(empresaId) && (userTipo() == 'admin' || userTipo() == 'gerente');
+    }
+
+    // ===== LEGADO (claims antigas) - compatibilidade temporária =====
+    function isAdminLegacy() {
+      return isAuthenticated() &&
+             (request.auth.token.role == 'admin' ||
+              request.auth.token.role == 'Admin' ||
+              request.auth.token.admin == true);
+    }
+
+    function isGerenteLegacy() {
+      return isAuthenticated() &&
+             (request.auth.token.role == 'gerente' ||
+              request.auth.token.role == 'Gerente' ||
+              request.auth.token.gerente == true);
+    }
+
+    function isAdminOrGerenteLegacy() {
+      return isAdminLegacy() || isGerenteLegacy();
+    }
+
+    function isFinanceiroLegacy() {
+      return isAuthenticated() &&
+             (request.auth.token.role == 'financeiro' ||
+              request.auth.token.role == 'Financeiro' ||
+              request.auth.token.financeiro == true);
+    }
+
+    function isAtendimentoLegacy() {
+      return isAuthenticated() &&
+             (request.auth.token.role == 'atendimento' ||
+              request.auth.token.role == 'Atendimento' ||
+              request.auth.token.atendimento == true);
+    }
+
+    // ===== usuarios/{uid} =====
+    match /usuarios/{uid} {
+      allow read: if isAuthenticated() && request.auth.uid == uid;
+      // Auto-cadastro seguro:
+      // - cada novo usuário cria a própria empresa com ID igual ao próprio UID
+      // - impede que alguém "entre" em outra empresa chutando empresaId
+      allow create: if isAuthenticated()
+        && request.auth.uid == uid
+        && request.resource.data.empresaId == uid
+        && request.resource.data.tipo == 'admin'
+        && request.resource.data.ativo == true
+        ;
+
+      // Permitir o usuário atualizar apenas dados pessoais (não pode trocar empresa/tipo/email/ativo)
+      allow update: if isAuthenticated()
+        && request.auth.uid == uid
+        && request.resource.data.empresaId == resource.data.empresaId
+        && request.resource.data.tipo == resource.data.tipo
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.ativo == resource.data.ativo;
+
+      allow delete: if false;
+    }
+
+    // ===== empresas/{empresaId} + subcoleções =====
+    match /empresas/{empresaId} {
+      allow read: if isTenantMember(empresaId);
+      // Auto-cadastro: permitir criar a própria empresa antes do documento usuarios/{uid} existir
+      allow create: if isAuthenticated()
+        && request.auth.uid == empresaId
+        && !exists(/databases/$(database)/documents/empresas/$(empresaId));
+
+      allow update, delete: if isTenantAdmin(empresaId);
+
+      match /clientes/{docId} {
+        allow read: if isTenantMember(empresaId);
+        allow create, update: if isTenantAdminOrGerente(empresaId) || (isTenantMember(empresaId) && userTipo() == 'funcionario');
+        allow delete: if isTenantAdminOrGerente(empresaId);
+      }
+
+      match /assinaturas/{docId} {
+        allow read: if isTenantMember(empresaId);
+        allow create, update: if isTenantAdminOrGerente(empresaId) || (isTenantMember(empresaId) && userTipo() == 'funcionario');
+        allow delete: if isTenantAdminOrGerente(empresaId);
+      }
+
+      match /equipamentos/{docId} {
+        allow read: if isTenantMember(empresaId);
+        allow create, update: if isTenantAdminOrGerente(empresaId) || (isTenantMember(empresaId) && userTipo() == 'funcionario');
+        allow delete: if isTenantAdminOrGerente(empresaId);
+
+        // Histórico de trocas de equipamento
+        match /trocas/{swapId} {
+          allow read: if isTenantMember(empresaId);
+          allow create: if isTenantAdminOrGerente(empresaId);
+          allow update, delete: if false;
+        }
+
+        // Histórico de exclusões/restaurações do equipamento
+        match /exclusoes/{exclusionId} {
+          allow read: if isTenantMember(empresaId);
+          allow create: if isTenantAdminOrGerente(empresaId);
+          allow update, delete: if false;
+        }
+      }
+
+      // Registro centralizado para listagem de equipamentos inativos
+      match /equipamentos_excluidos/{equipamentoId} {
+        allow read: if isTenantMember(empresaId);
+        allow create, update: if isTenantAdminOrGerente(empresaId);
+        allow delete: if false;
+      }
+
+      match /tvbox/{docId} {
+        allow read: if isTenantMember(empresaId);
+        allow create, update: if isTenantAdminOrGerente(empresaId) || (isTenantMember(empresaId) && userTipo() == 'funcionario');
+        allow delete: if isTenantAdminOrGerente(empresaId);
+      }
+
+      match /tvbox_assinaturas/{docId} {
+        allow read: if isTenantMember(empresaId);
+        allow create, update: if isTenantAdminOrGerente(empresaId) || (isTenantMember(empresaId) && userTipo() == 'funcionario');
+        allow delete: if isTenantAdminOrGerente(empresaId);
+
+        // Histórico importado do LEGADO (somente leitura no client)
+        match /historico_legado/{legacyDocId} {
+          allow read: if isTenantMember(empresaId);
+          allow write: if false;
+        }
+      }
+
+      match /lost_devices/{docId} {
+        allow read: if isTenantMember(empresaId);
+        allow create, update, delete: if isTenantAdminOrGerente(empresaId);
+      }
+
+      match /cobrancas/{docId} {
+        allow read: if isTenantMember(empresaId);
+        // financeiro não existe no modelo novo (admin/gerente/funcionario). Conservador:
+        allow create, update, delete: if isTenantAdminOrGerente(empresaId);
+      }
+
+      match /cobrancas_arquivadas/{docId} {
+        allow read: if isTenantMember(empresaId);
+        allow create, update, delete: if isTenantAdminOrGerente(empresaId);
+      }
+
+      match /despesas/{docId} {
+        allow read: if isTenantMember(empresaId);
+        allow create, update, delete: if isTenantAdminOrGerente(empresaId);
+      }
+
+      match /funcionarios/{docId} {
+        allow read: if isTenantMember(empresaId);
+        allow create, update, delete: if isTenantAdmin(empresaId);
+      }
+
+      match /roles/{roleId} {
+        allow read: if isTenantMember(empresaId);
+        allow create, update, delete: if isTenantAdmin(empresaId);
+
+        match /permissions/{permId} {
+          allow read: if isTenantMember(empresaId);
+          allow create, update, delete: if isTenantAdmin(empresaId);
+        }
+      }
+
+      match /employee_permissions/{docId} {
+        allow read: if isTenantMember(empresaId);
+        allow create, update, delete: if isTenantAdmin(empresaId);
+      }
+
+      match /audit_logs/{docId} {
+        allow read: if isTenantAdminOrGerente(empresaId);
+        allow create: if isTenantMember(empresaId);
+        allow update, delete: if false;
+      }
+
+      match /logs/{docId} {
+        allow read: if isTenantAdminOrGerente(empresaId);
+        allow create: if isTenantMember(empresaId);
+        allow update, delete: if false;
+      }
+
+      match /config/{docId} {
+        allow read: if isTenantMember(empresaId);
+        allow create, update, delete: if isTenantAdminOrGerente(empresaId);
+      }
+    }
+
+    // ===== LEGADO (coleções globais) =====
+    // Importante: para evitar QUALQUER mistura entre empresas, o app SaaS usa APENAS
+    // empresas/{empresaId}/... e estas coleções globais ficam bloqueadas no client.
+    // (Admin SDK/scripts continuam funcionando pois bypassam rules.)
+
+    // Regras para coleção de clientes (LEGADO - bloqueado)
+    match /clientes/{clienteId} {
+      allow read, write: if false;
+    }
+
+    // Regras para coleção de TV Box (LEGADO - bloqueado)
+    match /tvbox/{tvboxId} {
+      allow read, write: if false;
+    }
+
+    // Regras para coleção de assinaturas (LEGADO - bloqueado)
+    match /assinaturas/{assinaturaId} {
+      allow read, write: if false;
+    }
+
+    // Regras para coleção de TV Box Assinaturas (LEGADO - bloqueado)
+    match /tvbox_assinaturas/{docId} {
+      allow read, write: if false;
+    }
+
+    // Regras para coleção de cobranças arquivadas (LEGADO - bloqueado)
+    match /cobrancas_arquivadas/{docId} {
+      allow read, write: if false;
+    }
+
+    // Regras para coleção de funcionários (LEGADO - bloqueado)
+    match /employees/{employeeId} {
+      allow read, write: if false;
+    }
+
+    // Regras para permissões de funcionários (LEGADO - bloqueado)
+    match /employee_permissions/{permissionId} {
+      allow read, write: if false;
+    }
+
+    // Regras para coleção de cobranças (LEGADO - bloqueado)
+    match /cobrancas/{cobrancaId} {
+      allow read, write: if false;
+    }
+
+    // Regras para coleção de despesas (LEGADO - bloqueado)
+    match /despesas/{despesaId} {
+      allow read, write: if false;
+    }
+
+    // Regras para coleção de equipamentos (LEGADO - bloqueado)
+    match /equipamentos/{equipamentoId} {
+      allow read, write: if false;
+    }
+
+    // Regras para perfis/permissões (LEGADO - bloqueado)
+    match /roles/{roleId} {
+      allow read, write: if false;
+
+      match /permissions/{permId} {
+        allow read, write: if false;
+      }
+    }
+
+    // Regras para auditoria (LEGADO - bloqueado)
+    match /audit_logs/{logId} {
+      allow read, write: if false;
+    }
+
+    // Regras para config (LEGADO - bloqueado)
+    match /config/{configId} {
+      allow read, write: if false;
+    }
+
+    // Fallback: negar por padrão (evita vazamento entre empresas)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

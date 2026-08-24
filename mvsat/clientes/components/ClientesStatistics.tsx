@@ -161,14 +161,6 @@ const ClientesStatistics: React.FC<ClientesStatisticsProps> = ({
         color="#fee2e2"
         subtitle="Clientes desativados"
       />
-      
-      <StatCard
-        title="Inativos"
-        value={stats.inativos}
-        icon="⏸️"
-        color="#f3f4f6"
-        subtitle="Temporariamente inativos"
-      />
     </div>
   );
 };

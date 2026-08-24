@@ -19,20 +19,13 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({ children, defaultTheme = 'light' }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    // Verificar se há tema salvo no localStorage
+    // A UI do MV SAT é desenhada com fundos claros (cards/tabelas brancas).
+    // Forçar light evita texto quase invisível quando o SO está em dark mode.
     if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('mvsat-theme') as Theme;
-      if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
-        return savedTheme;
-      }
-      
-      // Verificar preferência do sistema
-      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        return 'dark';
-      }
+      localStorage.setItem('mvsat-theme', 'light');
+      document.documentElement.setAttribute('data-theme', 'light');
     }
-    
-    return defaultTheme;
+    return 'light';
   });
 
   const themeColors = themes[theme];
@@ -56,24 +49,6 @@ export function ThemeProvider({ children, defaultTheme = 'light' }: ThemeProvide
       localStorage.setItem('mvsat-theme', theme);
     }
   }, [theme]);
-
-  // Escutar mudanças na preferência do sistema
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      
-      const handleChange = (e: MediaQueryListEvent) => {
-        // Só mudar automaticamente se não houver preferência salva
-        const savedTheme = localStorage.getItem('mvsat-theme');
-        if (!savedTheme) {
-          setTheme(e.matches ? 'dark' : 'light');
-        }
-      };
-
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    }
-  }, []);
 
   const value: ThemeContextType = {
     theme,

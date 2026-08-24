@@ -101,45 +101,6 @@ const EquipamentosHeader: React.FC<EquipamentosHeaderProps> = ({
           gap: '12px',
           alignItems: 'center'
         }}>
-          <button
-            onClick={onNovoEquipamento}
-            disabled={loading}
-            style={{
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '12px',
-              padding: '16px 32px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.25)',
-              transition: 'all 0.2s ease',
-              outline: 'none'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#2563eb';
-              e.currentTarget.style.boxShadow = '0 8px 20px rgba(59, 130, 246, 0.4)';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#3b82f6';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.25)';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.3)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.25)';
-            }}
-          >
-            <span style={{ fontSize: '20px' }}>➕</span>
-            Novo Equipamento
-          </button>
         </div>
       </div>
     </>

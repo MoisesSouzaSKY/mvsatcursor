@@ -1,0 +1,559 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { Button } from '../../shared/components/ui/Button';
+import { Card } from '../../shared/components/ui/Card';
+import { Input } from '../../shared/components/ui/Input';
+import { Modal } from '../../shared/components/ui/Modal';
+
+// Componentes otimizados
+import CobrancasStatistics from '../../cobrancas/components/CobrancasStatistics';
+import { CobrancasHeader } from '../../cobrancas/components/CobrancasHeader';
+import { VirtualizedCobrancasTable } from '../../cobrancas/components/VirtualizedCobrancasTable';
+import { StatisticsProvider } from '../../cobrancas/contexts/StatisticsContext';
+import { LoadingStyles, TableSkeleton, StatisticsSkeleton, ImmediateLoadingFeedback } from '../../shared/components/LoadingStates';
+
+// Hooks otimizados
+import { useDebounce } from '../../shared/hooks/useDebounce';
+import { useDateParsingCache } from '../../shared/hooks/useMemoizedCalculations';
+import { useMemoryManagement, useMemoryMonitor } from '../../shared/hooks/useMemoryManagement';
+import { useOptimizedFilters } from '../../cobrancas/hooks/useOptimizedFilters';
+
+// Utilitários otimizados
+import { preprocessCobrancas, OptimizedCobranca } from '../../cobrancas/utils/dataProcessing';
+import { performanceMonitor } from '../../shared/utils/PerformanceMonitor';
+
+// Funções de API
+import { listarClientes } from '../../clientes/clientes.functions';
+import { 
+  listarCobrancas, 
+  criarCobranca, 
+  atualizarCobranca,
+  marcarComoPaga, 
+  removerCobranca,
+  reabrirCobranca
+} from '../../cobrancas/cobrancas.functions';
+
+import { useToastHelpers } from '../../shared/contexts/ToastContext';
+
+// Interface para cliente
+interface Cliente {
+  id: string;
+  nome: string;
+  bairro: string;
+  telefone: string;
+  status: string;
+}
+
+export default function OptimizedCobrancasPage() {
+  const { successQuick } = useToastHelpers();
+  
+  // Monitoramento de memória
+  useMemoryMonitor('CobrancasPage');
+  const { registerTimer, registerInterval } = useMemoryManagement();
+  
+  // Cache de parsing de datas
+  const { parseToDate } = useDateParsingCache();
+  
+  // Estados principais
+  const [rawCobrancas, setRawCobrancas] = useState<any[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [loadingCobrancas, setLoadingCobrancas] = useState(false);
+  const [loadingClientes, setLoadingClientes] = useState(false);
+  
+  // Estados de filtros
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortOrder, setSortOrder] = useState<'alfabetica' | 'vencimento' | 'valor'>('alfabetica');
+  const [filtroStatus, setFiltroStatus] = useState<string>('');
+  const [filtroMes, setFiltroMes] = useState<string>('');
+  const [filtroDataVencimento, setFiltroDataVencimento] = useState<string>('');
+  
+  // Estados de modais
+  const [showGerarCobrancaModal, setShowGerarCobrancaModal] = useState(false);
+  const [showEditarCobrancaModal, setShowEditarCobrancaModal] = useState(false);
+  const [showPagamentoModal, setShowPagamentoModal] = useState(false);
+  const [cobrancaSelecionada, setCobrancaSelecionada] = useState<OptimizedCobranca | null>(null);
+  
+  // Estados de formulários
+  const [formData, setFormData] = useState({
+    cliente_id: '',
+    tipoCobranca: 'SKY',
+    valor: '',
+    dataVencimento: ''
+  });
+  // Busca do cliente dentro do modal "Gerar Nova Cobrança"
+  const [buscaClienteModal, setBuscaClienteModal] = useState<string>('');
+  const [formEditarCobranca, setFormEditarCobranca] = useState({
+    cliente_id: '',
+    valor: '',
+    dataVencimento: '',
+    tipoAssinatura: 'SKY',
+    observacao: '',
+    status: 'EM_DIAS' as string
+  });
+  const [formPagamento, setFormPagamento] = useState({
+    dataPagamento: '',
+    metodoPagamento: '',
+    valorRecebido: '',
+    comprovante: null as File | null,
+    observacoes: '',
+    mesAnoComprovante: ''
+  });
+  
+  // Trava de idempotência para pagamento
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  // Pré-processar cobranças com cache
+  const optimizedCobrancas = useMemo(() => {
+    return performanceMonitor.measure('preprocess-cobrancas', () => 
+      preprocessCobrancas(rawCobrancas, parseToDate)
+    );
+  }, [rawCobrancas, parseToDate]);
+
+  // Usar filtros otimizados
+  const { filteredAndSortedCobrancas, isFiltering } = useOptimizedFilters(
+    optimizedCobrancas,
+    {
+      searchTerm,
+      sortOrder,
+      filtroStatus,
+      filtroMes,
+      filtroDataVencimento
+    }
+  );
+
+  // Função para carregar cobranças
+  const carregarCobrancas = async () => {
+    try {
+      setLoadingCobrancas(true);
+      const cobrancasData = await performanceMonitor.measureAsync('load-cobrancas', async () => {
+        return await listarCobrancas();
+      });
+      setRawCobrancas(cobrancasData as any[]);
+    } catch (error) {
+      console.error('Erro ao carregar cobranças:', error);
+    } finally {
+      setLoadingCobrancas(false);
+    }
+  };
+
+  // Função para carregar clientes
+  const carregarClientes = async () => {
+    try {
+      setLoadingClientes(true);
+      const clientesData = await performanceMonitor.measureAsync('load-clientes', async () => {
+        return await listarClientes();
+      });
+      setClientes(clientesData as Cliente[]);
+    } catch (error) {
+      console.error('Erro ao carregar clientes:', error);
+    } finally {
+      setLoadingClientes(false);
+    }
+  };
+
+  // Carregar dados ao montar o componente
+  useEffect(() => {
+    const initData = async () => {
+      try {
+        const { initFirebase } = await import('../../config/database.config');
+        await initFirebase();
+        
+        // Carregar dados em paralelo
+        await Promise.all([
+          carregarCobrancas(),
+          carregarClientes()
+        ]);
+      } catch (error) {
+        console.error('Erro ao inicializar:', error);
+      }
+    };
+    
+    initData();
+  }, []);
+
+  // Funções de manipulação de modais
+  const handleOpenGerarCobrancaModal = async () => {
+    setShowGerarCobrancaModal(true);
+    if (clientes.length === 0) {
+      await carregarClientes();
+    }
+  };
+
+  const handleCloseGerarCobrancaModal = () => {
+    setShowGerarCobrancaModal(false);
+    setFormData({
+      cliente_id: '',
+      tipoCobranca: 'SKY',
+      valor: '',
+      dataVencimento: ''
+    });
+    // Resetar a busca sempre que fechar o modal
+    setBuscaClienteModal('');
+  };
+
+  const handleGerarCobranca = async () => {
+    try {
+      const cliente = clientes.find(c => c.id === formData.cliente_id);
+      if (!cliente) {
+        alert('Cliente não encontrado');
+        return;
+      }
+
+      const novaCobranca = {
+        cliente_id: formData.cliente_id,
+        cliente_nome: cliente.nome,
+        bairro: cliente.bairro,
+        tipo: formData.tipoCobranca,
+        data_vencimento: formData.dataVencimento,
+        valor: parseFloat(formData.valor),
+        status: 'em_dias' as const,
+        data_criacao: new Date(),
+        data_atualizacao: new Date()
+      };
+
+      await criarCobranca(novaCobranca);
+      await carregarCobrancas();
+      handleCloseGerarCobrancaModal();
+      successQuick('Cobrança criada com sucesso!');
+    } catch (error) {
+      console.error('Erro ao criar cobrança:', error);
+      alert('Erro ao criar cobrança');
+    }
+  };
+
+  const handleFormChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // Lista de clientes ordenada alfabeticamente e filtrada pela busca do modal
+  const clientesOrdenadosFiltrados = useMemo(() => {
+    const normalizar = (s: string) => (s || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+    const termo = normalizar(buscaClienteModal);
+
+    return [...clientes]
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }))
+      .filter(c => {
+        if (!termo) return true;
+        const nome = normalizar(c.nome);
+        const bairro = normalizar(c.bairro || '');
+        return nome.includes(termo) || bairro.includes(termo);
+      });
+  }, [clientes, buscaClienteModal]);
+
+  // Handlers para tabela
+  const handleEditCobranca = (cobranca: OptimizedCobranca) => {
+    setCobrancaSelecionada(cobranca);
+    setShowEditarCobrancaModal(true);
+    // Implementar lógica de edição...
+  };
+
+  const handlePayCobranca = (cobranca: OptimizedCobranca) => {
+    setCobrancaSelecionada(cobranca);
+    setShowPagamentoModal(true);
+    // Implementar lógica de pagamento...
+  };
+
+  const handleDeleteCobranca = async (cobranca: OptimizedCobranca) => {
+    if (confirm(`Tem certeza que deseja deletar a cobrança de ${cobranca?.cliente_nome || 'Cliente'}?`)) {
+      try {
+        await removerCobranca(cobranca.id);
+        await carregarCobrancas();
+        successQuick('Cobrança removida com sucesso!');
+      } catch (error) {
+        console.error('Erro ao deletar cobrança:', error);
+        alert('Erro ao deletar cobrança');
+      }
+    }
+  };
+
+  // Funções para limpar filtros
+  const limparTodosFiltros = () => {
+    setFiltroDataVencimento('');
+    setFiltroMes('');
+    setFiltroStatus('');
+    setSearchTerm('');
+  };
+
+  return (
+    <>
+      <LoadingStyles />
+      <div style={{ 
+        padding: '24px', 
+        backgroundColor: 'var(--color-primary-50)',
+        minHeight: '100vh'
+      }}>
+        {/* Header Banner */}
+        <CobrancasHeader 
+          totalCobrancas={optimizedCobrancas.length}
+          valorTotal={optimizedCobrancas.reduce((acc, c) => acc + (c?.valor || 0), 0)}
+          loading={loadingCobrancas}
+        />
+
+        {/* Statistics Cards com Provider */}
+        <StatisticsProvider cobrancas={optimizedCobrancas} isLoading={loadingCobrancas}>
+          {loadingCobrancas ? (
+            <StatisticsSkeleton />
+          ) : (
+            <CobrancasStatistics loading={loadingCobrancas} />
+          )}
+
+          {/* Barra de busca e filtros */}
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '16px', 
+            marginBottom: '24px'
+          }}>
+            {/* Busca com feedback de loading */}
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+              <span style={{ fontWeight: 'bold', minWidth: '80px' }}>Busca:</span>
+              <div style={{ flex: 1, position: 'relative' }}>
+                <Input
+                  placeholder="Buscar por cliente ou bairro..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{ flex: 1 }}
+                  leftIcon={
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z" />
+                    </svg>
+                  }
+                />
+                {isFiltering && (
+                  <div style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    fontSize: '12px',
+                    color: 'var(--color-primary-600)'
+                  }}>
+                    Filtrando...
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Filtros */}
+            <div style={{ 
+              display: 'flex', 
+              gap: '12px', 
+              alignItems: 'center', 
+              flexWrap: 'wrap',
+              border: '1px solid var(--border-primary)',
+              padding: '12px',
+              borderRadius: '8px',
+              backgroundColor: 'white'
+            }}>
+              <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Filtros:</span>
+              
+              {/* Ordenação */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '12px' }}>Ordenar:</span>
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value as any)}
+                  style={{
+                    padding: '6px 10px',
+                    border: '1px solid var(--border-primary)',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                  }}
+                >
+                  <option value="alfabetica">Alfabética</option>
+                  <option value="vencimento">Vencimento</option>
+                  <option value="valor">Valor</option>
+                </select>
+              </div>
+
+              {/* Filtro por Status */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '12px' }}>Status:</span>
+                <select
+                  value={filtroStatus}
+                  onChange={(e) => setFiltroStatus(e.target.value)}
+                  style={{
+                    padding: '6px 10px',
+                    border: '1px solid var(--border-primary)',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    minWidth: '120px'
+                  }}
+                >
+                  <option value="">Todos</option>
+                  <option value="em_dias">Em dias</option>
+                  <option value="paga">Pagas</option>
+                  <option value="em_atraso">Vencidas</option>
+                </select>
+              </div>
+
+              {/* Botão para limpar todos os filtros */}
+              {(filtroStatus || filtroMes || filtroDataVencimento || searchTerm) && (
+                <Button 
+                  variant="outline" 
+                  onClick={limparTodosFiltros}
+                  style={{
+                    fontSize: '12px',
+                    padding: '6px 12px',
+                    backgroundColor: 'var(--color-error-50)',
+                    borderColor: 'var(--color-error-300)',
+                    color: 'var(--color-error-700)'
+                  }}
+                >
+                  🗑️ Limpar Filtros
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Botão Gerar Cobranças */}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            marginBottom: '24px'
+          }}>
+            <Button 
+              variant="primary" 
+              size="lg" 
+              style={{ backgroundColor: '#10b981', borderColor: '#10b981' }}
+              icon={
+                <svg style={{ width: '16px', height: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              } 
+              onClick={handleOpenGerarCobrancaModal}
+            >
+              Gerar Cobranças
+            </Button>
+          </div>
+
+          {/* Tabela de cobranças otimizada */}
+          <Card variant="elevated" padding="none">
+            <ImmediateLoadingFeedback 
+              isLoading={loadingCobrancas} 
+              loadingText="Carregando cobranças..."
+            >
+              {loadingCobrancas ? (
+                <TableSkeleton rows={10} columns={8} />
+              ) : (
+                <VirtualizedCobrancasTable
+                  cobrancas={filteredAndSortedCobrancas}
+                  onEdit={handleEditCobranca}
+                  onPay={handlePayCobranca}
+                  onDelete={handleDeleteCobranca}
+                  loading={isFiltering}
+                />
+              )}
+            </ImmediateLoadingFeedback>
+          </Card>
+        </StatisticsProvider>
+
+        {/* Modal Gerar Cobrança */}
+        {showGerarCobrancaModal && (
+          <Modal
+            open={showGerarCobrancaModal}
+            onClose={handleCloseGerarCobrancaModal}
+            title="Gerar Nova Cobrança"
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                  Cliente
+                </label>
+                {/* Campo de busca digitável para filtrar clientes */}
+                <Input
+                  placeholder="Digite para buscar cliente (nome ou bairro)"
+                  value={buscaClienteModal}
+                  onChange={(e) => setBuscaClienteModal(e.target.value)}
+                  style={{ marginBottom: '8px' }}
+                />
+                <select
+                  value={formData.cliente_id}
+                  onChange={(e) => handleFormChange('cliente_id', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid var(--border-primary)',
+                    borderRadius: '8px',
+                    fontSize: '14px'
+                  }}
+                >
+                  <option value="">Selecione um cliente</option>
+                  {clientesOrdenadosFiltrados.map(cliente => (
+                    <option key={cliente.id} value={cliente.id}>
+                      {cliente.nome} - {cliente.bairro}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                  Tipo de Cobrança
+                </label>
+                <select
+                  value={formData.tipoCobranca}
+                  onChange={(e) => handleFormChange('tipoCobranca', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid var(--border-primary)',
+                    borderRadius: '8px',
+                    fontSize: '14px'
+                  }}
+                >
+                  <option value="SKY">SKY</option>
+                  <option value="TV BOX">TV BOX</option>
+                  <option value="COMBO">COMBO</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                  Valor
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={formData.valor}
+                  onChange={(e) => handleFormChange('valor', e.target.value)}
+                  placeholder="0,00"
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                  Data de Vencimento
+                </label>
+                <Input
+                  type="date"
+                  value={formData.dataVencimento}
+                  onChange={(e) => handleFormChange('dataVencimento', e.target.value)}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
+                <Button variant="outline" onClick={handleCloseGerarCobrancaModal}>
+                  Cancelar
+                </Button>
+                <Button 
+                  variant="primary" 
+                  onClick={handleGerarCobranca}
+                  disabled={!formData.cliente_id || !formData.valor || !formData.dataVencimento}
+                >
+                  Gerar Cobrança
+                </Button>
+              </div>
+            </div>
+          </Modal>
+        )}
+      </div>
+    </>
+  );
+}

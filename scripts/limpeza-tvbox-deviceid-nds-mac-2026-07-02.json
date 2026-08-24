@@ -1,0 +1,160 @@
+{
+  "gerado_em": "2026-07-02T17:02:49.020Z",
+  "inspectedDocs": 170,
+  "totalChanges": 9,
+  "fixes": [
+    {
+      "empresaId": "5tequCVP8KU601xYdx8RPZCW0Vn1",
+      "sourceLabel": "tvbox_assinaturas",
+      "docId": "3ZTJFvKkbUCU91Et8RkR",
+      "path": "empresas/5tequCVP8KU601xYdx8RPZCW0Vn1/tvbox_assinaturas/3ZTJFvKkbUCU91Et8RkR",
+      "base": "AP55aa61a5",
+      "changes": [
+        {
+          "idx": 1,
+          "slot": 2,
+          "deviceId": "PRO25JAN045968",
+          "nds": "PRO25JAN045968",
+          "mac": "90F421A73A93",
+          "eqNds": true,
+          "eqMac": false,
+          "newId": "AP55aa61a5_2"
+        }
+      ]
+    },
+    {
+      "empresaId": "5tequCVP8KU601xYdx8RPZCW0Vn1",
+      "sourceLabel": "tvbox_assinaturas",
+      "docId": "SyVSg9TjZqU4a2nLg9LF",
+      "path": "empresas/5tequCVP8KU601xYdx8RPZCW0Vn1/tvbox_assinaturas/SyVSg9TjZqU4a2nLg9LF",
+      "base": "AP00887776",
+      "changes": [
+        {
+          "idx": 0,
+          "slot": 1,
+          "deviceId": "PRO25JAN037230",
+          "nds": "PRO25JAN037230",
+          "mac": "90F421A71871",
+          "eqNds": true,
+          "eqMac": false,
+          "newId": "AP00887776_1"
+        },
+        {
+          "idx": 1,
+          "slot": 2,
+          "deviceId": "PRO25JAN045946",
+          "nds": "PRO25JAN045946",
+          "mac": "90F421A73A7D",
+          "eqNds": true,
+          "eqMac": false,
+          "newId": "AP00887776_2"
+        }
+      ]
+    },
+    {
+      "empresaId": "5tequCVP8KU601xYdx8RPZCW0Vn1",
+      "sourceLabel": "tvbox_assinaturas",
+      "docId": "XvuaHaPe6UqGS0mz0zFH",
+      "path": "empresas/5tequCVP8KU601xYdx8RPZCW0Vn1/tvbox_assinaturas/XvuaHaPe6UqGS0mz0zFH",
+      "base": "APecefaba2",
+      "changes": [
+        {
+          "idx": 1,
+          "slot": 2,
+          "deviceId": "PRO25JAN037289",
+          "nds": "PRO25JAN037289",
+          "mac": "90F421A718AC",
+          "eqNds": true,
+          "eqMac": false,
+          "newId": "APecefaba2_2"
+        }
+      ]
+    },
+    {
+      "empresaId": "5tequCVP8KU601xYdx8RPZCW0Vn1",
+      "sourceLabel": "tvbox_assinaturas",
+      "docId": "b03ZCl1qK7KoLQsO4Tim",
+      "path": "empresas/5tequCVP8KU601xYdx8RPZCW0Vn1/tvbox_assinaturas/b03ZCl1qK7KoLQsO4Tim",
+      "base": "AP087fa94b",
+      "changes": [
+        {
+          "idx": 0,
+          "slot": 1,
+          "deviceId": "PRO24DEC014153",
+          "nds": "PRO24DEC014153",
+          "mac": "90F421A5FAFC",
+          "eqNds": true,
+          "eqMac": false,
+          "newId": "AP087fa94b_1"
+        }
+      ]
+    },
+    {
+      "empresaId": "I1kzRdTbn7MRFqF88pP2GletSi32",
+      "sourceLabel": "tvbox_assinaturas",
+      "docId": "Y1mAczIdCG4day3WGJg0",
+      "path": "empresas/I1kzRdTbn7MRFqF88pP2GletSi32/tvbox_assinaturas/Y1mAczIdCG4day3WGJg0",
+      "base": "AP08fc54bf",
+      "changes": [
+        {
+          "idx": 1,
+          "slot": 2,
+          "deviceId": "atila",
+          "nds": "atila",
+          "mac": "atila",
+          "eqNds": true,
+          "eqMac": false,
+          "newId": "AP08fc54bf_2"
+        }
+      ]
+    },
+    {
+      "empresaId": "I1kzRdTbn7MRFqF88pP2GletSi32",
+      "sourceLabel": "tvbox_assinaturas",
+      "docId": "ieCMpkfgQKDh4TcC0ePP",
+      "path": "empresas/I1kzRdTbn7MRFqF88pP2GletSi32/tvbox_assinaturas/ieCMpkfgQKDh4TcC0ePP",
+      "base": "AP2b6c7183",
+      "changes": [
+        {
+          "idx": 0,
+          "slot": 1,
+          "deviceId": "fa8314bb1af75ce9",
+          "nds": "fa8314bb1af75ce9",
+          "mac": "40:43:11:A1:AC:B5",
+          "eqNds": true,
+          "eqMac": false,
+          "newId": "AP2b6c7183_1"
+        },
+        {
+          "idx": 1,
+          "slot": 2,
+          "deviceId": "00:3B:9B:6B:44:75",
+          "nds": "5064E55494A575f1",
+          "mac": "00:3B:9B:6B:44:75",
+          "eqNds": false,
+          "eqMac": true,
+          "newId": "AP2b6c7183_2"
+        }
+      ]
+    },
+    {
+      "empresaId": "I1kzRdTbn7MRFqF88pP2GletSi32",
+      "sourceLabel": "tvbox_assinaturas",
+      "docId": "nqPBeFptEKJvmaD2I1oL",
+      "path": "empresas/I1kzRdTbn7MRFqF88pP2GletSi32/tvbox_assinaturas/nqPBeFptEKJvmaD2I1oL",
+      "base": "AP7bb01eca",
+      "changes": [
+        {
+          "idx": 0,
+          "slot": 1,
+          "deviceId": "da4fcb81dd831378",
+          "nds": "da4fcb81dd831378",
+          "mac": "000000000000000",
+          "eqNds": true,
+          "eqMac": false,
+          "newId": "AP7bb01eca_1"
+        }
+      ]
+    }
+  ]
+}

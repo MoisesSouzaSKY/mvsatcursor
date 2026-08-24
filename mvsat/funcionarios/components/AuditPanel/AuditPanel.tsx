@@ -5,6 +5,7 @@ import { AuditFilters } from './AuditFilters';
 import { AuditTable } from './AuditTable';
 import { ExportButton } from './ExportButton';
 import { AuditLog, AuditFilters as AuditFiltersType } from '../../types';
+import { tenantCollection } from '../../../shared/saas/firestoreTenant';
 
 export function AuditPanel() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -23,7 +24,7 @@ export function AuditPanel() {
       
       // Carregar logs reais do Firestore (se existir coleção de auditoria)
       const db = getDb();
-      const auditCollection = collection(db, 'audit_logs');
+      const auditCollection = tenantCollection(db, 'audit_logs');
       
       try {
         const auditSnap = await getDocs(auditCollection);

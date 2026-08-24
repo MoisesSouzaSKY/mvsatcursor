@@ -36,7 +36,9 @@ export interface Despesa {
   formaPagamento?: string;
   competencia?: string;
   comprovante?: {
-    base64: string;
+    storageUrl?: string;
+    storagePath?: string;
+    base64?: string;
     mimeType: string;
     filename: string;
     uploadedAt: any;

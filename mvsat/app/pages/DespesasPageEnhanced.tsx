@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { collection, getDocs, updateDoc, doc, serverTimestamp, addDoc } from 'firebase/firestore';
 import { getDb } from '../../config/database.config';
-import { fileToBase64 } from '../../shared/base64';
+import { uploadFileToStorage } from '../../shared/services/storageUpload';
+import { tenantCollection, tenantDoc } from '../../shared/saas/firestoreTenant';
 
 // Enhanced Components
 import ResponsiveLayout from '../../despesas/components/ResponsiveLayout';
@@ -33,6 +34,15 @@ interface Despesa {
   origemNome?: string;
   formaPagamento?: string;
   competencia?: string;
+  comprovante?: {
+    storageUrl?: string;
+    storagePath?: string;
+    base64?: string;
+    mimeType: string;
+    filename: string;
+    uploadedAt: any;
+  };
+  observacoes?: string;
 }
 
 interface PaymentData {
@@ -77,7 +87,8 @@ export default function DespesasPageEnhanced() {
       setLoading(true);
       setError(null);
       
-      const snap = await getDocs(collection(getDb(), 'despesas'));
+      const db = getDb();
+      const snap = await getDocs(tenantCollection(db, 'despesas'));
       const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as Despesa));
       
       setDespesas(docs);
@@ -130,16 +141,22 @@ export default function DespesasPageEnhanced() {
       }
       
       if (paymentData.comprovante) {
-        const base64 = await fileToBase64(paymentData.comprovante);
+        const uploaded = await uploadFileToStorage({
+          folder: 'comprovantes/despesas',
+          entityId: String(despesaSelecionada.id),
+          file: paymentData.comprovante
+        });
         updates.comprovante = {
-          base64,
-          mimeType: paymentData.comprovante.type,
-          filename: paymentData.comprovante.name,
-          uploadedAt: serverTimestamp()
+          storageUrl: uploaded.storageUrl,
+          storagePath: uploaded.storagePath,
+          mimeType: uploaded.mimeType,
+          filename: uploaded.filename,
+          uploadedAt: uploaded.uploadedAt
         };
       }
       
-      await updateDoc(doc(getDb(), 'despesas', String(despesaSelecionada.id)), updates);
+      const db = getDb();
+      await updateDoc(tenantDoc(db, 'despesas', String(despesaSelecionada.id)), updates);
       
       // Update local state
       setDespesas(prev => prev.map(d => 
@@ -198,7 +215,7 @@ export default function DespesasPageEnhanced() {
       };
       
       // Salvar no Firebase
-      const docRef = await addDoc(collection(getDb(), 'despesas'), novaDespesa);
+      const docRef = await addDoc(tenantCollection(getDb(), 'despesas'), novaDespesa);
       
       // Adicionar à lista local
       const despesaComId = { ...novaDespesa, id: docRef.id } as Despesa;

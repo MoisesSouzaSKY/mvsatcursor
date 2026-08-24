@@ -123,9 +123,22 @@ interface TableBodyProps {
   equipments: Equipamento[];
   onEdit: (equipment: Equipamento) => void;
   onView: (equipment: Equipamento) => void;
+  onSwap?: (equipment: Equipamento) => void;
+  onDelete?: (equipment: Equipamento) => void;
+  onRestore?: (equipment: Equipamento) => void;
 }
 
-const TableBody: React.FC<TableBodyProps> = ({ equipments, onEdit, onView }) => {
+const isEmUso = (status: string): boolean => {
+  const s = String(status || '').toLowerCase().trim();
+  return s === 'em_uso' || s === 'em uso' || s === 'alugado';
+};
+
+const isInativo = (status: string): boolean => {
+  const s = String(status || '').toLowerCase().trim();
+  return s === 'inativo' || s === 'excluido' || s === 'excluído';
+};
+
+const TableBody: React.FC<TableBodyProps> = ({ equipments, onEdit, onView, onSwap, onDelete, onRestore }) => {
   return (
     <tbody>
       {equipments.map((equipment, index) => (
@@ -202,10 +215,80 @@ const TableBody: React.FC<TableBodyProps> = ({ equipments, onEdit, onView }) => 
             <div style={{
               display: 'flex',
               gap: '8px',
-              alignItems: 'center'
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              flexWrap: 'wrap',
+              rowGap: 8
             }}>
+              {onSwap && isEmUso(equipment.status) && (
+                <button
+                  onClick={() => onSwap(equipment)}
+                  style={{
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    whiteSpace: 'nowrap'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#059669';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#10b981';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                  title="Trocar equipamento em uso"
+                  aria-label="Trocar equipamento"
+                  type="button"
+                >
+                  <span aria-hidden>🔄</span>
+                  Trocar
+                </button>
+              )}
+              {onRestore && isInativo(equipment.status) && (
+                <button
+                  onClick={() => onRestore(equipment)}
+                  style={{
+                    backgroundColor: '#16a34a',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    fontSize: '12px',
+                    fontWeight: '800',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    whiteSpace: 'nowrap'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#15803d';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#16a34a';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                  title="Restaurar equipamento"
+                  aria-label="Restaurar equipamento"
+                  type="button"
+                >
+                  ♻️ Restaurar
+                </button>
+              )}
               <button
-                onClick={() => onEdit(equipment)}
+                onClick={() => {
+                  console.log('🖱️ Botão Editar clicado para equipamento:', equipment.id, equipment.nds);
+                  onEdit(equipment);
+                }}
                 style={{
                   backgroundColor: '#3b82f6',
                   color: 'white',
@@ -215,7 +298,8 @@ const TableBody: React.FC<TableBodyProps> = ({ equipments, onEdit, onView }) => 
                   fontSize: '12px',
                   fontWeight: '500',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap'
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#2563eb';
@@ -228,6 +312,36 @@ const TableBody: React.FC<TableBodyProps> = ({ equipments, onEdit, onView }) => 
               >
                 Editar
               </button>
+              {onDelete && !isInativo(equipment.status) && (
+                <button
+                  onClick={() => onDelete(equipment)}
+                  style={{
+                    backgroundColor: '#ef4444',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    fontSize: '12px',
+                    fontWeight: '800',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    whiteSpace: 'nowrap'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#dc2626';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#ef4444';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                  title="Excluir (inativar) equipamento"
+                  aria-label="Excluir equipamento"
+                  type="button"
+                >
+                  🗑️ Excluir
+                </button>
+              )}
             </div>
           </td>
         </tr>
@@ -242,6 +356,9 @@ interface DataTableProps {
   onSort: () => void;
   onEdit: (equipment: Equipamento) => void;
   onView: (equipment: Equipamento) => void;
+  onSwap?: (equipment: Equipamento) => void;
+  onDelete?: (equipment: Equipamento) => void;
+  onRestore?: (equipment: Equipamento) => void;
   loading?: boolean;
 }
 
@@ -251,6 +368,9 @@ export const DataTable: React.FC<DataTableProps> = ({
   onSort,
   onEdit,
   onView,
+  onSwap,
+  onDelete,
+  onRestore,
   loading = false
 }) => {
   if (loading) {
@@ -325,29 +445,35 @@ export const DataTable: React.FC<DataTableProps> = ({
       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
       width: '100%'
     }}>
-      <table style={{ 
-        width: '100%', 
-        borderCollapse: 'collapse',
-        tableLayout: 'fixed'
-      }}>
-        <colgroup>
-          <col style={{ width: '15%' }} />
-          <col style={{ width: '20%' }} />
-          <col style={{ width: '20%' }} />
-          <col style={{ width: '15%' }} />
-          <col style={{ width: '20%' }} />
-          <col style={{ width: '10%' }} />
-        </colgroup>
-        <TableHeader 
-          sortOrder={sortOrder}
-          onSort={onSort}
-        />
-        <TableBody 
-          equipments={equipments}
-          onEdit={onEdit}
-          onView={onView}
-        />
-      </table>
+      <div className="table-container">
+        <table style={{ 
+          width: '100%', 
+          minWidth: 1160,
+          borderCollapse: 'collapse',
+          tableLayout: 'fixed'
+        }}>
+          <colgroup>
+            <col style={{ width: 170 }} />
+            <col style={{ width: 200 }} />
+            <col style={{ width: 200 }} />
+            <col style={{ width: 140 }} />
+            <col style={{ width: 240 }} />
+            <col style={{ width: 210 }} />
+          </colgroup>
+          <TableHeader 
+            sortOrder={sortOrder}
+            onSort={onSort}
+          />
+          <TableBody 
+            equipments={equipments}
+            onEdit={onEdit}
+            onView={onView}
+            onSwap={onSwap}
+            onDelete={onDelete}
+            onRestore={onRestore}
+          />
+        </table>
+      </div>
     </div>
   );
 };

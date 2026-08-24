@@ -209,7 +209,7 @@ const DespesasTable: React.FC<DespesasTableProps> = ({
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
         overflow: 'hidden'
       }}>
-        <div style={{ overflowX: 'auto' }}>
+        <div className="table-container" style={{ overflowX: 'auto' }}>
           <table style={{
             width: '100%',
             borderCollapse: 'collapse'

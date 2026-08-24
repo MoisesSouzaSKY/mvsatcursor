@@ -1,0 +1,37 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "clientes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nome", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "tvbox",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "cliente_id", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "assinaturas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "cliente_id", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "employees",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "email", "order": "ASCENDING" },
+        { "fieldPath": "cargo", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

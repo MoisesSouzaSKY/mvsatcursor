@@ -26,17 +26,26 @@ const EquipamentosStatistics: React.FC<EquipamentosStatisticsProps> = ({
   equipamentos, 
   loading = false 
 }) => {
+  const normalizeStatus = (status: any): string => {
+    const s = String(status || '').toLowerCase().trim();
+    if (!s) return '';
+    if (s === 'alugado' || s === 'em uso' || s === 'em_uso' || s === 'emuso') return 'em_uso';
+    if (s === 'problema' || s === 'com_problema' || s === 'defeito') return 'defeito';
+    if (s === 'disponível') return 'disponivel';
+    return s;
+  };
+
   // Calcular estatísticas
   const statistics = React.useMemo(() => {
     const total = equipamentos.length;
     const disponiveis = equipamentos.filter(e => 
-      e.status.toLowerCase() === 'disponivel'
+      normalizeStatus(e.status) === 'disponivel'
     ).length;
     const alugados = equipamentos.filter(e => 
-      e.status.toLowerCase() === 'alugado'
+      normalizeStatus(e.status) === 'em_uso'
     ).length;
     const problema = equipamentos.filter(e => 
-      e.status.toLowerCase() === 'problema'
+      normalizeStatus(e.status) === 'defeito'
     ).length;
 
     return { total, disponiveis, alugados, problema };
@@ -108,7 +117,7 @@ const EquipamentosStatistics: React.FC<EquipamentosStatisticsProps> = ({
 
       {/* Card - Alugados */}
       <StatCard
-        title="Alugados"
+        title="Em Uso"
         value={statistics.alugados}
         icon="📦"
         color="blue"
@@ -117,7 +126,7 @@ const EquipamentosStatistics: React.FC<EquipamentosStatisticsProps> = ({
 
       {/* Card - Com Problema */}
       <StatCard
-        title="Com Problema"
+        title="Defeito"
         value={statistics.problema}
         icon="⚠️"
         color="yellow"

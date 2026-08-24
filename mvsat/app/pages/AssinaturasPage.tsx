@@ -1,13 +1,18 @@
 import React from 'react';
-import { collection, getDocs, doc, updateDoc, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, getDocs } from 'firebase/firestore';
 import { getDb } from '../../config/database.config';
-import { clienteAssinaturaService } from '../../shared/services/ClienteAssinaturaService';
 import { useClienteAssinaturaValidation } from '../../shared/hooks/useClienteAssinaturaValidation';
 import { ValidationAlert } from '../../shared/components/ValidationAlert';
+import { CheckupSistemaModal } from '../../assinaturas/components/modals/CheckupSistemaModal';
+import type {
+  AssinaturaCheckItem,
+  CheckIssue,
+  ClienteSemCobrancaRow,
+  DefectEquipmentRow,
+  SystemCheckupResult,
+} from '../../assinaturas/types/checkup.types';
+import { tenantCollection } from '../../shared/saas/firestoreTenant';
 import NovaAssinaturaModal from '../../assinaturas/NovaAssinaturaModal';
-import EditarAssinaturaModal from '../../assinaturas/EditarAssinaturaModal';
-import EditarClienteModal from '../../clientes/EditarClienteModal';
-import { serverTimestamp } from 'firebase/firestore';
 
 // Componente de Card de Estatísticas
 const StatsCard: React.FC<{
@@ -48,80 +53,6 @@ const StatsCard: React.FC<{
   );
 };
 
-// Componente Toast
-const Toast: React.FC<{
-  message: string;
-  type: 'success' | 'error' | 'warning' | 'info';
-  show: boolean;
-  onClose: () => void;
-}> = ({ message, type, show, onClose }) => {
-  const getToastConfig = (type: string) => {
-    switch (type) {
-      case 'success':
-        return { bg: '#10b981', icon: '✅', border: '#059669' };
-      case 'error':
-        return { bg: '#ef4444', icon: '❌', border: '#dc2626' };
-      case 'warning':
-        return { bg: '#f59e0b', icon: '⚠️', border: '#d97706' };
-      case 'info':
-        return { bg: '#3b82f6', icon: 'ℹ️', border: '#2563eb' };
-      default:
-        return { bg: '#6b7280', icon: '📢', border: '#4b5563' };
-    }
-  };
-
-  const config = getToastConfig(type);
-
-  React.useEffect(() => {
-    if (show) {
-      const timer = setTimeout(() => {
-        onClose();
-      }, 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [show, onClose]);
-
-  if (!show) return null;
-
-  return (
-    <div style={{
-      position: 'fixed',
-      top: '20px',
-      right: '20px',
-      background: config.bg,
-      color: 'white',
-      padding: '16px 20px',
-      borderRadius: '8px',
-      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-      zIndex: 1000,
-      display: 'flex',
-      alignItems: 'center',
-      gap: '12px',
-      minWidth: '300px',
-      border: `2px solid ${config.border}`,
-      animation: 'slideInRight 0.3s ease-out'
-    }}>
-      <span style={{ fontSize: '18px' }}>{config.icon}</span>
-      <span style={{ fontWeight: '500', flex: 1 }}>{message}</span>
-      <button
-        onClick={onClose}
-        style={{
-          background: 'rgba(255, 255, 255, 0.2)',
-          border: 'none',
-          borderRadius: '4px',
-          color: 'white',
-          cursor: 'pointer',
-          padding: '4px 8px',
-          fontSize: '12px',
-          fontWeight: 'bold'
-        }}
-      >
-        ✕
-      </button>
-    </div>
-  );
-};
-
 interface Assinatura {
   id: string;
   codigo: string;
@@ -142,6 +73,7 @@ interface Assinatura {
     numero: string;
     cep: string;
   };
+  legacy_id?: string;
 }
 
 export default function AssinaturasPage() {
@@ -191,123 +123,597 @@ export default function AssinaturasPage() {
   const [items, setItems] = React.useState<Assinatura[]>([]);
   const [error, setError] = React.useState<string | null>(null);
   const [editingItem, setEditingItem] = React.useState<Assinatura | null>(null);
-  const [showEditarModal, setShowEditarModal] = React.useState(false);
   const [showEquipamentosModal, setShowEquipamentosModal] = React.useState(false);
-  const [showNovaAssinaturaModal, setShowNovaAssinaturaModal] = React.useState(false);
-  const [showEditarClienteModal, setShowEditarClienteModal] = React.useState(false);
-  const [clienteParaEditar, setClienteParaEditar] = React.useState<any>(null);
-  const [equipamentosDaAssinatura, setEquipamentosDaAssinatura] = React.useState<any[]>([]);
+  const [equipamentosSearch, setEquipamentosSearch] = React.useState<string>('');
   const [assinaturaSelecionada, setAssinaturaSelecionada] = React.useState<string | null>(null);
   const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
-  const [clientesUnicos, setClientesUnicos] = React.useState<number>(0);
   const [showValidation, setShowValidation] = React.useState<boolean>(false);
-  const [showGerarFaturaModal, setShowGerarFaturaModal] = React.useState(false);
-  const [assinaturaParaFatura, setAssinaturaParaFatura] = React.useState<Assinatura | null>(null);
-  const [faturaForm, setFaturaForm] = React.useState({
-    vencimento: '',
-    valor: '',
-    status: 'NAO_PAGO' as 'PAGO' | 'NAO_PAGO'
-  });
-  
-  // Estados para estatísticas
-  const [stats, setStats] = React.useState({
-    totalAssinaturas: 0,
-    assinaturasAtivas: 0,
-    totalEquipamentos: 0,
-    clientesUnicos: 0
-  });
-  
-  // Estados para toast
-  const [toast, setToast] = React.useState({
-    show: false,
-    message: '',
-    type: 'info' as 'success' | 'error' | 'warning' | 'info'
-  });
+  const [equipamentos, setEquipamentos] = React.useState<any[]>([]);
+  const [clientes, setClientes] = React.useState<any[]>([]);
+  const [assinaturasLoaded, setAssinaturasLoaded] = React.useState(false);
+  const [equipamentosLoaded, setEquipamentosLoaded] = React.useState(false);
+  const [clientesLoaded, setClientesLoaded] = React.useState(false);
+  const [forceRefreshToken, setForceRefreshToken] = React.useState<number>(0);
+  const [checkupLoading, setCheckupLoading] = React.useState<boolean>(false);
+  const [checkupResult, setCheckupResult] = React.useState<SystemCheckupResult | null>(null);
+  const [showCheckupModal, setShowCheckupModal] = React.useState<boolean>(false);
+  const [showNovaAssinaturaModal, setShowNovaAssinaturaModal] = React.useState<boolean>(false);
   
   // Hook de validação
   const { validateAssinatura, getValidationResult, clearValidation } = useClienteAssinaturaValidation();
 
-  // Funções para toast
-  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info') => {
-    setToast({ show: true, message, type });
-  };
-
-  const hideToast = () => {
-    setToast({ ...toast, show: false });
-  };
-
-
-
-  React.useEffect(() => {
-    loadAssinaturas();
+  const normalizeText = React.useCallback((value: any): string => {
+    return String(value ?? '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
   }, []);
 
-  const loadAssinaturas = async () => {
-    try {
-      setLoading(true);
-      const snap = await getDocs(collection(getDb(), 'assinaturas'));
-      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Assinatura[];
-      setItems(docs);
-      
-      // Calcular estatísticas
-      await calcularEstatisticas(docs);
-      
-      setError(null);
-    } catch (e: any) {
-      setError(e?.message || 'Falha ao carregar assinaturas');
-    } finally {
-      setLoading(false);
+  React.useEffect(() => {
+    if (showEquipamentosModal) {
+      setEquipamentosSearch('');
     }
-  };
+  }, [showEquipamentosModal, editingItem?.id]);
 
-  const calcularEstatisticas = async (assinaturas: Assinatura[]) => {
+
+
+  const fetchEquipamentosNow = React.useCallback(async () => {
     try {
-      // Buscar todos os equipamentos
-      const equipamentosSnap = await getDocs(collection(getDb(), 'equipamentos'));
-      const todosEquipamentos = equipamentosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      
-      // Buscar todos os clientes
-      const clientesSnap = await getDocs(collection(getDb(), 'clientes'));
-      const todosClientes = clientesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      
-      // Calcular estatísticas
-      const totalAssinaturas = assinaturas.length;
-      const assinaturasAtivas = assinaturas.filter(a => a.status === 'ativo' || a.status === 'ativa').length;
-      
-      // Contar equipamentos vinculados às assinaturas
-      let totalEquipamentos = 0;
-      const clientesUnicosSet = new Set();
-      
-      for (const assinatura of assinaturas) {
-        const equipamentosVinculados = todosEquipamentos.filter((equip: any) => {
-          const byAssId = equip.assinatura?.id || equip.assinatura_id;
-          const byLegacy = equip.legacy_id || equip.assinatura_id;
-          const matchById = String(byAssId || '') === String(assinatura.id);
-          const matchByLegacy = assinatura.legacy_id ? String(byLegacy || '') === String(assinatura.legacy_id) : false;
-          return matchById || matchByLegacy;
-        });
-        
-        totalEquipamentos += equipamentosVinculados.length;
-        
-        // Contar clientes únicos
-        equipamentosVinculados.forEach((equip: any) => {
-          if (equip.cliente_nome) {
-            clientesUnicosSet.add(equip.cliente_nome);
-          }
-        });
-      }
-      
-      setStats({
-        totalAssinaturas,
-        assinaturasAtivas,
-        totalEquipamentos,
-        clientesUnicos: clientesUnicosSet.size
-      });
-      
-    } catch (error) {
-      console.error('Erro ao calcular estatísticas:', error);
+      // Limpar cache local antes de recarregar
+      setEquipamentos([]);
+      const snap = await getDocs(tenantCollection(getDb(), 'equipamentos'));
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setEquipamentos(docs);
+    } catch (err) {
+      console.error('Erro ao atualizar equipamentos agora:', err);
     }
-  };
+  }, []);
+
+  React.useEffect(() => {
+    setLoading(true);
+    const db = getDb();
+
+    const unsubscribeAssinaturas = onSnapshot(
+      tenantCollection(db, 'assinaturas'),
+      (snap) => {
+        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Assinatura[];
+        setItems(docs);
+        setError(null);
+        setAssinaturasLoaded(true);
+        setLoading(false);
+      },
+      (err) => {
+        console.error('Erro ao carregar assinaturas:', err);
+        setError(err?.message || 'Falha ao carregar assinaturas');
+        setLoading(false);
+      }
+    );
+
+    const unsubscribeEquipamentos = onSnapshot(
+      tenantCollection(db, 'equipamentos'),
+      (snap) => {
+        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setEquipamentos(docs);
+        setEquipamentosLoaded(true);
+      },
+      (err) => {
+        console.error('Erro ao carregar equipamentos:', err);
+      }
+    );
+
+    const unsubscribeClientes = onSnapshot(
+      tenantCollection(db, 'clientes'),
+      (snap) => {
+        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setClientes(docs);
+        setClientesLoaded(true);
+      },
+      (err) => {
+        console.error('Erro ao carregar clientes:', err);
+      }
+    );
+
+    return () => {
+      unsubscribeAssinaturas();
+      unsubscribeEquipamentos();
+      unsubscribeClientes();
+    };
+  }, [forceRefreshToken]);
+
+  const matchesAssinatura = React.useCallback((equip: any, assinatura: Assinatura) => {
+    const equipAssDocId = equip?.assinatura?.id ?? equip?.assinatura_id ?? equip?.assinaturaId ?? '';
+    const equipAssCodigo =
+      equip?.assinatura?.codigo ??
+      equip?.assinatura_codigo ??
+      equip?.assinaturaCodigo ??
+      equip?.codigo_assinatura ??
+      equip?.assinatura_id ??
+      '';
+    const equipAssLegacy =
+      equip?.assinatura?.legacy_id ??
+      equip?.assinatura_legacy_id ??
+      equip?.assinaturaLegacyId ??
+      // legado: alguns registros salvam o legacy_id direto no equipamento
+      equip?.legacy_id ??
+      // e outros reutilizam assinatura_id como legacy_id (quando não é docId)
+      null;
+
+    const matchByDocId = String(equipAssDocId || '') === String(assinatura.id);
+    const matchByCodigo = String(equipAssCodigo || '') === String(assinatura.codigo || '');
+
+    // Compatibilidade: se assinatura_id não bate como docId, ele pode ser legacy_id
+    const equipAssIdAsLegacy = equip?.assinatura_id ?? equip?.assinaturaId ?? null;
+    const matchByLegacy = assinatura.legacy_id
+      ? String(equipAssLegacy || '') === String(assinatura.legacy_id)
+          || String(equipAssIdAsLegacy || '') === String(assinatura.legacy_id)
+      : false;
+
+    return matchByDocId || matchByCodigo || matchByLegacy;
+  }, []);
+
+  const getClienteNomeFromEquipamento = React.useCallback((equip: any) => {
+    // Para ficar consistente com a aba de Equipamentos:
+    // se o equipamento estiver "sem cliente" (cliente/cliente_nome vazio), aqui também deve ficar vazio,
+    // mesmo que ainda exista algum cliente_id antigo no documento.
+    const nome = String(equip?.cliente || equip?.cliente_nome || '').trim();
+    return nome;
+  }, [clientes]);
+
+  const digitsOnly = React.useCallback((v: any) => String(v ?? '').replace(/\D/g, ''), []);
+
+  const isClienteAtivo = React.useCallback((cliente: any) => {
+    const st = String(cliente?.status || cliente?.situacao || 'ativo').toLowerCase();
+    if (!st) return true;
+    if (st.includes('desativ') || st.includes('inativ') || st.includes('cancel')) return false;
+    return true;
+  }, []);
+
+  const asDate = React.useCallback((value: any): Date | null => {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (value && typeof value.toDate === 'function') return value.toDate();
+    if (value && typeof value.seconds === 'number') return new Date(value.seconds * 1000);
+    const dt = new Date(value);
+    return isNaN(dt.getTime()) ? null : dt;
+  }, []);
+
+  const hasCobrancaRecente = React.useCallback((cobrancasDoCliente: any[], now: Date) => {
+    const atual = { y: now.getFullYear(), m: now.getMonth() };
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const anterior = { y: prev.getFullYear(), m: prev.getMonth() };
+    const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const proximo = { y: next.getFullYear(), m: next.getMonth() };
+
+    for (const c of cobrancasDoCliente) {
+      const dt = asDate(
+        c.data_vencimento ||
+          c.vencimento ||
+          c.data ||
+          c.referencia ||
+          c.pagoEm ||
+          c.data_pagamento
+      );
+
+      // Muitas cobranças usam referenciaAno/referenciaMes
+      const refAno = Number(c.referenciaAno ?? c.ano ?? c.anoReferencia ?? NaN);
+      const refMes = Number(c.referenciaMes ?? c.mes ?? c.mesReferencia ?? NaN); // 1..12
+
+      const y = dt ? dt.getFullYear() : (Number.isFinite(refAno) ? refAno : null);
+      const m = dt ? dt.getMonth() : (Number.isFinite(refMes) ? (refMes - 1) : null); // 0..11
+      if (y == null || m == null) continue;
+
+      // Considerar mês atual, anterior e próximo (muita gente gera cobrança adiantada)
+      if (
+        (y === atual.y && m === atual.m) ||
+        (y === anterior.y && m === anterior.m) ||
+        (y === proximo.y && m === proximo.m)
+      ) return true;
+    }
+    return false;
+  }, [asDate]);
+
+  const resolveClienteForAssinatura = React.useCallback((assinatura: any) => {
+    const directIds = [
+      assinatura?.cliente_id,
+      assinatura?.clienteId,
+      assinatura?.cliente?.id,
+      assinatura?.cliente?.cliente_id,
+      Array.isArray(assinatura?.clientes) ? assinatura.clientes?.[0]?.id : null,
+      Array.isArray(assinatura?.clientes) ? assinatura.clientes?.[0]?.cliente_id : null,
+    ].filter((v) => v != null && v !== '');
+
+    for (const id of directIds) {
+      const found = clientes.find((c: any) => String(c.id) === String(id) || String(c.legacy_id) === String(id) || String(c.clienteId) === String(id));
+      if (found) return found;
+    }
+
+    const cpf = digitsOnly(assinatura?.cpf || assinatura?.documento || assinatura?.cpf_cliente);
+    if (cpf) {
+      const foundByCpf = clientes.find((c: any) => digitsOnly(c.cpf || c.documento || c.cpf_cliente || c.cpfCnpj || c.cpf_cnpj) === cpf);
+      if (foundByCpf) return foundByCpf;
+    }
+
+    return null;
+  }, [clientes, digitsOnly]);
+
+  const extractClienteIdsFromEquipamentos = React.useCallback((eqs: any[]) => {
+    const ids = new Set<string>();
+    for (const eq of eqs || []) {
+      // Para ficar consistente com a aba de Equipamentos:
+      // só considerar cliente quando o equipamento tem texto de cliente (não inflar com IDs antigos).
+      const nome = String(eq?.cliente || eq?.cliente_nome || '').trim();
+      if (!nome) continue;
+
+      const current =
+        eq?.cliente_atual_id ??
+        eq?.clienteAtualId ??
+        eq?.clienteId ??
+        eq?.cliente_id ??
+        eq?.cliente?.id ??
+        null;
+
+      if (current != null && current !== '') ids.add(String(current));
+    }
+    return Array.from(ids.values());
+  }, []);
+
+  const resolveClienteById = React.useCallback((id: string) => {
+    return clientes.find((c: any) =>
+      String(c.id) === String(id) ||
+      String(c.legacy_id) === String(id) ||
+      String(c.clienteId) === String(id)
+    ) || null;
+  }, [clientes]);
+
+  const resolveClientesForAssinatura = React.useCallback((assinatura: any, eqs: any[]) => {
+    const ids = extractClienteIdsFromEquipamentos(eqs);
+    const resolved: any[] = [];
+
+    for (const id of ids) {
+      const c = resolveClienteById(id);
+      if (c) resolved.push(c);
+    }
+
+    if (resolved.length > 0) return resolved;
+
+    const fallback = resolveClienteForAssinatura(assinatura);
+    return fallback ? [fallback] : [];
+  }, [extractClienteIdsFromEquipamentos, resolveClienteById, resolveClienteForAssinatura]);
+
+  const runSystemCheckup = React.useCallback(async () => {
+    setCheckupLoading(true);
+    try {
+      const db = getDb();
+      const now = new Date();
+
+      // Carregar cobranças sob demanda (evita snapshot contínuo pesado)
+      const cobrSnap = await getDocs(tenantCollection(db, 'cobrancas'));
+      const cobrancas = cobrSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // Index cobranças por chaves possíveis (id/legacy/nome)
+      const cobrancasPorClienteKey = new Map<string, any[]>();
+      const cobrancasPorNome = new Map<string, any[]>();
+
+      const pushToMap = (map: Map<string, any[]>, keyRaw: any, value: any) => {
+        const key = String(keyRaw ?? '').trim();
+        if (!key) return;
+        if (!map.has(key)) map.set(key, []);
+        map.get(key)!.push(value);
+      };
+
+      cobrancas.forEach((c: any) => {
+        pushToMap(cobrancasPorClienteKey, c.cliente_id, c);
+        pushToMap(cobrancasPorClienteKey, c.clienteId, c);
+
+        const nome = normalizeText(c.cliente_nome || c.clienteNome || c.cliente || c.nome_cliente || '');
+        if (nome) pushToMap(cobrancasPorNome, nome, c);
+      });
+
+      const getCobrancasDoCliente = (cliente: any): any[] => {
+        const out: any[] = [];
+        const seen = new Set<string>();
+
+        const keys = [
+          cliente?.id,
+          cliente?.legacy_id,
+          cliente?.clienteId,
+          cliente?.cliente_id,
+        ]
+          .filter((v: any) => v != null && String(v).trim() !== '')
+          .map((v: any) => String(v).trim());
+
+        for (const k of keys) {
+          const arr = cobrancasPorClienteKey.get(k) || [];
+          for (const item of arr) {
+            const id = String(item?.id ?? '');
+            if (id && seen.has(id)) continue;
+            if (id) seen.add(id);
+            out.push(item);
+          }
+        }
+
+        // Fallback por nome (para casos onde a cobrança não gravou cliente_id corretamente)
+        if (out.length === 0) {
+          const nomeCli = normalizeText(cliente?.nomeCompleto || cliente?.nome || '');
+          const arr = nomeCli ? (cobrancasPorNome.get(nomeCli) || []) : [];
+          for (const item of arr) {
+            const id = String(item?.id ?? '');
+            if (id && seen.has(id)) continue;
+            if (id) seen.add(id);
+            out.push(item);
+          }
+        }
+
+        return out;
+      };
+
+      // Equipamentos com defeito/manutenção/inativo
+      const equipamentosComDefeito: DefectEquipmentRow[] = [];
+      const defectStatuses = ['defeito', 'problema', 'manut', 'inativ'];
+
+      equipamentos.forEach((e: any) => {
+        const st = String(e.status || e.status_aparelho || e.statusAparelho || '').toLowerCase();
+        if (!defectStatuses.some((k) => st.includes(k))) return;
+        const nds = String(e.nds || e.numero_nds || '').trim() || '—';
+        const cliente = getClienteNomeFromEquipamento(e) || '—';
+        const assinaturaMatch = items.find((a) => matchesAssinatura(e, a));
+        const assinaturaLabel = assinaturaMatch ? (assinaturaMatch.codigo || assinaturaMatch.id) : '—';
+        equipamentosComDefeito.push({
+          equipamentoId: String(e.id || '—'),
+          nds,
+          cliente,
+          assinatura: String(assinaturaLabel),
+          status: String(e.status || e.status_aparelho || e.statusAparelho || '—'),
+        });
+      });
+
+      // Checks por assinatura
+      const problemas: AssinaturaCheckItem[] = [];
+      const atencoes: AssinaturaCheckItem[] = [];
+      const ok: AssinaturaCheckItem[] = [];
+
+      for (const a of items) {
+        const issues: CheckIssue[] = [];
+        const eqs = equipamentos.filter((e: any) => matchesAssinatura(e, a));
+
+        if (eqs.length === 0) {
+          issues.push({ severity: 'PROBLEMA', message: 'Assinatura sem equipamento vinculado' });
+        } else {
+          // duplicidade: NDS/smart_card repetido dentro da assinatura
+          const seen = new Set<string>();
+          const dup = new Set<string>();
+          for (const e of eqs) {
+            const nds = String(e.nds || e.numero_nds || '').trim().toUpperCase();
+            const sc = String(e.smart_card || e.smartcard || '').trim().toUpperCase();
+            const key = nds ? `NDS:${nds}` : sc ? `SC:${sc}` : '';
+            if (!key) continue;
+            if (seen.has(key)) dup.add(key);
+            seen.add(key);
+          }
+          if (dup.size > 0) {
+            issues.push({ severity: 'ATENCAO', message: `Possível duplicidade de equipamentos (${dup.size})` });
+          }
+        }
+
+        const clientesResolvidos = resolveClientesForAssinatura(a, eqs);
+        const clienteIdsResolvidos = clientesResolvidos.map((c: any) => String(c.id));
+
+        if (clientesResolvidos.length === 0) {
+          issues.push({ severity: 'PROBLEMA', message: 'Assinatura sem cliente vinculado' });
+        } else {
+          if (clienteIdsResolvidos.length > 1) {
+            issues.push({ severity: 'ATENCAO', message: `Múltiplos clientes vinculados (${clienteIdsResolvidos.length})` });
+          }
+
+          // Cobrança: se existir ao menos um cliente ativo, precisa ter cobrança recente para algum deles.
+          const ativos = clientesResolvidos.filter((c: any) => isClienteAtivo(c));
+          if (ativos.length > 0) {
+            const algumComCobranca = ativos.some((c: any) => {
+              const cobrancasDoCliente = getCobrancasDoCliente(c);
+              return hasCobrancaRecente(cobrancasDoCliente, now);
+            });
+            if (!algumComCobranca) {
+              issues.push({ severity: 'PROBLEMA', message: 'Cliente ativo sem cobrança recente (mês atual/anterior/próximo)' });
+            }
+          }
+        }
+
+        const item: AssinaturaCheckItem = {
+          assinaturaId: a.id,
+          codigo: String(a.codigo || a.id),
+          nome: String(a.nomeCompleto || a.codigo || a.id),
+          issues,
+        };
+
+        const hasProblem = issues.some((i) => i.severity === 'PROBLEMA');
+        const hasWarn = issues.some((i) => i.severity === 'ATENCAO');
+        if (hasProblem) problemas.push(item);
+        else if (hasWarn) atencoes.push(item);
+        else ok.push(item);
+      }
+
+      // Clientes ativos sem cobrança (entre clientes vinculados via EQUIPAMENTOS/ASSINATURAS)
+      const clienteToAssinaturas = new Map<string, { nome: string; bairro: string; assinaturas: string[]; ativo: boolean }>();
+      for (const a of items) {
+        const eqs = equipamentos.filter((e: any) => matchesAssinatura(e, a));
+        const cls = resolveClientesForAssinatura(a, eqs);
+        for (const cli of cls) {
+          if (!cli) continue;
+          const id = String(cli.id);
+          if (!clienteToAssinaturas.has(id)) {
+            clienteToAssinaturas.set(id, {
+              nome: String(cli.nomeCompleto || cli.nome || '—'),
+              bairro: String(cli.bairro || cli.endereco?.bairro || ''),
+              assinaturas: [],
+              ativo: isClienteAtivo(cli),
+            });
+          }
+          clienteToAssinaturas.get(id)!.assinaturas.push(String(a.codigo || a.id));
+        }
+      }
+
+      const clientesSemCobranca: ClienteSemCobrancaRow[] = [];
+      for (const [clienteId, info] of clienteToAssinaturas.entries()) {
+        if (!info.ativo) continue;
+        const cli = resolveClienteById(clienteId);
+        const cobrancasDoCliente = cli ? getCobrancasDoCliente(cli) : (cobrancasPorClienteKey.get(clienteId) || []);
+        const hasRecent = hasCobrancaRecente(cobrancasDoCliente, now);
+        if (!hasRecent) {
+          clientesSemCobranca.push({
+            clienteId,
+            nome: info.nome,
+            bairro: info.bairro || '—',
+            assinaturas: info.assinaturas,
+            motivo: 'Sem cobrança recente (mês atual/anterior/próximo)',
+          });
+        }
+      }
+
+      const alerts: string[] = [];
+      if (clientesSemCobranca.length > 0) alerts.push('⚠️ Existem clientes ativos sem cobrança recente');
+      if (equipamentosComDefeito.length > 0) alerts.push('⚠️ Existem equipamentos com defeito/manutenção/inativos');
+      if (problemas.length > 0) alerts.push('⚠️ Existem assinaturas incompletas');
+
+      const result: SystemCheckupResult = {
+        ranAt: new Date().toISOString(),
+        totals: {
+          totalAssinaturas: items.length,
+          assinaturasComProblema: problemas.length,
+          assinaturasComAtencao: atencoes.length,
+          equipamentosComDefeito: equipamentosComDefeito.length,
+          clientesSemCobranca: clientesSemCobranca.length,
+        },
+        assinaturas: { problemas, atencoes, ok },
+        equipamentosComDefeito: equipamentosComDefeito
+          .sort((a, b) => a.status.localeCompare(b.status, 'pt-BR') || a.cliente.localeCompare(b.cliente, 'pt-BR')),
+        clientesSemCobranca: clientesSemCobranca.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+        alerts,
+      };
+
+      setCheckupResult(result);
+    } catch (e: any) {
+      console.error('Erro no checkup do sistema:', e);
+      alert(`Erro ao executar checkup: ${e?.message || e}`);
+    } finally {
+      setCheckupLoading(false);
+    }
+  }, [
+    equipamentos,
+    items,
+    matchesAssinatura,
+    getClienteNomeFromEquipamento,
+    resolveClienteForAssinatura,
+    isClienteAtivo,
+    hasCobrancaRecente,
+  ]);
+
+  // Rodar automaticamente ao abrir o modal (mantém a tela limpa)
+  React.useEffect(() => {
+    if (!showCheckupModal) return;
+    if (!assinaturasLoaded || !equipamentosLoaded || !clientesLoaded) return;
+    if (checkupLoading) return;
+
+    const last = checkupResult?.ranAt ? new Date(checkupResult.ranAt).getTime() : 0;
+    const stale = !last || (Date.now() - last) > (2 * 60 * 1000);
+    if (!stale) return;
+
+    runSystemCheckup();
+  }, [
+    showCheckupModal,
+    assinaturasLoaded,
+    equipamentosLoaded,
+    clientesLoaded,
+    checkupLoading,
+    checkupResult?.ranAt,
+    runSystemCheckup,
+  ]);
+
+  const normalizeStatus = React.useCallback((equip: any) => {
+    const raw = String(equip.status || equip.status_aparelho || equip.statusAparelho || '').toLowerCase();
+    if (raw.includes('defeito') || raw.includes('problema')) {
+      return 'defeito';
+    }
+    if (raw.includes('disponivel') || raw.includes('livre')) {
+      return 'disponivel';
+    }
+    return 'ativo';
+  }, []);
+
+  const shouldHideCliente = React.useCallback((statusKey: string, equip: any) => {
+    if (statusKey === 'disponivel') return true;
+    if (statusKey === 'defeito') {
+      const hasCliente = Boolean(
+        equip?.cliente_atual_id ||
+        equip?.clienteAtualId ||
+        equip?.cliente?.id
+      );
+      return !hasCliente;
+    }
+    return false;
+  }, []);
+
+  const stats = React.useMemo(() => {
+    const totalAssinaturas = items.length;
+    const assinaturasAtivas = items.filter(a => a.status === 'ativo' || a.status === 'ativa').length;
+
+    const equipamentosVinculados = equipamentos.filter((equip: any) =>
+      items.some(assinatura => matchesAssinatura(equip, assinatura))
+    );
+
+    const clientesUnicosSet = new Set<string>();
+    equipamentosVinculados.forEach((equip: any) => {
+      const nomeCliente = getClienteNomeFromEquipamento(equip);
+      if (nomeCliente) {
+        clientesUnicosSet.add(nomeCliente);
+      }
+    });
+
+    return {
+      totalAssinaturas,
+      assinaturasAtivas,
+      totalEquipamentos: equipamentosVinculados.length,
+      clientesUnicos: clientesUnicosSet.size
+    };
+  }, [items, equipamentos, matchesAssinatura, getClienteNomeFromEquipamento]);
+
+  const assinaturaStatsMap = React.useMemo(() => {
+    const map = new Map<string, { total: number; clientesUnicos: number; defeito: number; disponivel: number; ativo: number }>();
+
+    items.forEach((assinatura) => {
+      const equipamentosVinculados = equipamentos.filter((equip: any) =>
+        matchesAssinatura(equip, assinatura)
+      );
+
+      const clientesSet = new Set<string>();
+      let defeito = 0;
+      let disponivel = 0;
+      let ativo = 0;
+
+      equipamentosVinculados.forEach((equip: any) => {
+        const status = normalizeStatus(equip);
+        if (status === 'defeito') defeito += 1;
+        else if (status === 'disponivel') disponivel += 1;
+        else ativo += 1;
+
+        const nomeCliente = getClienteNomeFromEquipamento(equip);
+        if (nomeCliente) {
+          clientesSet.add(nomeCliente);
+        }
+      });
+
+      map.set(assinatura.id, {
+        total: equipamentosVinculados.length,
+        clientesUnicos: clientesSet.size,
+        defeito,
+        disponivel,
+        ativo
+      });
+    });
+
+    return map;
+  }, [items, equipamentos, matchesAssinatura, normalizeStatus, getClienteNomeFromEquipamento]);
 
   // Função para ordenar as assinaturas por nome
   const sortedItems = React.useMemo(() => {
@@ -338,381 +744,117 @@ export default function AssinaturasPage() {
     });
   }, [sortedItems, sortOrder]);
 
-  const handleEdit = (item: Assinatura) => {
-    setEditingItem(item);
-    setShowEditarModal(true);
-  };
-
-  const handleEditCliente = async (clienteInfo: any) => {
-    try {
-      // Buscar dados completos do cliente
-      const clientesSnap = await getDocs(collection(getDb(), 'clientes'));
-      const cliente = clientesSnap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .find((c: any) => 
-          String(c.id) === String(clienteInfo.id) || 
-          String(c.legacy_id) === String(clienteInfo.id) ||
-          String(c.id) === String(clienteInfo.cliente_id) ||
-          String(c.legacy_id) === String(clienteInfo.cliente_id)
-        );
-      
-      if (cliente) {
-        setClienteParaEditar(cliente);
-        setShowEditarClienteModal(true);
-      } else {
-        alert('Cliente não encontrado');
-      }
-    } catch (error) {
-      console.error('Erro ao buscar cliente:', error);
-      alert('Erro ao buscar cliente');
-    }
-  };
-
-
-
-  // Função para resolver o bairro do cliente - Versão aprimorada
-  const resolverBairroCliente = async (equipamento: any, todosClientes: any[]): Promise<string> => {
-    console.log(`🔍 [resolverBairroCliente] Resolvendo bairro para equipamento:`, {
-      id: equipamento.id,
-      bairro_direto: equipamento.bairro,
-      endereco_bairro: equipamento.endereco?.bairro,
-      cliente_id: equipamento.cliente_id,
-      cliente_atual_id: equipamento.cliente_atual_id,
-      cliente_nome: equipamento.cliente_nome
-    });
-
+  // Bairro: não tentar "adivinhar" pelo cliente antigo (mantém consistência com Equipamentos)
+  const resolverBairroCliente = (equipamento: any): string => {
     // 1. Primeiro tenta usar o bairro direto do equipamento
     if (equipamento.bairro && equipamento.bairro.trim() !== '') {
-      console.log(`✅ [resolverBairroCliente] Bairro encontrado no equipamento: ${equipamento.bairro}`);
       return equipamento.bairro.trim();
     }
     
     // 2. Se não tem, busca no endereço do equipamento
     if (equipamento.endereco?.bairro && equipamento.endereco.bairro.trim() !== '') {
-      console.log(`✅ [resolverBairroCliente] Bairro encontrado no endereço do equipamento: ${equipamento.endereco.bairro}`);
       return equipamento.endereco.bairro.trim();
     }
-    
-    // 3. Busca no cliente vinculado - múltiplas estratégias de ID
-    const possiveisClienteIds = [
-      equipamento.cliente_id,
-      equipamento.cliente_atual_id,
-      equipamento.clienteAtualId,
-      equipamento.clienteId,
-      equipamento.cliente?.id,
-      equipamento.assinatura?.cliente_id
-    ].filter(id => id != null && id !== '');
 
-    console.log(`🔍 [resolverBairroCliente] Possíveis IDs de cliente:`, possiveisClienteIds);
-
-    for (const clienteId of possiveisClienteIds) {
-      const cliente = todosClientes.find((c: any) => 
-        String(c.id) === String(clienteId) || 
-        String(c.legacy_id) === String(clienteId) ||
-        String(c.clienteId) === String(clienteId)
-      );
-      
-      if (cliente) {
-        console.log(`👤 [resolverBairroCliente] Cliente encontrado:`, {
-          id: cliente.id,
-          nome: cliente.nomeCompleto || cliente.nome,
-          bairro: cliente.bairro,
-          endereco_bairro: cliente.endereco?.bairro
-        });
-
-        // Verifica bairro direto do cliente
-        if (cliente.bairro && cliente.bairro.trim() !== '') {
-          console.log(`✅ [resolverBairroCliente] Bairro encontrado no cliente: ${cliente.bairro}`);
-          return cliente.bairro.trim();
-        }
-        
-        // Verifica bairro no endereço do cliente
-        if (cliente.endereco?.bairro && cliente.endereco.bairro.trim() !== '') {
-          console.log(`✅ [resolverBairroCliente] Bairro encontrado no endereço do cliente: ${cliente.endereco.bairro}`);
-          return cliente.endereco.bairro.trim();
-        }
-      }
-    }
-
-    // 4. Busca por nome do cliente se não encontrou por ID
-    if (equipamento.cliente_nome && equipamento.cliente_nome.trim() !== '') {
-      const clientePorNome = todosClientes.find((c: any) => {
-        const nomeCliente = (c.nomeCompleto || c.nome || '').toLowerCase().trim();
-        const nomeEquipamento = equipamento.cliente_nome.toLowerCase().trim();
-        return nomeCliente === nomeEquipamento;
-      });
-
-      if (clientePorNome) {
-        console.log(`👤 [resolverBairroCliente] Cliente encontrado por nome:`, {
-          nome: clientePorNome.nomeCompleto || clientePorNome.nome,
-          bairro: clientePorNome.bairro,
-          endereco_bairro: clientePorNome.endereco?.bairro
-        });
-
-        if (clientePorNome.bairro && clientePorNome.bairro.trim() !== '') {
-          console.log(`✅ [resolverBairroCliente] Bairro encontrado no cliente por nome: ${clientePorNome.bairro}`);
-          return clientePorNome.bairro.trim();
-        }
-        
-        if (clientePorNome.endereco?.bairro && clientePorNome.endereco.bairro.trim() !== '') {
-          console.log(`✅ [resolverBairroCliente] Bairro encontrado no endereço do cliente por nome: ${clientePorNome.endereco.bairro}`);
-          return clientePorNome.endereco.bairro.trim();
-        }
-      }
-    }
-    
-    // 5. Fallback final
-    console.log(`❌ [resolverBairroCliente] Bairro não encontrado, usando fallback`);
     return 'Não informado';
   };
 
-  const carregarEquipamentosPorAssinatura = async (ass: any) => {
-    try {
-      console.log('🔍 [AssinaturasPage] Carregando equipamentos para assinatura:', {
-        id: ass.id,
-        nomeCompleto: ass.nomeCompleto,
-        legacy_id: ass.legacy_id
-      });
-      
-      showToast('Carregando equipamentos...', 'info');
-      
-      // 1. Busca todos os equipamentos relacionados à assinatura
-      const equipamentosSnap = await getDocs(collection(getDb(), 'equipamentos'));
-      const todosEquipamentos = equipamentosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      
-      // Filtra equipamentos desta assinatura (por ID ou legacy_id)
-      const equipamentosVinculados = todosEquipamentos.filter((equip: any) => {
-        const byAssId = equip.assinatura?.id || equip.assinatura_id;
-        const byLegacy = equip.legacy_id || equip.assinatura_id;
-        const matchById = String(byAssId || '') === String(ass.id);
-        const matchByLegacy = ass.legacy_id ? String(byLegacy || '') === String(ass.legacy_id) : false;
-        return matchById || matchByLegacy;
+  const resolverClienteInfo = (equip: any, bairroResolvido: string) => {
+    const nome = String(equip?.cliente || equip?.cliente_nome || '').trim();
+    if (!nome) {
+      return { nome: '-', id: null, bairro: '-' };
+    }
+    // Mantém o texto exatamente como o documento já traz (mesmo padrão da aba Equipamentos)
+    const id = equip?.cliente_atual_id ?? equip?.clienteAtualId ?? equip?.cliente?.id ?? null;
+    return { nome, id, bairro: bairroResolvido };
+  };
+
+  const equipamentosDaAssinatura = React.useMemo(() => {
+    if (!editingItem) return [];
+
+    const equipamentosVinculados = equipamentos.filter((equip: any) =>
+      matchesAssinatura(equip, editingItem)
+    );
+
+    return equipamentosVinculados.map((equip: any) => {
+      const bairroResolvido = resolverBairroCliente(equip);
+      const clienteInfo = resolverClienteInfo(equip, bairroResolvido);
+      const statusKey = normalizeStatus(equip);
+      const ocultarCliente = shouldHideCliente(statusKey, equip);
+      const clienteInfoFinal = ocultarCliente ? { nome: '-', id: null, bairro: '-' } : clienteInfo;
+      const bairroFinal = ocultarCliente ? '-' : (clienteInfoFinal?.nome === '-' ? '-' : bairroResolvido);
+
+      const statusFonte = String(equip.status || equip.status_aparelho || equip.statusAparelho || '');
+      const statusFonteLower = statusFonte.toLowerCase();
+      const divergeDisponivel = statusFonteLower.includes('disp') && statusKey !== 'disponivel';
+      const divergeDefeito = (statusFonteLower.includes('defeito') || statusFonteLower.includes('problema')) && statusKey !== 'defeito';
+      const divergencia = divergeDisponivel || divergeDefeito;
+
+      console.log('[Assinaturas][Equipamento]', {
+        id: equip.id,
+        statusFonte,
+        statusExibido: statusKey,
+        divergencia
       });
 
-      console.log(`📋 [AssinaturasPage] Equipamentos encontrados: ${equipamentosVinculados.length}`);
-
-      if (equipamentosVinculados.length === 0) {
-        showToast('Nenhum equipamento encontrado para esta assinatura', 'warning');
-        setEquipamentosDaAssinatura([]);
-        return;
+      if (divergencia) {
+        console.warn('[Assinaturas][Equipamento] Divergencia detectada', {
+          id: equip.id,
+          statusFonte,
+          statusExibido: statusKey
+        });
       }
 
-      // 2. Busca TODOS os clientes do Firestore
-      const clientesSnap = await getDocs(collection(getDb(), 'clientes'));
-      const todosClientes = clientesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      
-      console.log(`👥 [AssinaturasPage] Total de clientes no sistema: ${todosClientes.length}`);
-
-      // 3. Para cada equipamento, encontra o cliente correspondente e resolve o bairro
-      const equipamentosComCliente = await Promise.all(
-        equipamentosVinculados.map(async (equip: any, index: number) => {
-          let clienteInfo = null;
-          
-          console.log(`🔧 [AssinaturasPage] Processando equipamento ${index + 1}:`, {
-            id: equip.id,
-            nds: equip.numero_nds || equip.nds || equip.nds_id || equip.numero_serie,
-            cliente_nome: equip.cliente_nome,
-            cliente_id: equip.cliente_id,
-            cliente_atual_id: equip.cliente_atual_id
-          });
-          
-          // Resolve o bairro usando a nova função
-          const bairroResolvido = await resolverBairroCliente(equip, todosClientes);
-          
-          // Estratégia aprimorada de resolução de cliente
-          let clienteEncontrado = null;
-
-          // 1. Primeiro tenta buscar por IDs (mais confiável)
-          const possiveisClienteIds = [
-            equip.cliente_id,
-            equip.cliente_atual_id,
-            equip.clienteAtualId,
-            equip.clienteId,
-            equip.cliente?.id,
-            equip.assinatura?.cliente_id
-          ].filter(id => id != null && id !== '');
-
-          for (const clienteId of possiveisClienteIds) {
-            clienteEncontrado = todosClientes.find((c: any) => 
-              String(c.id) === String(clienteId) || 
-              String(c.legacy_id) === String(clienteId) ||
-              String(c.clienteId) === String(clienteId)
-            );
-            
-            if (clienteEncontrado) {
-              console.log(`✅ [AssinaturasPage] Cliente encontrado por ID ${clienteId}:`, clienteEncontrado.nomeCompleto || clienteEncontrado.nome);
-              break;
-            }
-          }
-
-          // 2. Se não encontrou por ID, tenta por nome
-          if (!clienteEncontrado && equip.cliente_nome && equip.cliente_nome.trim() !== '') {
-            clienteEncontrado = todosClientes.find((c: any) => {
-              const nomeCliente = (c.nomeCompleto || c.nome || '').toLowerCase().trim();
-              const nomeEquipamento = equip.cliente_nome.toLowerCase().trim();
-              return nomeCliente === nomeEquipamento;
-            });
-            
-            if (clienteEncontrado) {
-              console.log(`✅ [AssinaturasPage] Cliente encontrado por nome: ${equip.cliente_nome}`);
-            }
-          }
-
-          // 3. Monta as informações do cliente
-          if (clienteEncontrado) {
-            clienteInfo = {
-              nome: clienteEncontrado.nomeCompleto || clienteEncontrado.nome || 'Cliente encontrado',
-              id: clienteEncontrado.id,
-              bairro: bairroResolvido
-            };
-            console.log(`✅ [AssinaturasPage] Cliente processado: ${clienteInfo.nome} - Bairro: ${bairroResolvido}`);
-          } else if (equip.cliente_nome && equip.cliente_nome.trim() !== '') {
-            // Se tem nome mas não encontrou o cliente no banco, usa o nome do equipamento
-            clienteInfo = {
-              nome: equip.cliente_nome,
-              id: equip.cliente_id || 'sem-id',
-              bairro: bairroResolvido
-            };
-            console.log(`⚠️ [AssinaturasPage] Usando nome do equipamento: ${equip.cliente_nome} - Bairro: ${bairroResolvido}`);
-          }
-
-          // Se ainda não encontrou cliente, marca como não vinculado
-          if (!clienteInfo) {
-            clienteInfo = {
-              nome: 'Cliente não encontrado',
-              id: null,
-              bairro: bairroResolvido
-            };
-          }
-
-          return {
-            ...equip,
-            clienteInfo,
-            nds: equip.numero_nds || equip.nds || equip.nds_id || equip.numero_serie || 'N/A',
-            cartao: equip.smart_card || equip.cartao || equip.numero_cartao || equip.cartao_id || 'N/A',
-            bairro: bairroResolvido // Usar o bairro resolvido
-          };
-        })
-      );
-
-      // 4. Conta clientes únicos
-      const clientesUnicosSet = new Set();
-      equipamentosComCliente.forEach(equip => {
-        if (equip.clienteInfo && equip.clienteInfo.nome && equip.clienteInfo.nome !== 'Cliente não encontrado') {
-          clientesUnicosSet.add(equip.clienteInfo.nome);
-        }
-      });
-      
-      const totalClientesUnicos = clientesUnicosSet.size;
-      setClientesUnicos(totalClientesUnicos);
-
-      console.log(`✅ [AssinaturasPage] RESULTADO FINAL:`);
-      console.log(`   - ${equipamentosComCliente.length} equipamentos processados`);
-      console.log(`   - ${totalClientesUnicos} clientes únicos encontrados`);
-      console.log(`   - Clientes: ${Array.from(clientesUnicosSet).join(', ')}`);
-      console.log(`   - Bairros resolvidos: ${equipamentosComCliente.map(e => `${e.clienteInfo?.nome}: ${e.bairro}`).join(', ')}`);
-
-      setEquipamentosDaAssinatura(equipamentosComCliente);
-      
-      // Contar quantos bairros foram resolvidos com sucesso
-      const bairrosResolvidos = equipamentosComCliente.filter(e => e.bairro && e.bairro !== 'Não informado').length;
-      const mensagemSucesso = `✅ Equipamentos carregados: ${equipamentosComCliente.length} equipamentos, ${bairrosResolvidos} bairros resolvidos`;
-      
-      showToast(mensagemSucesso, 'success');
-      
-    } catch (error) {
-      console.error('❌ [AssinaturasPage] Erro ao carregar equipamentos:', error);
-      setEquipamentosDaAssinatura([]);
-      setError(`Erro ao carregar equipamentos: ${error}`);
-      showToast('Erro ao carregar equipamentos da assinatura', 'error');
-    }
-  }
-
-  const handleSave = async () => {
-    await loadAssinaturas();
-    setShowEditarModal(false);
-    setEditingItem(null);
-  };
-
-  const handleSaveCliente = async () => {
-    setShowEditarClienteModal(false);
-    setClienteParaEditar(null);
-    // Recarregar equipamentos se necessário
-    if (editingItem) {
-      await carregarEquipamentosPorAssinatura(editingItem);
-    }
-  };
-
-  const handleNovaAssinatura = () => {
-    setShowNovaAssinaturaModal(true);
-  };
-
-  const handleNovaAssinaturaSave = async () => {
-    await loadAssinaturas();
-    setShowNovaAssinaturaModal(false);
-  };
-
-  const abrirModalGerarFatura = (assinatura: Assinatura) => {
-    setAssinaturaParaFatura(assinatura);
-    // Preencher automaticamente com a data atual
-    const hoje = new Date();
-    const dataFormatada = hoje.toISOString().split('T')[0]; // YYYY-MM-DD
-    setFaturaForm({ vencimento: dataFormatada, valor: '', status: 'NAO_PAGO' });
-    setShowGerarFaturaModal(true);
-  };
-
-  const formatCurrencyBRL = (value: string) => {
-    const onlyDigits = value.replace(/\D/g, '');
-    const number = parseInt(onlyDigits || '0', 10);
-    const formatted = (number / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    return formatted;
-  };
-
-  const parseCurrencyToNumber = (value: string) => {
-    const normalized = value.replace(/[^0-9,-]/g, '').replace('.', '').replace(',', '.');
-    const parsed = parseFloat(normalized || '0');
-    return isNaN(parsed) ? 0 : parsed;
-  };
-
-  const confirmarGerarFatura = async () => {
-    if (!assinaturaParaFatura) return;
-    try {
-      const valorNumber = parseCurrencyToNumber(faturaForm.valor);
-      if (!faturaForm.vencimento || !valorNumber) {
-        alert('Preencha vencimento e valor.');
-        return;
-      }
-      
-      // 1. Criar a despesa
-      const despesa: any = {
-        origemTipo: 'ASSINATURA',
-        origemId: assinaturaParaFatura.id,
-        origemNome: assinaturaParaFatura.nomeCompleto,
-        descricao: `Fatura de Assinatura – ${assinaturaParaFatura.nomeCompleto}`,
-        dataVencimento: new Date(faturaForm.vencimento),
-        valor: valorNumber,
-        status: faturaForm.status === 'PAGO' ? 'Pago' : 'Em Aberto',
-        createdAt: serverTimestamp(),
+      return {
+        ...equip,
+        clienteInfo: clienteInfoFinal,
+        nds: equip.numero_nds || equip.nds || equip.nds_id || equip.numero_serie || 'N/A',
+        cartao: equip.smart_card || equip.cartao || equip.numero_cartao || equip.cartao_id || 'N/A',
+        bairro: bairroFinal,
+        statusKey
       };
+    });
+  }, [editingItem, equipamentos, clientes, matchesAssinatura, normalizeStatus, shouldHideCliente]);
 
-      await addDoc(collection(getDb(), 'despesas'), despesa);
-      
-      // 2. Atualizar a assinatura com o último vencimento
-      await updateDoc(doc(getDb(), 'assinaturas', assinaturaParaFatura.id), {
-        ultimoVencimento: faturaForm.vencimento,
-        updatedAt: new Date()
-      });
-      
-      // 3. Recarregar as assinaturas para mostrar o vencimento atualizado
-      await loadAssinaturas();
-      
-      setShowGerarFaturaModal(false);
-      setAssinaturaParaFatura(null);
-      showToast('Fatura gerada com sucesso! Vencimento atualizado.', 'success');
-    } catch (e: any) {
-      showToast('Erro ao gerar fatura: ' + (e?.message || e), 'error');
+  const equipamentosDaAssinaturaFiltrados = React.useMemo(() => {
+    const term = normalizeText(equipamentosSearch);
+    if (!term) return equipamentosDaAssinatura;
+
+    return equipamentosDaAssinatura.filter((equip: any) => {
+      const nds = normalizeText(equip.nds || equip.nds_id || '');
+      const cartao = normalizeText(equip.cartao || equip.numero_cartao || '');
+      const cliente = normalizeText(equip.clienteInfo?.nome || '');
+      const bairro = normalizeText(equip.bairro || '');
+      const status = normalizeText(equip.statusKey || equip.status || '');
+
+      return (
+        nds.includes(term) ||
+        cartao.includes(term) ||
+        cliente.includes(term) ||
+        bairro.includes(term) ||
+        status.includes(term)
+      );
+    });
+  }, [equipamentosDaAssinatura, equipamentosSearch, normalizeText]);
+
+  const clientesUnicos = React.useMemo(() => {
+    const clientesUnicosSet = new Set<string>();
+    equipamentosDaAssinatura.forEach((equip: any) => {
+      if (equip.clienteInfo?.nome && equip.clienteInfo.nome !== 'Cliente não encontrado') {
+        clientesUnicosSet.add(equip.clienteInfo.nome);
+      }
+    });
+    return clientesUnicosSet.size;
+  }, [equipamentosDaAssinatura]);
+
+  const selectedStats = React.useMemo(() => {
+    if (!editingItem) {
+      return { total: 0, clientesUnicos: 0, ativo: 0, defeito: 0, disponivel: 0 };
     }
-  };
+    return assinaturaStatsMap.get(editingItem.id) || { total: 0, clientesUnicos: 0, ativo: 0, defeito: 0, disponivel: 0 };
+  }, [editingItem, assinaturaStatsMap]);
+
+
 
   return (
     <>
@@ -798,6 +940,42 @@ export default function AssinaturasPage() {
               Gerencie todas as assinaturas do sistema de forma centralizada e organizada
             </p>
           </div>
+        </div>
+
+        {/* Ação: Nova Assinatura */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
+          <button
+            onClick={() => setShowNovaAssinaturaModal(true)}
+            style={{
+              backgroundColor: '#10b981',
+              color: 'white',
+              border: 'none',
+              borderRadius: '12px',
+              padding: '16px 32px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+              transition: 'all 0.2s ease',
+              outline: 'none'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#059669';
+              e.currentTarget.style.boxShadow = '0 8px 20px rgba(16, 185, 129, 0.4)';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#10b981';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.25)';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            <span style={{ fontSize: '16px' }}>➕</span>
+            Nova Assinatura
+          </button>
         </div>
 
         {/* Header removido conforme solicitado */}
@@ -953,7 +1131,7 @@ export default function AssinaturasPage() {
                 color: '#1e293b', 
                 margin: '0 0 16px 0' 
               }}>
-                Equipamentos Alugados
+                Equipamentos Vinculados
               </h3>
               <div style={{ fontSize: '48px', fontWeight: '700', color: '#f59e0b', marginBottom: '12px' }}>
                 {stats.totalEquipamentos}
@@ -966,121 +1144,106 @@ export default function AssinaturasPage() {
             </div>
           </div>
 
-          {/* Card 4 - Próximos Vencimentos */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            padding: '32px',
-            position: 'relative',
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-            border: '1px solid #f1f5f9',
-            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-4px)';
-            e.currentTarget.style.boxShadow = '0 20px 40px -10px rgba(0, 0, 0, 0.15)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
-          }}>
-            <div style={{ 
-              position: 'absolute', 
-              top: '24px', 
-              right: '24px', 
-              fontSize: '32px', 
-              opacity: '0.2' 
-            }}>
-              🗓️
-            </div>
-            <div style={{ marginBottom: '20px' }}>
-              <h3 style={{ 
-                fontSize: '18px', 
-                fontWeight: '600', 
-                color: '#1e293b', 
-                margin: '0 0 16px 0' 
-              }}>
-                Próximos Vencimentos
-              </h3>
-              <div style={{ fontSize: '48px', fontWeight: '700', color: '#8b5cf6', marginBottom: '12px' }}>
-                0
-              </div>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', fontWeight: '600', color: '#dc2626' }}>
-                  0
-                </div>
-                <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>
-                  Hoje
-                </div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', fontWeight: '600', color: '#f59e0b' }}>
-                  0
-                </div>
-                <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>
-                  Esta semana
-                </div>
-              </div>
-            </div>
-          </div>
+
         </div>
 
-        {/* Seção com título à esquerda e botão centralizado */}
-        <div style={{ marginBottom: '32px' }}>
-          <div style={{ textAlign: 'left', marginBottom: '16px' }}>
-            <h2 style={{ 
-              fontSize: '28px', 
-              fontWeight: '700', 
-              color: '#1e293b', 
-              margin: '0 0 8px 0' 
-            }}>
-              Gerenciar Assinaturas
-            </h2>
-            <p style={{ 
-              color: '#6b7280', 
-              margin: 0, 
-              fontSize: '16px' 
-            }}>
-              {items.length} assinatura(s) cadastrada(s)
-            </p>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <button 
-              onClick={handleNovaAssinatura}
+        {/* Checkup do Sistema (mesmo padrão do "Resumo": abre em modal) */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+          padding: '16px',
+          marginBottom: '24px'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            flexWrap: 'wrap'
+          }}>
+            <div>
+              <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '16px' }}>
+                Auditoria / Checkup do Sistema
+              </div>
+              <div style={{ color: '#64748b', fontSize: '13px', marginTop: '4px' }}>
+                Abre um resumo completo (problemas, atenções, OK, equipamentos e clientes sem cobrança).
+              </div>
+              <div style={{ color: '#64748b', fontSize: '12px', marginTop: '8px', fontWeight: 700 }}>
+                {assinaturasLoaded && equipamentosLoaded && clientesLoaded
+                  ? (checkupResult?.ranAt ? `Última execução: ${new Date(checkupResult.ranAt).toLocaleString('pt-BR')}` : 'Ainda não executado.')
+                  : 'Carregando dados...'}
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowCheckupModal(true)}
               style={{
-                backgroundColor: '#059669',
-                border: 'none',
-                borderRadius: '12px',
-                padding: '16px 32px',
+                backgroundColor: '#2563eb',
                 color: 'white',
-                fontSize: '16px',
-                fontWeight: '600',
+                border: 'none',
+                borderRadius: '10px',
+                padding: '12px 16px',
+                fontSize: '13px',
+                fontWeight: 800,
                 cursor: 'pointer',
-                transition: 'all 0.2s ease',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px',
-                boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)'
+                gap: '8px',
+                boxShadow: '0 6px 16px rgba(37, 99, 235, 0.25)',
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#047857';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 20px rgba(5, 150, 105, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#059669';
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(5, 150, 105, 0.3)';
-              }}>
-              <span style={{ fontSize: '20px' }}>+</span>
-              Nova Assinatura
+              title="Abrir Checkup do Sistema"
+            >
+              📋 Abrir Checkup
             </button>
           </div>
         </div>
 
+        <CheckupSistemaModal
+          open={showCheckupModal}
+          onClose={() => setShowCheckupModal(false)}
+          loading={checkupLoading}
+          result={checkupResult}
+          onRun={runSystemCheckup}
+        />
 
+        {/* Aviso */}
+        <div style={{
+          backgroundColor: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: '12px',
+          padding: '14px 18px',
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '10px',
+          color: '#475569',
+          fontSize: '14px',
+          fontWeight: '600'
+        }}>
+          <span>ℹ️ Você pode cadastrar novas assinaturas aqui. Equipamentos continuam sendo gerenciados na aba Equipamentos.</span>
+          <button
+            onClick={async () => {
+              await fetchEquipamentosNow();
+              setForceRefreshToken(Date.now());
+            }}
+            style={{
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '8px 14px',
+              fontSize: '12px',
+              fontWeight: '700',
+              cursor: 'pointer'
+            }}
+            title="Atualizar agora"
+          >
+            🔄 Atualizar agora
+          </button>
+        </div>
 
         {/* Tabela */}
         <div style={{
@@ -1176,8 +1339,57 @@ export default function AssinaturasPage() {
                 letterSpacing: '0.1em',
                 borderRight: '1px solid #f1f5f9'
               }}>
-                Vencimento
+                Equipamentos
               </th>
+              <th style={{ 
+                padding: '16px 20px', 
+                textAlign: 'left', 
+                fontWeight: '700', 
+                fontSize: '11px', 
+                color: '#374151', 
+                textTransform: 'uppercase', 
+                letterSpacing: '0.1em',
+                borderRight: '1px solid #f1f5f9'
+              }}>
+                Clientes
+              </th>
+              <th style={{ 
+                padding: '16px 20px', 
+                textAlign: 'left', 
+                fontWeight: '700', 
+                fontSize: '11px', 
+                color: '#374151', 
+                textTransform: 'uppercase', 
+                letterSpacing: '0.1em',
+                borderRight: '1px solid #f1f5f9'
+              }}>
+                Ativos
+              </th>
+              <th style={{ 
+                padding: '16px 20px', 
+                textAlign: 'left', 
+                fontWeight: '700', 
+                fontSize: '11px', 
+                color: '#374151', 
+                textTransform: 'uppercase', 
+                letterSpacing: '0.1em',
+                borderRight: '1px solid #f1f5f9'
+              }}>
+                Com defeito
+              </th>
+              <th style={{ 
+                padding: '16px 20px', 
+                textAlign: 'left', 
+                fontWeight: '700', 
+                fontSize: '11px', 
+                color: '#374151', 
+                textTransform: 'uppercase', 
+                letterSpacing: '0.1em',
+                borderRight: '1px solid #f1f5f9'
+              }}>
+                Disponíveis
+              </th>
+
               <th style={{ 
                 padding: '16px 20px', 
                 textAlign: 'left', 
@@ -1199,12 +1411,20 @@ export default function AssinaturasPage() {
                 textTransform: 'uppercase', 
                 letterSpacing: '0.1em'
               }}>
-                Ações
+                Modo
               </th>
             </tr>
           </thead>
           <tbody>
-            {sortedItems.map((item, index) => (
+            {sortedItems.map((item, index) => {
+              const assinaturaStats = assinaturaStatsMap.get(item.id) || {
+                total: 0,
+                clientesUnicos: 0,
+                ativo: 0,
+                defeito: 0,
+                disponivel: 0
+              };
+              return (
               <tr key={item.id} style={{ 
                 borderBottom: '1px solid #f1f5f9',
                 backgroundColor: index % 2 === 0 ? '#ffffff' : '#fafbfc',
@@ -1231,12 +1451,13 @@ export default function AssinaturasPage() {
                         setAssinaturaSelecionada(null);
                         setShowEquipamentosModal(false);
                         setEditingItem(null);
+                        setShowValidation(false);
                       } else {
                         // Seleciona nova assinatura
                         setAssinaturaSelecionada(item.id);
                         setEditingItem(item);
                         setShowEquipamentosModal(true);
-                        carregarEquipamentosPorAssinatura(item);
+                        setShowValidation(false);
                       }
                     }}
                     style={{ 
@@ -1314,51 +1535,51 @@ export default function AssinaturasPage() {
                   borderRight: '1px solid #f1f5f9'
                 }}>{item.cpf}</td>
                 <td style={{ 
-                  padding: '16px 20px', 
-                  borderRight: '1px solid #f1f5f9'
+                  padding: '16px 20px',
+                  borderRight: '1px solid #f1f5f9',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  fontSize: '14px'
                 }}>
-                  {item.ultimoVencimento ? (
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}>
-                      <div style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        backgroundColor: '#10b981'
-                      }}></div>
-                      <span style={{
-                        color: '#374151',
-                        fontSize: '14px',
-                        fontWeight: '500'
-                      }}>
-                        {new Date(item.ultimoVencimento).toLocaleDateString('pt-BR')}
-                      </span>
-                    </div>
-                  ) : (
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}>
-                      <div style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        backgroundColor: '#f59e0b'
-                      }}></div>
-                      <span style={{
-                        color: '#9ca3af',
-                        fontSize: '14px',
-                        fontStyle: 'italic'
-                      }}>
-                        Não gerado
-                      </span>
-                    </div>
-                  )}
+                  {assinaturaStats.total}
                 </td>
+                <td style={{ 
+                  padding: '16px 20px',
+                  borderRight: '1px solid #f1f5f9',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  fontSize: '14px'
+                }}>
+                  {assinaturaStats.clientesUnicos}
+                </td>
+                <td style={{ 
+                  padding: '16px 20px',
+                  borderRight: '1px solid #f1f5f9',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  fontSize: '14px'
+                }}>
+                  {assinaturaStats.ativo}
+                </td>
+                <td style={{ 
+                  padding: '16px 20px',
+                  borderRight: '1px solid #f1f5f9',
+                  fontWeight: '600',
+                  color: '#dc2626',
+                  fontSize: '14px'
+                }}>
+                  {assinaturaStats.defeito}
+                </td>
+                <td style={{ 
+                  padding: '16px 20px',
+                  borderRight: '1px solid #f1f5f9',
+                  fontWeight: '600',
+                  color: '#2563eb',
+                  fontSize: '14px'
+                }}>
+                  {assinaturaStats.disponivel}
+                </td>
+
                 <td style={{ 
                   padding: '16px 20px',
                   borderRight: '1px solid #f1f5f9'
@@ -1382,86 +1603,27 @@ export default function AssinaturasPage() {
                   </div>
                 </td>
                 <td style={{ padding: '16px 20px' }}>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <button
-                      onClick={() => handleEdit(item)}
-                      style={{
-                        padding: '10px 16px',
-                        backgroundColor: '#f8fafc',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        color: '#475569',
-                        fontSize: '13px',
-                        fontWeight: '500',
-                        transition: 'all 0.2s ease',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                      title="Editar Assinatura"
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#3b82f6';
-                        e.currentTarget.style.borderColor = '#3b82f6';
-                        e.currentTarget.style.color = 'white';
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(59, 130, 246, 0.3)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#f8fafc';
-                        e.currentTarget.style.borderColor = '#e2e8f0';
-                        e.currentTarget.style.color = '#475569';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = 'none';
-                      }}
-                    >
-                      ✏️ Editar
-                    </button>
-                    <button
-                      onClick={() => abrirModalGerarFatura(item)}
-                      style={{
-                        padding: '10px 16px',
-                        backgroundColor: '#059669',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        fontWeight: '500',
-                        boxShadow: '0 2px 4px rgba(5, 150, 105, 0.2)',
-                        transition: 'all 0.2s ease',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#047857';
-                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(5, 150, 105, 0.3)';
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#059669';
-                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(5, 150, 105, 0.2)';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                      }}
-                    >
-                      🧾 Gerar Fatura
-                    </button>
-                  </div>
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    backgroundColor: '#f1f5f9',
+                    borderRadius: '14px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    color: '#475569',
+                    border: '1px solid #e2e8f0'
+                  }}>
+                    🔒 Somente leitura
+                  </span>
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
         </div>
-
-        {/* Modal de Editar Assinatura */}
-        <EditarAssinaturaModal
-        isOpen={showEditarModal}
-        onClose={() => setShowEditarModal(false)}
-        onSave={handleSave}
-        assinatura={editingItem}
-      />
 
         {/* Seção de Equipamentos Expansível */}
         {showEquipamentosModal && editingItem && (
@@ -1499,7 +1661,7 @@ export default function AssinaturasPage() {
                  color: '#6b7280',
                  fontSize: '14px'
                }}>
-                 {equipamentosDaAssinatura.length} equipamento(s) • {clientesUnicos} cliente(s) único(s)
+                {selectedStats.total} equipamento(s) • {clientesUnicos} cliente(s) único(s) • {selectedStats.ativo} ativo(s) • {selectedStats.defeito} com defeito • {selectedStats.disponivel} disponível(is)
                </p>
             </div>
             <button
@@ -1539,8 +1701,71 @@ export default function AssinaturasPage() {
                 onRetry={() => validateAssinatura(editingItem.id)}
               />
             )}
+
+            {/* Barra de pesquisa (somente leitura) */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+                marginBottom: '16px',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ minWidth: 260, flex: 1 }}>
+                <div
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    letterSpacing: '0.06em',
+                    color: '#64748b',
+                    marginBottom: '6px',
+                  }}
+                >
+                  PESQUISAR EQUIPAMENTOS
+                </div>
+                <input
+                  value={equipamentosSearch}
+                  onChange={(e) => setEquipamentosSearch(e.target.value)}
+                  placeholder="Buscar por nome do cliente, NDS, cartão, bairro ou status..."
+                  style={{
+                    width: '100%',
+                    height: '42px',
+                    padding: '0 14px',
+                    borderRadius: '10px',
+                    border: '1px solid #e2e8f0',
+                    outline: 'none',
+                    backgroundColor: '#ffffff',
+                    color: '#0f172a',
+                    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                  }}
+                />
+              </div>
+
+              {equipamentosSearch.trim() ? (
+                <button
+                  onClick={() => setEquipamentosSearch('')}
+                  style={{
+                    height: '42px',
+                    padding: '0 14px',
+                    borderRadius: '10px',
+                    border: '1px solid #e2e8f0',
+                    backgroundColor: '#f8fafc',
+                    color: '#0f172a',
+                    cursor: 'pointer',
+                    fontWeight: 800,
+                  }}
+                  title="Limpar busca"
+                >
+                  ✕ Limpar
+                </button>
+              ) : (
+                <div style={{ height: '42px' }} />
+              )}
+            </div>
             
-            {equipamentosDaAssinatura.length > 0 ? (
+            {equipamentosDaAssinaturaFiltrados.length > 0 ? (
               <div style={{
                 backgroundColor: '#f8fafc',
                 borderRadius: '8px',
@@ -1572,9 +1797,9 @@ export default function AssinaturasPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {equipamentosDaAssinatura.map((equip, index) => (
+                    {equipamentosDaAssinaturaFiltrados.map((equip, index) => (
                       <tr key={equip.id} style={{ 
-                        borderBottom: index < equipamentosDaAssinatura.length - 1 ? '1px solid #f1f5f9' : 'none',
+                        borderBottom: index < equipamentosDaAssinaturaFiltrados.length - 1 ? '1px solid #f1f5f9' : 'none',
                         transition: 'background-color 0.2s ease'
                       }}
                       onMouseEnter={(e) => {
@@ -1589,54 +1814,67 @@ export default function AssinaturasPage() {
                         <td style={{ padding: '16px', color: '#374151', fontSize: '14px' }}>
                           {equip.cartao || equip.numero_cartao || 'N/A'}
                         </td>
-                                                 <td style={{ padding: '16px', color: '#374151', fontSize: '14px' }}>
-                           {equip.clienteInfo ? (
-                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                               <div style={{
-                                 width: '8px',
-                                 height: '8px',
-                                 borderRadius: '50%',
-                                 backgroundColor: equip.clienteInfo.nome === 'Cliente não encontrado' ? '#ef4444' : '#10b981'
-                               }}></div>
-                               <span style={{ 
-                                 fontWeight: equip.clienteInfo.nome === 'Cliente não encontrado' ? '400' : '500',
-                                 color: equip.clienteInfo.nome === 'Cliente não encontrado' ? '#6b7280' : '#374151'
-                               }}>
-                                 {equip.clienteInfo.nome}
-                               </span>
-                             </div>
-                           ) : (
-                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                               <div style={{
-                                 width: '8px',
-                                 height: '8px',
-                                 borderRadius: '50%',
-                                 backgroundColor: '#ef4444'
-                               }}></div>
-                               <span style={{ fontWeight: '400', color: '#6b7280' }}>
-                                 Cliente não encontrado
-                               </span>
-                             </div>
-                           )}
-                         </td>
+                        <td style={{ padding: '16px', color: '#374151', fontSize: '14px' }}>
+                          {equip.clienteInfo ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              {equip.clienteInfo.nome !== '-' && (
+                                <div style={{
+                                  width: '8px',
+                                  height: '8px',
+                                  borderRadius: '50%',
+                                  backgroundColor: equip.clienteInfo.nome === 'Cliente não encontrado' ? '#ef4444' : '#10b981'
+                                }}></div>
+                              )}
+                              <span style={{ 
+                                fontWeight: equip.clienteInfo.nome === 'Cliente não encontrado' ? '400' : '500',
+                                color: equip.clienteInfo.nome === '-' ? '#6b7280' : (equip.clienteInfo.nome === 'Cliente não encontrado' ? '#6b7280' : '#374151')
+                              }}>
+                                {equip.clienteInfo.nome}
+                              </span>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                backgroundColor: '#ef4444'
+                              }}></div>
+                              <span style={{ fontWeight: '400', color: '#6b7280' }}>
+                                Cliente não encontrado
+                              </span>
+                            </div>
+                          )}
+                        </td>
                         <td style={{ padding: '16px', color: '#6b7280', fontSize: '14px' }}>
                           {equip.bairro || 'Não informado'}
                         </td>
                         <td style={{ padding: '16px' }}>
-                          <div style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            padding: '6px 12px',
-                            backgroundColor: '#dbeafe',
-                            borderRadius: '12px',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            color: '#1e40af'
-                          }}>
-                            <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#3b82f6' }}></div>
-                            Ativo
-                          </div>
+                          {(() => {
+                            const statusKey = equip.statusKey || 'ativo';
+                            const statusInfo = statusKey === 'defeito'
+                              ? { label: 'Com defeito', bg: '#fee2e2', color: '#991b1b', dot: '#ef4444' }
+                              : statusKey === 'disponivel'
+                                ? { label: 'Disponível', bg: '#dbeafe', color: '#1e40af', dot: '#3b82f6' }
+                                : { label: 'Ativo', bg: '#dcfce7', color: '#166534', dot: '#22c55e' };
+
+                            return (
+                              <div style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '6px 12px',
+                                backgroundColor: statusInfo.bg,
+                                borderRadius: '12px',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                color: statusInfo.color
+                              }}>
+                                <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: statusInfo.dot }}></div>
+                                {statusInfo.label}
+                              </div>
+                            );
+                          })()}
                         </td>
 
                       </tr>
@@ -1644,283 +1882,35 @@ export default function AssinaturasPage() {
                   </tbody>
                 </table>
               </div>
-            ) : null}
+            ) : (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '40px',
+                  color: '#6b7280',
+                  fontSize: '16px',
+                  backgroundColor: '#f8fafc',
+                  border: '1px dashed #e2e8f0',
+                  borderRadius: '12px',
+                }}
+              >
+                {equipamentosDaAssinatura.length === 0
+                  ? 'Nenhum equipamento encontrado para esta assinatura.'
+                  : 'Nenhum equipamento corresponde à sua busca.'}
+              </div>
+            )}
           </div>
         </div>
         )}
 
-        {/* Modal de Gerar Fatura */}
-        {showGerarFaturaModal && assinaturaParaFatura && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            animation: 'fadeIn 0.3s ease-out'
-          }}>
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '16px',
-              padding: '32px',
-              width: '90%',
-              maxWidth: '500px',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-              animation: 'slideInRight 0.3s ease-out',
-              border: '1px solid #e2e8f0'
-            }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '24px'
-              }}>
-                <h2 style={{
-                  fontSize: '24px',
-                  fontWeight: '700',
-                  color: '#1e293b',
-                  margin: 0
-                }}>
-                  Gerar Fatura
-                </h2>
-                <button
-                  onClick={() => setShowGerarFaturaModal(false)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    fontSize: '24px',
-                    cursor: 'pointer',
-                    color: '#6b7280',
-                    padding: '4px',
-                    borderRadius: '8px',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f3f4f6';
-                    e.currentTarget.style.color = '#374151';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = '#6b7280';
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
 
-              <div style={{
-                backgroundColor: '#f8fafc',
-                padding: '16px',
-                borderRadius: '12px',
-                marginBottom: '24px',
-                border: '1px solid #e2e8f0'
-              }}>
-                <h3 style={{
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  margin: '0 0 8px 0'
-                }}>
-                  Assinatura: {assinaturaParaFatura.nomeCompleto}
-                </h3>
-                <p style={{
-                  fontSize: '14px',
-                  color: '#6b7280',
-                  margin: '0 0 8px 0'
-                }}>
-                  Código: {assinaturaParaFatura.codigo}
-                </p>
-                <div style={{
-                  backgroundColor: '#dbeafe',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #bfdbfe',
-                  marginTop: '12px'
-                }}>
-                  <p style={{
-                    fontSize: '13px',
-                    color: '#1e40af',
-                    margin: 0,
-                    fontWeight: '500'
-                  }}>
-                    💡 A data de vencimento será exibida na coluna "Vencimento" da tabela após gerar esta fatura.
-                  </p>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gap: '20px' }}>
-                <div>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#374151',
-                    marginBottom: '8px'
-                  }}>
-                    Data de Vencimento
-                  </label>
-                  <input
-                    type="date"
-                    value={faturaForm.vencimento}
-                    onChange={(e) => setFaturaForm({ ...faturaForm, vencimento: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: '2px solid #e2e8f0',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      transition: 'border-color 0.2s ease',
-                      outline: 'none'
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                    onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
-                  />
-                </div>
-
-                <div>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#374151',
-                    marginBottom: '8px'
-                  }}>
-                    Valor
-                  </label>
-                  <input
-                    type="text"
-                    value={faturaForm.valor}
-                    onChange={(e) => setFaturaForm({ ...faturaForm, valor: formatCurrencyBRL(e.target.value) })}
-                    placeholder="R$ 0,00"
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: '2px solid #e2e8f0',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      transition: 'border-color 0.2s ease',
-                      outline: 'none'
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                    onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
-                  />
-                </div>
-
-                <div>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#374151',
-                    marginBottom: '8px'
-                  }}>
-                    Status
-                  </label>
-                  <select
-                    value={faturaForm.status}
-                    onChange={(e) => setFaturaForm({ ...faturaForm, status: e.target.value as 'PAGO' | 'NAO_PAGO' })}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: '2px solid #e2e8f0',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      transition: 'border-color 0.2s ease',
-                      outline: 'none',
-                      backgroundColor: 'white'
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                    onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
-                  >
-                    <option value="NAO_PAGO">Não Pago</option>
-                    <option value="PAGO">Pago</option>
-                  </select>
-                </div>
-              </div>
-
-              <div style={{
-                display: 'flex',
-                gap: '12px',
-                marginTop: '32px',
-                justifyContent: 'flex-end'
-              }}>
-                <button
-                  onClick={() => setShowGerarFaturaModal(false)}
-                  style={{
-                    padding: '12px 24px',
-                    border: '2px solid #e2e8f0',
-                    borderRadius: '8px',
-                    backgroundColor: 'white',
-                    color: '#6b7280',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#d1d5db';
-                    e.currentTarget.style.backgroundColor = '#f9fafb';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#e2e8f0';
-                    e.currentTarget.style.backgroundColor = 'white';
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={confirmarGerarFatura}
-                  style={{
-                    padding: '12px 24px',
-                    border: 'none',
-                    borderRadius: '8px',
-                    backgroundColor: '#059669',
-                    color: 'white',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#047857';
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 8px 20px rgba(5, 150, 105, 0.4)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#059669';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(5, 150, 105, 0.3)';
-                  }}
-                >
-                  Gerar Fatura
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Modal de Nova Assinatura */}
-        <NovaAssinaturaModal
-          isOpen={showNovaAssinaturaModal}
-          onClose={() => setShowNovaAssinaturaModal(false)}
-          onSave={handleNovaAssinaturaSave}
-        />
-
-        {/* Modal de Editar Cliente */}
-        <EditarClienteModal
-          isOpen={showEditarClienteModal}
-          onClose={() => setShowEditarClienteModal(false)}
-          onSave={handleSaveCliente}
-          cliente={clienteParaEditar}
-        />
       </div>
+
+      <NovaAssinaturaModal
+        isOpen={showNovaAssinaturaModal}
+        onClose={() => setShowNovaAssinaturaModal(false)}
+        onSave={() => setShowNovaAssinaturaModal(false)}
+      />
     </>
   );
 }

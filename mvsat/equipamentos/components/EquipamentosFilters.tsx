@@ -18,6 +18,11 @@ interface EquipamentosFiltersProps {
   onClienteFilterChange: (value: string) => void;
   assinaturaFilter: string;
   onAssinaturaFilterChange: (value: string) => void;
+  
+  // Campo unificado para busca
+  equipamentoSearch: string;
+  onEquipamentoSearchChange: (value: string) => void;
+  
   clientes: Cliente[];
   assinaturas: Assinatura[];
   loading?: boolean;
@@ -30,6 +35,8 @@ const EquipamentosFilters: React.FC<EquipamentosFiltersProps> = ({
   onClienteFilterChange,
   assinaturaFilter,
   onAssinaturaFilterChange,
+  equipamentoSearch,
+  onEquipamentoSearchChange,
   clientes,
   assinaturas,
   loading = false
@@ -37,22 +44,24 @@ const EquipamentosFilters: React.FC<EquipamentosFiltersProps> = ({
   const statusOptions = [
     { value: 'todos', label: 'Todos os Status' },
     { value: 'disponivel', label: 'Disponíveis' },
-    { value: 'alugado', label: 'Alugados' },
-    { value: 'problema', label: 'Com Problema' }
+    { value: 'em_uso', label: 'Em Uso' },
+    { value: 'reserva', label: 'Reserva' },
+    { value: 'defeito', label: 'Defeito' },
+    { value: 'descartado', label: 'Descartado' },
+    { value: 'inativo', label: 'Inativos (Excluídos)' }
   ];
 
-  const baseSelectStyle: React.CSSProperties = {
+  const baseFieldStyle: React.CSSProperties = {
     width: '100%',
-    padding: '8px 10px', // ainda menor
+    padding: '8px 12px',
     borderRadius: '8px',
     border: '1px solid #d1d5db',
-    fontSize: '13px',
+    fontSize: '14px',
     backgroundColor: 'white',
     boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
     transition: 'all 0.2s ease',
     outline: 'none',
-    cursor: 'pointer',
-    height: '36px' // mais compacto
+    height: '40px'
   };
 
   const labelStyle: React.CSSProperties = {
@@ -65,74 +74,140 @@ const EquipamentosFilters: React.FC<EquipamentosFiltersProps> = ({
 
   return (
     <div style={{
+      width: '100%',
+      maxWidth: '1200px',
+      margin: '0 auto',
       backgroundColor: 'white',
       borderRadius: '12px',
-      padding: '12px', // menor
-      marginBottom: '12px', // menor
-      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+      padding: '20px',
+      marginBottom: '20px',
+      boxShadow: '0 2px 8px 0 rgba(0, 0, 0, 0.1)',
       border: '1px solid #e5e7eb'
     }}>
-      {/* Título da seção */}
+      {/* Cabeçalho com título e botão limpar */}
       <div style={{
-        marginBottom: '12px'
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '16px'
       }}>
         <h3 style={{
           margin: 0,
-          fontSize: '16px', // menor
-          fontWeight: '700',
+          fontSize: '18px',
+          fontWeight: 'bold',
           color: '#111827',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
+          textAlign: 'left'
         }}>
-          <span style={{ fontSize: '18px' }}>🔍</span>
           Filtros
         </h3>
+        
+        {/* Botão Limpar Filtros */}
+        {(statusFilter !== 'todos' || clienteFilter || assinaturaFilter || equipamentoSearch) && (
+          <button
+            onClick={() => {
+              onStatusFilterChange('todos');
+              onClienteFilterChange('');
+              onAssinaturaFilterChange('');
+              onEquipamentoSearchChange('');
+            }}
+            style={{
+              backgroundColor: '#ef4444',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '8px 16px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#dc2626';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#ef4444';
+            }}
+            title="Limpar todos os filtros"
+          >
+            Limpar Filtros
+          </button>
+        )}
       </div>
 
-      {/* Filtros */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', // menores
-        gap: '10px',
-        alignItems: 'end'
-      }}>
-        {/* Filtro de Status */}
-        <div>
-          <label style={labelStyle}>Status</label>
-          <select
-            value={statusFilter}
-            onChange={(e) => onStatusFilterChange(e.target.value)}
+      {/* Grid de Filtros - 4 colunas com proporções específicas */}
+      <div 
+        className="filters-grid"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '2fr 1fr 1fr 1fr', // 40% 20% 20% 20%
+          gap: '10px',
+          alignItems: 'end'
+        }}
+      >
+        {/* Campo de Busca NDS/Cartão - 40% */}
+        <div style={{ position: 'relative' }}>
+          <label style={labelStyle}>Buscar NDS ou Cartão</label>
+          <input
+            type="text"
+            value={equipamentoSearch}
+            onChange={(e) => onEquipamentoSearchChange(e.target.value)}
+            placeholder="Digite NDS ou número do cartão..."
             disabled={loading}
-            style={baseSelectStyle}
+            style={{
+              ...baseFieldStyle,
+              borderColor: equipamentoSearch ? '#3b82f6' : '#d1d5db',
+              paddingRight: equipamentoSearch ? '40px' : '12px',
+              cursor: 'text'
+            }}
             onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#1e3a8a';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(30, 58, 138, 0.1)';
+              e.currentTarget.style.borderColor = '#3b82f6';
+              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
             }}
             onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#d1d5db';
+              e.currentTarget.style.borderColor = equipamentoSearch ? '#3b82f6' : '#d1d5db';
               e.currentTarget.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
             }}
-          >
-            {statusOptions.map((status) => (
-              <option key={status.value} value={status.value}>
-                {status.label}
-              </option>
-            ))}
-          </select>
+          />
+          {equipamentoSearch && (
+            <button
+              onClick={() => onEquipamentoSearchChange('')}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '32px',
+                background: 'none',
+                border: 'none',
+                color: '#6b7280',
+                cursor: 'pointer',
+                fontSize: '16px',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '20px',
+                height: '20px'
+              }}
+              title="Limpar busca"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
-        {/* Filtro de Cliente */}
+        {/* Filtro de Cliente - 20% */}
         <div>
           <label style={labelStyle}>Cliente</label>
           <select
             value={clienteFilter}
             onChange={(e) => onClienteFilterChange(e.target.value)}
             disabled={loading}
-            style={baseSelectStyle}
+            style={{
+              ...baseFieldStyle,
+              cursor: 'pointer'
+            }}
             onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#1e3a8a';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(30, 58, 138, 0.1)';
+              e.currentTarget.style.borderColor = '#3b82f6';
+              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
             }}
             onBlur={(e) => {
               e.currentTarget.style.borderColor = '#d1d5db';
@@ -140,7 +215,10 @@ const EquipamentosFilters: React.FC<EquipamentosFiltersProps> = ({
             }}
           >
             <option value="">Todos os Clientes</option>
-            {clientes.map((cliente) => (
+            {clientes
+              .slice()
+              .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'))
+              .map((cliente) => (
               <option key={cliente.id} value={cliente.id}>
                 {cliente.nome}
               </option>
@@ -148,17 +226,20 @@ const EquipamentosFilters: React.FC<EquipamentosFiltersProps> = ({
           </select>
         </div>
 
-        {/* Filtro de Assinatura */}
+        {/* Filtro de Assinatura - 20% */}
         <div>
           <label style={labelStyle}>Assinatura</label>
           <select
             value={assinaturaFilter}
             onChange={(e) => onAssinaturaFilterChange(e.target.value)}
             disabled={loading}
-            style={baseSelectStyle}
+            style={{
+              ...baseFieldStyle,
+              cursor: 'pointer'
+            }}
             onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#1e3a8a';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(30, 58, 138, 0.1)';
+              e.currentTarget.style.borderColor = '#3b82f6';
+              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
             }}
             onBlur={(e) => {
               e.currentTarget.style.borderColor = '#d1d5db';
@@ -173,7 +254,50 @@ const EquipamentosFilters: React.FC<EquipamentosFiltersProps> = ({
             ))}
           </select>
         </div>
+
+        {/* Filtro de Status - 20% */}
+        <div>
+          <label style={labelStyle}>Status</label>
+          <select
+            value={statusFilter}
+            onChange={(e) => onStatusFilterChange(e.target.value)}
+            disabled={loading}
+            style={{
+              ...baseFieldStyle,
+              cursor: 'pointer'
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = '#3b82f6';
+              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = '#d1d5db';
+              e.currentTarget.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+            }}
+          >
+            {statusOptions.map((status) => (
+              <option key={status.value} value={status.value}>
+                {status.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
+
+      {/* Media Query para responsividade */}
+      <style jsx>{`
+        @media (max-width: 768px) {
+          .filters-grid {
+            grid-template-columns: 1fr !important;
+            gap: 15px !important;
+          }
+        }
+        @media (max-width: 1024px) {
+          .filters-grid {
+            grid-template-columns: 1fr 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };

@@ -1,6 +1,8 @@
 import { getAuth } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { getDb } from '../config/database.config';
+import { getTipoFromSession } from './saas/session';
+import { tenantCollection, tenantDoc } from './saas/firestoreTenant';
 
 export type SystemModule = string;
 export type SystemAction = string;
@@ -25,18 +27,18 @@ export async function hasPermissionForCurrentUser(module: SystemModule, action: 
   const user = auth.currentUser;
   if (!user) return false;
 
-  // Claims de cargo
-  const token = await user.getIdTokenResult();
-  const role = (token.claims?.role as string) || '';
+  // Preferir tipo do multitenant (usuarios/{uid} -> sessão local)
+  const sessionTipo = getTipoFromSession();
+  const role = sessionTipo || '';
 
-  // Tentar achar employee pelo e-mail para carregar overrides
+  // Tentar achar funcionário da empresa para carregar overrides (se existir)
   try {
     const db = getDb();
-    const q = query(collection(db, 'employees'), where('email', '==', user.email));
+    const q = query(tenantCollection(db, 'funcionarios'), where('email', '==', user.email));
     const snap = await getDocs(q);
     if (!snap.empty) {
       const empDoc = snap.docs[0];
-      const permSnap = await getDoc(doc(db, 'employee_permissions', empDoc.id));
+      const permSnap = await getDoc(tenantDoc(db, 'employee_permissions', empDoc.id));
       const map = permSnap.exists() ? (permSnap.data()?.permissions || {}) : {};
       const allowed = map?.[module]?.[action];
       if (typeof allowed === 'boolean') return allowed; // override explícito

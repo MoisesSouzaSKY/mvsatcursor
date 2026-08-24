@@ -9,6 +9,7 @@ import { NewEmployeeModal } from './Modals/NewEmployeeModal';
 import { PermissionsModal } from './Modals/PermissionsModal';
 import { EmployeeProfileModal } from './Modals/EmployeeProfileModal';
 import { Employee, EmployeeStats } from '../types/employee.types';
+import { getEmpresaIdOrThrow } from '../../shared/saas/firestoreTenant';
 
 export function FuncionariosPage() {
   // Estados principais
@@ -47,19 +48,20 @@ export function FuncionariosPage() {
       
       // Carregar dados reais do Firestore
       const db = getDb();
+      const empresaId = getEmpresaIdOrThrow();
       
       // Buscar funcionários
-      const employeesSnap = await getDocs(collection(db, 'employees'));
+      const employeesSnap = await getDocs(collection(db, 'empresas', empresaId, 'funcionarios'));
       const employeesData: Employee[] = [];
       
       for (const employeeDoc of employeesSnap.docs) {
         const employeeData = employeeDoc.data();
-        const roleSnap = await getDoc(doc(db, 'roles', employeeData.roleId));
+        const roleSnap = await getDoc(doc(db, 'empresas', empresaId, 'roles', employeeData.roleId));
         const roleData = roleSnap.exists() ? roleSnap.data() : null;
         // Carregar permissões específicas salvas deste funcionário (se existirem)
         let permissionMap: any = undefined;
         try {
-          const permSnap = await getDoc(doc(db, 'employee_permissions', employeeDoc.id));
+          const permSnap = await getDoc(doc(db, 'empresas', empresaId, 'employee_permissions', employeeDoc.id));
           if (permSnap.exists()) {
             const pdata = permSnap.data();
             permissionMap = pdata?.permissions || undefined;

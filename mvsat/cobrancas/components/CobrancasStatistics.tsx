@@ -1,19 +1,7 @@
 import React from 'react';
-
-interface Cobranca {
-  id: string;
-  cliente_id: string;
-  cliente_nome: string;
-  valor: number;
-  status: string;
-  data_vencimento?: any;
-  vencimento?: any;
-  valor_pago?: number;
-  valorTotalPago?: number;
-}
+import { useStatistics } from '../contexts/StatisticsContext';
 
 interface CobrancasStatisticsProps {
-  cobrancas: Cobranca[];
   loading?: boolean;
 }
 
@@ -187,7 +175,10 @@ const StatCard: React.FC<StatCardProps> = ({
   );
 };
 
-const CobrancasStatistics: React.FC<CobrancasStatisticsProps> = ({ cobrancas, loading = false }) => {
+const CobrancasStatistics: React.FC<CobrancasStatisticsProps> = ({ loading: propLoading = false }) => {
+  const { statistics: stats, isLoading: contextLoading } = useStatistics();
+  const loading = propLoading || contextLoading;
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -198,84 +189,6 @@ const CobrancasStatistics: React.FC<CobrancasStatisticsProps> = ({ cobrancas, lo
   const formatNumber = (value: number) => {
     return new Intl.NumberFormat('pt-BR').format(value);
   };
-
-  // Helper para obter Date do vencimento
-  const parseToDate = (raw: any): Date | null => {
-    if (!raw) return null;
-    
-    // Se for um Firestore Timestamp
-    if (raw && typeof raw === 'object' && raw.seconds !== undefined) {
-      return new Date(raw.seconds * 1000);
-    }
-    
-    // Se for uma string
-    let s = String(raw).trim();
-    if (s.includes(' ')) s = s.split(' ')[0];
-    if (s.includes('T')) s = s.split('T')[0];
-
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-      const [y, m, d] = s.split('-').map(Number);
-      return new Date(y, (m || 1) - 1, d || 1);
-    }
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
-      const [d, m, y] = s.split('/').map(Number);
-      return new Date(y || 0, (m || 1) - 1, d || 1);
-    }
-    const d = new Date(s);
-    return isNaN(d.getTime()) ? null : d;
-  };
-
-  const getDataVencimento = (c: any): Date | null => {
-    if (!c) return null;
-    const raw = c.data_vencimento ?? c.vencimento ?? null;
-    return parseToDate(raw);
-  };
-
-  // Calcular estatísticas
-  const stats = React.useMemo(() => {
-    if (!Array.isArray(cobrancas) || cobrancas.length === 0) {
-      return { 
-        totalCobrancas: 0, 
-        valorTotal: 0, 
-        valorRecebido: 0, 
-        emAtraso: 0, 
-        pendentes: 0, 
-        taxaRecebimento: 0 
-      };
-    }
-    
-    const totalCobrancas = cobrancas.length;
-    const valorTotal = cobrancas.reduce((acc, c) => acc + (c?.valor || 0), 0);
-    const valorRecebido = cobrancas.reduce((acc, c) => acc + (c?.valor_pago || c?.valorTotalPago || 0), 0);
-    
-    const hoje = new Date();
-    const emAtraso = cobrancas.reduce((acc, c) => {
-      if (!c) return acc;
-      const pago = c.status === 'paga' || c.status === 'pago';
-      const venc = getDataVencimento(c);
-      if (!pago && venc && venc < hoje) {
-        return acc + ((c.valor || 0) - (c.valor_pago || c.valorTotalPago || 0));
-      }
-      return acc;
-    }, 0);
-    
-    const pendentes = cobrancas.reduce((acc, c) => {
-      if (!c) return acc;
-      const pago = c.status === 'paga' || c.status === 'pago';
-      return acc + (pago ? 0 : (c.valor || 0));
-    }, 0);
-    
-    const taxaRecebimento = valorTotal > 0 ? Number(((valorRecebido / valorTotal) * 100).toFixed(1)) : 0;
-    
-    return { 
-      totalCobrancas, 
-      valorTotal, 
-      valorRecebido, 
-      emAtraso, 
-      pendentes, 
-      taxaRecebimento 
-    };
-  }, [cobrancas]);
 
   if (loading) {
     return (

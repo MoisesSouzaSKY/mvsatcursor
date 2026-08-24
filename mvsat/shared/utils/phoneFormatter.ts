@@ -39,7 +39,7 @@ export function formatPhoneNumber(phone: string): string {
   
   // Formata o telefone normalizado
   if (normalized.length === 11) {
-    // Celular: (XX) XXXXX-XXXX
+    // Celular: (XX) 9XXXX-XXXX - padrão brasileiro correto
     return `(${normalized.slice(0, 2)}) ${normalized.slice(2, 7)}-${normalized.slice(7)}`;
   }
   

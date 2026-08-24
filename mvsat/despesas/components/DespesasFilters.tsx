@@ -29,27 +29,25 @@ const DespesasFilters: React.FC<DespesasFiltersProps> = ({
 
   return (
     <div style={{
-      backgroundColor: 'white',
-      borderRadius: '12px',
-      padding: '24px',
-      marginBottom: '24px',
-      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-      border: '1px solid #e5e7eb'
+      backgroundColor: 'transparent',
+      borderRadius: '8px',
+      padding: '12px',
+      marginBottom: '12px'
     }}>
       {/* Título da seção */}
       <div style={{
-        marginBottom: '20px'
+        marginBottom: '12px'
       }}>
         <h3 style={{
           margin: 0,
-          fontSize: '18px',
-          fontWeight: '700',
-          color: '#111827',
+          fontSize: '14px',
+          fontWeight: '600',
+          color: '#374151',
           display: 'flex',
           alignItems: 'center',
-          gap: '8px'
+          gap: '6px'
         }}>
-          <span style={{ fontSize: '20px' }}>📅</span>
+          <span style={{ fontSize: '16px' }}>📅</span>
           Filtro por Mês
         </h3>
       </div>
@@ -60,26 +58,17 @@ const DespesasFilters: React.FC<DespesasFiltersProps> = ({
         justifyContent: 'flex-start',
         alignItems: 'end'
       }}>
-        <div style={{ minWidth: '200px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Mês
-          </label>
+        <div style={{ minWidth: '160px' }}>
           <select
             value={monthFilter}
             onChange={(e) => onMonthFilterChange(e.target.value)}
             disabled={loading}
             style={{
               width: '100%',
-              padding: '12px 16px',
-              borderRadius: '8px',
+              padding: '8px 12px',
+              borderRadius: '6px',
               border: '1px solid #d1d5db',
-              fontSize: '14px',
+              fontSize: '13px',
               backgroundColor: 'white',
               boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
               transition: 'all 0.2s ease',

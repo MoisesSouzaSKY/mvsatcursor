@@ -11,6 +11,15 @@ export interface Despesa {
   origemNome?: string;
   formaPagamento?: string;
   competencia?: string;
+  comprovante?: {
+    storageUrl?: string;
+    storagePath?: string;
+    base64?: string;
+    mimeType: string;
+    filename: string;
+    uploadedAt: any;
+  };
+  observacoes?: string;
 }
 
 export interface DespesasStatistics {

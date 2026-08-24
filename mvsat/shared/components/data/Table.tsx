@@ -277,7 +277,7 @@ export function Table<T extends Record<string, any>>({
   }
 
   return (
-    <div style={{ width: '100%', overflow: 'auto' }}>
+    <div className="table-container" style={{ width: '100%' }}>
       <table style={tableStyles}>
         <thead style={theadStyles}>
           <tr>
