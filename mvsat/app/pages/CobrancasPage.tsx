@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Button } from '../../shared/components/ui/Button';
 import { Card } from '../../shared/components/ui/Card';
 import { Input } from '../../shared/components/ui/Input';
 import { Modal } from '../../shared/components/ui/Modal';
 
 // Componentes otimizados
-import CobrancasStatistics from '../../cobrancas/components/CobrancasStatistics';
+import MonthlyCobrancasSummary, { invalidateMonthlySummaryCache } from '../../cobrancas/components/MonthlyCobrancasSummary';
 import { CobrancasHeader } from '../../cobrancas/components/CobrancasHeader';
 import { VirtualizedCobrancasTable } from '../../cobrancas/components/VirtualizedCobrancasTable';
 import { StatisticsProvider } from '../../cobrancas/contexts/StatisticsContext';
+import CobrancasStatistics from '../../cobrancas/components/CobrancasStatistics';
+import { CobrancasActivityHistory } from '../../cobrancas/components/CobrancasActivityHistory';
 import { LoadingStyles, TableSkeleton, StatisticsSkeleton, ImmediateLoadingFeedback } from '../../shared/components/LoadingStates';
 
 // Hooks otimizados
@@ -23,23 +25,26 @@ import { performanceMonitor } from '../../shared/utils/PerformanceMonitor';
 
 // Funções de API
 import { listarClientes } from '../../clientes/clientes.functions';
-import { 
-  listarCobrancas, 
-  criarCobranca, 
+import {
+  criarCobranca,
   atualizarCobranca,
   marcarComoPaga, 
   removerCobranca,
   reabrirCobranca
 } from '../../cobrancas/cobrancas.functions';
-import { arquivarCobrancasPagas } from '../../cobrancas/cobrancas.archive.functions';
-import HistoricoCobrancas from '../../cobrancas/components/HistoricoCobrancas';
 import { EditarCobrancaModal } from '../../cobrancas/components/modals/EditarCobrancaModal';
 import { PagamentoModal } from '../../cobrancas/components/modals/PagamentoModal';
+import { ExcluirCobrancaModal } from '../../cobrancas/components/modals/ExcluirCobrancaModal';
 import { ResumoCobrancasModal } from '../../cobrancas/components/modals/ResumoCobrancasModal';
 import { ClientCombobox } from '../../shared/components/ui/ClientCombobox';
 
 import { useToastHelpers } from '../../shared/contexts/ToastContext';
 import { formatNomePadrao } from '../../shared/utils/nameFormatter';
+import './CobrancasPageRedesign.css';
+import '../../cobrancas/components/modals/CobrancasModals.css';
+import { listarCobrancasDaCompetencia } from '../../cobrancas/services/cobrancasReadService';
+import { monthKey } from '../../cobrancas/utils/monthlySummary';
+import { useModulePermissions } from '../../shared/hooks/useModulePermissions';
 
 // Interface para cliente
 interface Cliente {
@@ -52,6 +57,7 @@ interface Cliente {
 
 export default function CobrancasPage() {
   const { successQuick } = useToastHelpers();
+  const cobrancaPermissions = useModulePermissions('cobrancas', ['create', 'edit', 'registerPayment', 'delete', 'viewFinancial', 'viewOverdue'] as const);
 
   const withTimeout = async <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
     let timer: any;
@@ -79,20 +85,24 @@ export default function CobrancasPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loadingCobrancas, setLoadingCobrancas] = useState(false);
   const [loadingClientes, setLoadingClientes] = useState(false);
+  const tableRequestId = useRef(0);
+  const didInitialisePage = useRef(false);
+  const competenciaCache = useRef<Record<string, { expiresAt: number; items: any[] }>>({});
   
   // Estados de filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState<'alfabetica' | 'vencimento' | 'valor'>('vencimento');
   const [filtroStatus, setFiltroStatus] = useState<string>('');
-  const [filtroMes, setFiltroMes] = useState<string>('');
-  const [filtroDataVencimento, setFiltroDataVencimento] = useState<string>('');
-  const [mostrarTodas, setMostrarTodas] = useState<boolean>(true); // PADRÃO: MOSTRAR TODAS
-  const [showHistorico, setShowHistorico] = useState<boolean>(false);
+  const [selectedMonth, setSelectedMonth] = useState(() => monthKey(new Date().getFullYear(), new Date().getMonth()));
   
   // Estados de modais
   const [showGerarCobrancaModal, setShowGerarCobrancaModal] = useState(false);
   const [showEditarCobrancaModal, setShowEditarCobrancaModal] = useState(false);
   const [showPagamentoModal, setShowPagamentoModal] = useState(false);
+  const [showExcluirModal, setShowExcluirModal] = useState(false);
+  const [isDeletingCobranca, setIsDeletingCobranca] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [cobrancaParaExcluir, setCobrancaParaExcluir] = useState<OptimizedCobranca | null>(null);
   const [showResumoModal, setShowResumoModal] = useState(false);
   const [cobrancaSelecionada, setCobrancaSelecionada] = useState<OptimizedCobranca | null>(null);
   
@@ -122,6 +132,36 @@ export default function CobrancasPage() {
   
   // Trava de idempotência para pagamento
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [summaryCacheVersion, setSummaryCacheVersion] = useState(0);
+
+  const loadCompetencia = useCallback(async (month = selectedMonth) => {
+    const requestId = ++tableRequestId.current;
+    setLoadingCobrancas(true);
+    try {
+      const cached = competenciaCache.current[month];
+      if (cached && cached.expiresAt > Date.now()) {
+        setRawCobrancas(cached.items);
+        setLoadingCobrancas(false);
+        return;
+      }
+      const [year, monthNumber] = month.split('-').map(Number);
+      const start = `${year}-${String(monthNumber).padStart(2, '0')}-01`;
+      const endDate = new Date(year, monthNumber, 1);
+      const end = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-01`;
+      const result = await listarCobrancasDaCompetencia(start, end);
+      if (requestId !== tableRequestId.current) return;
+      const items = [
+        ...result.previousItems.map((charge) => ({ ...charge, _isPreviousDebt: true })),
+        ...result.monthItems
+      ];
+      competenciaCache.current[month] = { expiresAt: Date.now() + 3 * 60 * 1000, items };
+      setRawCobrancas(items);
+    } catch (error) {
+      console.error('Erro ao carregar página de cobranças:', error);
+    } finally {
+      if (requestId === tableRequestId.current) setLoadingCobrancas(false);
+    }
+  }, [selectedMonth]);
 
   // Pré-processar cobranças com cache
   const optimizedCobrancas = useMemo(() => {
@@ -130,6 +170,7 @@ export default function CobrancasPage() {
     );
   }, [rawCobrancas, parseToDate]);
 
+
   // Usar filtros otimizados
   const { filteredAndSortedCobrancas, isFiltering } = useOptimizedFilters(
     optimizedCobrancas,
@@ -137,96 +178,10 @@ export default function CobrancasPage() {
       searchTerm,
       sortOrder,
       filtroStatus,
-      filtroMes,
-      filtroDataVencimento
+      filtroMes: '',
+      filtroDataVencimento: ''
     }
   );
-
-  // Função para carregar cobranças (apenas dos últimos 6 meses por padrão)
-  const carregarCobrancas = async (incluirTodas: boolean = false) => {
-    try {
-      setLoadingCobrancas(true);
-      const cobrancasData = await performanceMonitor.measureAsync('load-cobrancas', async () => {
-        return await listarCobrancas();
-      });
-      
-      let cobrancasFiltradas = cobrancasData as any[];
-      
-      // Se não incluir todas, filtrar apenas dos últimos 6 meses
-      if (!incluirTodas) {
-        const seisMesesAtras = new Date();
-        seisMesesAtras.setMonth(seisMesesAtras.getMonth() - 6);
-        
-        cobrancasFiltradas = cobrancasData.filter((cobranca: any) => {
-          // Incluir sempre cobranças não pagas (independente da data)
-          if (cobranca.status !== 'PAGO' && cobranca.status !== 'paga' && cobranca.status !== 'pago') {
-            return true;
-          }
-          
-          // Para cobranças pagas, verificar data de pagamento OU data de vencimento
-          let dataReferencia: Date | null = null;
-          
-          // Prioridade 1: Data de pagamento (se existir)
-          if (cobranca.pagoEm) {
-            dataReferencia = cobranca.pagoEm.seconds ? 
-              new Date(cobranca.pagoEm.seconds * 1000) : 
-              new Date(cobranca.pagoEm);
-          } else if (cobranca.data_pagamento) {
-            dataReferencia = new Date(cobranca.data_pagamento);
-          } else if (cobranca.dataPagamento) {
-            dataReferencia = new Date(cobranca.dataPagamento);
-          }
-          
-          // Prioridade 2: Se não tem data de pagamento, usar data de vencimento
-          if (!dataReferencia || isNaN(dataReferencia.getTime())) {
-            if (cobranca.vencimento) {
-              dataReferencia = cobranca.vencimento.seconds ? 
-                new Date(cobranca.vencimento.seconds * 1000) : 
-                new Date(cobranca.vencimento);
-            } else if (cobranca.data_vencimento) {
-              // Parse correto da data de vencimento
-              if (typeof cobranca.data_vencimento === 'string') {
-                if (cobranca.data_vencimento.includes('/')) {
-                  // Formato DD/MM/YYYY
-                  const [dia, mes, ano] = cobranca.data_vencimento.split('/');
-                  dataReferencia = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
-                } else {
-                  // Formato YYYY-MM-DD (ISO)
-                  const [ano, mes, dia] = cobranca.data_vencimento.split('-');
-                  dataReferencia = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
-                }
-              } else {
-                dataReferencia = new Date(cobranca.data_vencimento);
-              }
-            }
-          }
-          
-          // Se tem data de referência válida, verificar se é recente (últimos 6 meses)
-          if (dataReferencia && !isNaN(dataReferencia.getTime())) {
-            const isRecente = dataReferencia >= seisMesesAtras;
-            console.log(`📅 [FILTRO] ${cobranca.cliente_nome}: ${dataReferencia.toLocaleDateString()} - ${isRecente ? 'INCLUIR' : 'EXCLUIR'}`);
-            return isRecente;
-          }
-          
-          // Se não tem data válida mas está marcada como paga, incluir por segurança
-          console.log(`⚠️ [FILTRO] ${cobranca.cliente_nome}: Sem data válida, incluindo por segurança`);
-          return true;
-        });
-        
-        console.log(`📊 [FILTRO] Carregadas ${cobrancasFiltradas.length} de ${cobrancasData.length} cobranças (últimos 6 meses)`);
-        console.log(`📊 [FILTRO] Cobranças não pagas: ${cobrancasFiltradas.filter(c => c.status !== 'PAGO' && c.status !== 'paga' && c.status !== 'pago').length}`);
-        console.log(`📊 [FILTRO] Cobranças pagas recentes: ${cobrancasFiltradas.filter(c => c.status === 'PAGO' || c.status === 'paga' || c.status === 'pago').length}`);
-      } else {
-        console.log(`📊 [FILTRO] Carregadas TODAS as ${cobrancasFiltradas.length} cobranças`);
-      }
-      
-      setRawCobrancas(cobrancasFiltradas);
-    } catch (error) {
-      console.error('Erro ao carregar cobranças:', error);
-    } finally {
-      setLoadingCobrancas(false);
-    }
-  };
 
   // Função para carregar clientes
   const carregarClientes = async () => {
@@ -252,9 +207,10 @@ export default function CobrancasPage() {
         
         // Carregar dados em paralelo
         await Promise.all([
-          carregarCobrancas(mostrarTodas),
+          loadCompetencia(selectedMonth),
           carregarClientes()
         ]);
+        didInitialisePage.current = true;
       } catch (error) {
         console.error('Erro ao inicializar:', error);
       }
@@ -262,6 +218,10 @@ export default function CobrancasPage() {
     
     initData();
   }, []);
+
+  useEffect(() => {
+    if (didInitialisePage.current) loadCompetencia(selectedMonth);
+  }, [selectedMonth, loadCompetencia]);
 
   // Funções de manipulação de modais
   const handleOpenGerarCobrancaModal = async () => {
@@ -302,7 +262,10 @@ export default function CobrancasPage() {
       };
 
       await criarCobranca(novaCobranca);
-      await carregarCobrancas();
+      invalidateMonthlySummaryCache();
+      competenciaCache.current = {};
+      setSummaryCacheVersion((version) => version + 1);
+      await loadCompetencia(selectedMonth);
       handleCloseGerarCobrancaModal();
       successQuick('Cobrança criada com sucesso!');
     } catch (error) {
@@ -338,7 +301,10 @@ export default function CobrancasPage() {
   const handleSaveEditCobranca = async (id: string, dados: any) => {
     try {
       await atualizarCobranca(id, dados);
-      await carregarCobrancas(mostrarTodas);
+      invalidateMonthlySummaryCache();
+      competenciaCache.current = {};
+      setSummaryCacheVersion((version) => version + 1);
+      await loadCompetencia(selectedMonth);
       successQuick('Cobrança atualizada com sucesso!');
     } catch (error) {
       console.error('Erro ao atualizar cobrança:', error);
@@ -351,7 +317,10 @@ export default function CobrancasPage() {
     try {
       setIsProcessingPayment(true);
       await withTimeout(marcarComoPaga(id, dadosPagamento), 25000, 'marcarComoPaga');
-      await withTimeout(carregarCobrancas(mostrarTodas), 25000, 'recarregarCobrancas');
+      invalidateMonthlySummaryCache();
+      competenciaCache.current = {};
+      setSummaryCacheVersion((version) => version + 1);
+      await withTimeout(loadCompetencia(selectedMonth), 25000, 'recarregarCobrancas');
       successQuick('Pagamento registrado com sucesso!');
     } catch (error) {
       console.error('Erro ao registrar pagamento:', error);
@@ -375,80 +344,43 @@ export default function CobrancasPage() {
     setCobrancaSelecionada(null);
   };
 
-  const handleDeleteCobranca = async (cobranca: OptimizedCobranca) => {
-    if (confirm(`Tem certeza que deseja deletar a cobrança de ${cobranca?.cliente_nome || 'Cliente'}?`)) {
-      try {
-        await removerCobranca(cobranca.id);
-        await carregarCobrancas();
-        successQuick('Cobrança removida com sucesso!');
-      } catch (error) {
-        console.error('Erro ao deletar cobrança:', error);
-        alert('Erro ao deletar cobrança');
-      }
+  const handleDeleteCobranca = (cobranca: OptimizedCobranca) => {
+    setDeleteError('');
+    setCobrancaParaExcluir(cobranca);
+    setShowExcluirModal(true);
+  };
+
+  const handleConfirmDeleteCobranca = async () => {
+    if (!cobrancaParaExcluir) return;
+    setIsDeletingCobranca(true);
+    setDeleteError('');
+    try {
+      await removerCobranca(cobrancaParaExcluir.id);
+      invalidateMonthlySummaryCache();
+      competenciaCache.current = {};
+      setSummaryCacheVersion((version) => version + 1);
+      await loadCompetencia(selectedMonth);
+      setShowExcluirModal(false);
+      setCobrancaParaExcluir(null);
+      successQuick('Cobrança excluída com sucesso.');
+    } catch (error) {
+      console.error('Erro ao deletar cobrança:', error);
+      setDeleteError('Não foi possível excluir esta cobrança. Tente novamente.');
+    } finally {
+      setIsDeletingCobranca(false);
     }
   };
 
   // Funções para limpar filtros
   const limparTodosFiltros = () => {
-    setFiltroDataVencimento('');
-    setFiltroMes('');
     setFiltroStatus('');
     setSearchTerm('');
   };
 
-  // Função para arquivar todas as cobranças pagas
-  const handleArquivarPagas = async () => {
-    // Contar cobranças pagas para decidir o método
-    const cobrancasPagas = optimizedCobrancas.filter(c => 
-      c.status === 'PAGO' || c.status === 'paga' || c.status === 'pago'
-    ).length;
-    
-    let mensagem = `Deseja arquivar cobranças pagas? Esta ação irá mover as cobranças pagas para o histórico.\n\n📊 Detectadas ${cobrancasPagas} cobranças pagas.`;
-    
-    if (cobrancasPagas > 100) {
-      mensagem += '\n\n⚠️ Muitas cobranças detectadas. O sistema escolherá automaticamente o modo mais seguro.';
-    }
-    
-    if (!confirm(mensagem)) {
-      return;
-    }
-    
-    try {
-      setLoadingCobrancas(true);
-      
-      let resultado;
-      
-      // Usar modo normal de arquivamento
-      console.log('🔄 Arquivando cobranças pagas');
-      resultado = await arquivarCobrancasPagas();
-      
-      if (resultado.arquivadas > 0) {
-        successQuick(`${resultado.arquivadas} cobranças pagas foram arquivadas com sucesso!`);
-      }
-      
-      if (resultado.arquivadas === 0) {
-        successQuick('Nenhuma cobrança paga encontrada para arquivar.');
-      }
-      
-      await carregarCobrancas(mostrarTodas); // Recarregar dados
-      
-    } catch (error) {
-      console.error('Erro ao arquivar cobranças:', error);
-      alert('Erro ao arquivar cobranças pagas. O Firebase está sobrecarregado. Tente o modo "Ultra Lento" ou aguarde alguns minutos.');
-    } finally {
-      setLoadingCobrancas(false);
-    }
-  };
-
-  // Recarregar quando mudar o filtro de período
-  useEffect(() => {
-    carregarCobrancas(mostrarTodas);
-  }, [mostrarTodas]);
-
   return (
     <>
       <LoadingStyles />
-      <div style={{ 
+      <div className="cobrancas-page-redesign" style={{
         padding: '24px', 
         backgroundColor: 'var(--color-primary-50)',
         minHeight: '100vh',
@@ -458,29 +390,57 @@ export default function CobrancasPage() {
         <CobrancasHeader 
           totalCobrancas={optimizedCobrancas.length}
           valorTotal={optimizedCobrancas.reduce((acc, c) => acc + (c?.valor || 0), 0)}
-          onResumo={() => setShowResumoModal(true)}
+          onNewCobranca={cobrancaPermissions.create ? handleOpenGerarCobrancaModal : undefined}
+          onResumo={cobrancaPermissions.viewFinancial ? () => setShowResumoModal(true) : undefined}
           loading={loadingCobrancas}
         />
+
+        <div className="cobrancas-title-actions">
+          {cobrancaPermissions.create && <Button
+            className="cobrancas-generate-button"
+            variant="primary"
+            size="lg"
+            icon={
+              <svg style={{ width: '16px', height: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            }
+            onClick={handleOpenGerarCobrancaModal}
+          >
+            Gerar Cobranças
+          </Button>}
+        </div>
 
 
 
         {/* Statistics Cards com Provider */}
         <StatisticsProvider cobrancas={optimizedCobrancas} isLoading={loadingCobrancas}>
+          <CobrancasStatistics loading={loadingCobrancas} showFinancial={cobrancaPermissions.viewFinancial} showOverdue={cobrancaPermissions.viewOverdue} />
           {loadingCobrancas ? (
             <StatisticsSkeleton />
-          ) : (
-            <CobrancasStatistics loading={loadingCobrancas} />
-          )}
+          ) : cobrancaPermissions.viewFinancial ? (
+            <MonthlyCobrancasSummary
+              cobrancas={optimizedCobrancas}
+              loading={loadingCobrancas}
+              cacheVersion={summaryCacheVersion}
+              selectedMonth={selectedMonth}
+              onMonthChange={setSelectedMonth}
+              previousDebts={optimizedCobrancas.filter((charge) => charge._isPreviousDebt)}
+              onShowPreviousDebts={() => document.querySelector('.cobrancas-table__section-row')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+            />
+          ) : null}
+
+          <CobrancasActivityHistory refreshKey={summaryCacheVersion} />
 
           {/* Barra de busca e filtros */}
-          <div style={{ 
+          <div className="cobrancas-search-area" style={{
             display: 'flex', 
             flexDirection: 'column', 
             gap: '16px', 
             marginBottom: '24px'
           }}>
             {/* Busca com feedback de loading */}
-            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <div className="cobrancas-search-control" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
               <span style={{ fontWeight: '700', minWidth: '80px', color: 'var(--color-gray-900)' }}>Busca:</span>
               <div style={{ flex: 1, position: 'relative' }}>
                 <Input
@@ -510,7 +470,7 @@ export default function CobrancasPage() {
             </div>
             
             {/* Filtros */}
-            <div style={{ 
+            <div className="cobrancas-filter-row" style={{
               display: 'flex', 
               gap: '12px', 
               alignItems: 'center', 
@@ -520,10 +480,10 @@ export default function CobrancasPage() {
               borderRadius: '8px',
               backgroundColor: 'white'
             }}>
-              <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Filtros:</span>
+              <span className="cobrancas-filter-label" style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Filtros</span>
               
               {/* Ordenação */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="cobrancas-filter-field" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '12px', color: 'var(--color-gray-700)' }}>Ordenar:</span>
                 <select
                   value={sortOrder}
@@ -542,7 +502,7 @@ export default function CobrancasPage() {
               </div>
 
               {/* Filtro por Status */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="cobrancas-filter-field" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '12px', color: 'var(--color-gray-700)' }}>Status:</span>
                 <select
                   value={filtroStatus}
@@ -556,15 +516,16 @@ export default function CobrancasPage() {
                   }}
                 >
                   <option value="">Todos</option>
-                  <option value="em_dias">Em dias</option>
+                  <option value="em_dias">Pendentes</option>
                   <option value="paga">Pagas</option>
                   <option value="em_atraso">Vencidas</option>
                 </select>
               </div>
 
               {/* Botão para limpar todos os filtros */}
-              {(filtroStatus || filtroMes || filtroDataVencimento || searchTerm) && (
+              {(filtroStatus || searchTerm) && (
                 <Button 
+                  className="cobrancas-clear-filters"
                   variant="outline" 
                   onClick={limparTodosFiltros}
                   style={{
@@ -585,8 +546,8 @@ export default function CobrancasPage() {
             </div>
           </div>
 
-          {/* Controles de Período e Ações */}
-          <div style={{ 
+          {/* Ações */}
+          <div className="cobrancas-actions-row" style={{
             display: 'flex', 
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -594,72 +555,11 @@ export default function CobrancasPage() {
             flexWrap: 'wrap',
             gap: '16px'
           }}>
-            {/* Controles de Período */}
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <div style={{ 
-                display: 'flex', 
-                gap: '8px', 
-                alignItems: 'center',
-                padding: '8px 12px',
-                backgroundColor: 'white',
-                borderRadius: '8px',
-                border: '1px solid var(--border-primary)'
-              }}>
-                <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-gray-900)' }}>Período:</span>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                  <input
-                    type="radio"
-                    name="periodo"
-                    checked={!mostrarTodas}
-                    onChange={() => setMostrarTodas(false)}
-                  />
-                  <span style={{ fontSize: '14px' }}>Últimos 6 meses</span>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                  <input
-                    type="radio"
-                    name="periodo"
-                    checked={mostrarTodas}
-                    onChange={() => setMostrarTodas(true)}
-                  />
-                  <span style={{ fontSize: '14px' }}>Todas</span>
-                </label>
-              </div>
-              
-              <Button
-                variant="outline"
-                onClick={() => setShowHistorico(!showHistorico)}
-                style={{ 
-                  backgroundColor: showHistorico ? 'var(--color-primary-50)' : 'white',
-                  borderColor: showHistorico ? 'var(--color-primary-300)' : 'var(--border-primary)'
-                }}
-              >
-                📚 {showHistorico ? 'Ocultar' : 'Ver'} Histórico
-              </Button>
-              
-
-              
-
-            </div>
-
             {/* Botões de Ação */}
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="cobrancas-primary-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
 
-              <Button
-                variant="outline"
-                onClick={handleArquivarPagas}
-                style={{ 
-                  backgroundColor: 'var(--color-warning-50)',
-                  borderColor: 'var(--color-warning-300)',
-                  color: 'var(--color-warning-700)'
-                }}
-              >
-                🗄️ Arquivar Pagas
-              </Button>
-              
-
-              
               <Button 
+                className="cobrancas-generate-button"
                 variant="primary" 
                 size="lg" 
                 style={{ backgroundColor: '#10b981', borderColor: '#10b981' }}
@@ -676,10 +576,7 @@ export default function CobrancasPage() {
           </div>
 
           {/* Conteúdo Principal */}
-          {showHistorico ? (
-            <HistoricoCobrancas />
-          ) : (
-            <Card variant="elevated" padding="none">
+          <Card variant="elevated" padding="none">
               <ImmediateLoadingFeedback 
                 isLoading={loadingCobrancas} 
                 loadingText="Carregando cobranças..."
@@ -690,31 +587,16 @@ export default function CobrancasPage() {
                   <>
                     <VirtualizedCobrancasTable
                       cobrancas={filteredAndSortedCobrancas}
-                      onEdit={handleEditCobranca}
-                      onPay={handlePayCobranca}
-                      onDelete={handleDeleteCobranca}
+                      onEdit={cobrancaPermissions.edit ? handleEditCobranca : undefined}
+                      onPay={cobrancaPermissions.registerPayment ? handlePayCobranca : undefined}
+                      onDelete={cobrancaPermissions.delete ? handleDeleteCobranca : undefined}
                       loading={isFiltering}
                     />
                     
-                    {/* Informação sobre período */}
-                    <div style={{
-                      padding: '16px',
-                      backgroundColor: 'var(--color-gray-50)',
-                      borderTop: '1px solid var(--border-primary)',
-                      textAlign: 'center',
-                      fontSize: '14px',
-                      color: 'var(--text-secondary)'
-                    }}>
-                      {mostrarTodas ? 
-                        `Mostrando todas as cobranças (${filteredAndSortedCobrancas.length})` :
-                        `Mostrando cobranças dos últimos 6 meses (${filteredAndSortedCobrancas.length}). Use "Ver Histórico" para acessar cobranças antigas.`
-                      }
-                    </div>
                   </>
                 )}
               </ImmediateLoadingFeedback>
             </Card>
-          )}
         </StatisticsProvider>
 
         {/* Modal Editar Cobrança */}
@@ -736,6 +618,21 @@ export default function CobrancasPage() {
           loading={isProcessingPayment}
         />
 
+        <ExcluirCobrancaModal
+          open={showExcluirModal}
+          cobranca={cobrancaParaExcluir}
+          loading={isDeletingCobranca}
+          error={deleteError}
+          onClose={() => {
+            if (!isDeletingCobranca) {
+              setShowExcluirModal(false);
+              setCobrancaParaExcluir(null);
+              setDeleteError('');
+            }
+          }}
+          onConfirm={handleConfirmDeleteCobranca}
+        />
+
         {/* Modal Resumo */}
         <ResumoCobrancasModal
           open={showResumoModal}
@@ -749,12 +646,19 @@ export default function CobrancasPage() {
             open={showGerarCobrancaModal}
             onClose={handleCloseGerarCobrancaModal}
             title="Gerar Nova Cobrança"
+            className="cobrancas-modal cobrancas-modal--create"
           >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                  Cliente
-                </label>
+            <div className="cobrancas-create-form">
+              <div className="cobrancas-create-intro">
+                <div className="cobrancas-create-intro__icon">＋</div>
+                <div>
+                  <strong>Nova cobrança</strong>
+                  <span>Preencha os dados para lançar uma cobrança no sistema.</span>
+                </div>
+              </div>
+
+              <div className="cobrancas-modal__field cobrancas-modal__field--full">
+                <label>Cliente <em>obrigatório</em></label>
                 <ClientCombobox
                   clientes={clientes}
                   selectedClientId={formData.cliente_id}
@@ -764,20 +668,12 @@ export default function CobrancasPage() {
                 />
               </div>
 
-              <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                  Tipo de Cobrança
-                </label>
+              <div className="cobrancas-create-grid">
+              <div className="cobrancas-modal__field">
+                <label>Tipo de cobrança</label>
                 <select
                   value={formData.tipoCobranca}
                   onChange={(e) => handleFormChange('tipoCobranca', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    border: '1px solid var(--border-primary)',
-                    borderRadius: '8px',
-                    fontSize: '14px'
-                  }}
                 >
                   <option value="SKY">SKY</option>
                   <option value="TV BOX">TV BOX</option>
@@ -785,10 +681,8 @@ export default function CobrancasPage() {
                 </select>
               </div>
 
-              <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                  Valor
-                </label>
+              <div className="cobrancas-modal__field">
+                <label>Valor <em>obrigatório</em></label>
                 <Input
                   type="number"
                   step="0.01"
@@ -798,18 +692,18 @@ export default function CobrancasPage() {
                 />
               </div>
 
-              <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-                  Data de Vencimento
-                </label>
+              <div className="cobrancas-modal__field">
+                <label>Data de vencimento <em>obrigatório</em></label>
                 <Input
                   type="date"
                   value={formData.dataVencimento}
                   onChange={(e) => handleFormChange('dataVencimento', e.target.value)}
                 />
               </div>
+              </div>
 
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
+              <div className="cobrancas-create-footer">
+                <span>Confira os dados antes de gerar.</span>
                 <Button variant="outline" onClick={handleCloseGerarCobrancaModal}>
                   Cancelar
                 </Button>

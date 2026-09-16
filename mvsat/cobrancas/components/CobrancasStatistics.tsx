@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useStatistics } from '../contexts/StatisticsContext';
+import { listarPagamentosDaData } from '../services/cobrancasReadService';
+import { asCivilPaymentDate } from '../../shared/utils/civilDate';
 
 interface CobrancasStatisticsProps {
   loading?: boolean;
+  showFinancial?: boolean;
+  showOverdue?: boolean;
 }
 
 interface StatCardProps {
@@ -69,7 +73,7 @@ const StatCard: React.FC<StatCardProps> = ({
   const colorConfig = getColorConfig(color);
 
   return (
-    <div style={{
+    <div className={`cobrancas-stat-card cobrancas-stat-card--${color}`} style={{
       backgroundColor: 'white',
       borderRadius: '16px',
       padding: '32px',
@@ -89,7 +93,7 @@ const StatCard: React.FC<StatCardProps> = ({
     }}
     >
       {/* Icon */}
-      <div style={{
+      <div className="cobrancas-stat-card__icon" style={{
         width: '64px',
         height: '64px',
         backgroundColor: colorConfig.iconBg,
@@ -162,7 +166,7 @@ const StatCard: React.FC<StatCardProps> = ({
       </div>
 
       {/* Accent line */}
-      <div style={{
+      <div className="cobrancas-stat-card__accent" style={{
         position: 'absolute',
         top: 0,
         left: 0,
@@ -175,7 +179,7 @@ const StatCard: React.FC<StatCardProps> = ({
   );
 };
 
-const CobrancasStatistics: React.FC<CobrancasStatisticsProps> = ({ loading: propLoading = false }) => {
+const CobrancasStatistics: React.FC<CobrancasStatisticsProps> = ({ loading: propLoading = false, showFinancial = true, showOverdue = true }) => {
   const { statistics: stats, isLoading: contextLoading } = useStatistics();
   const loading = propLoading || contextLoading;
 
@@ -192,13 +196,13 @@ const CobrancasStatistics: React.FC<CobrancasStatisticsProps> = ({ loading: prop
 
   if (loading) {
     return (
-      <div style={{
+      <div className="cobrancas-statistics" style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
         gap: '24px',
         marginBottom: '32px'
       }}>
-        {[1, 2, 3, 4].map(i => (
+        {[1, 2, 3, 4, 5].map(i => (
           <div key={i} style={{
             backgroundColor: 'white',
             borderRadius: '16px',
@@ -252,7 +256,7 @@ const CobrancasStatistics: React.FC<CobrancasStatisticsProps> = ({ loading: prop
           }
         `}
       </style>
-      <div style={{
+      <div className="cobrancas-statistics" style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
         gap: '24px',
@@ -266,32 +270,87 @@ const CobrancasStatistics: React.FC<CobrancasStatisticsProps> = ({ loading: prop
           subtitle="Todas as cobranças"
         />
         
-        <StatCard
+        {showFinancial && <StatCard
           title="Valor Total"
           value={formatCurrency(stats.valorTotal)}
           icon="💰"
           color="green"
           subtitle="Valor total das cobranças"
-        />
+        />}
         
-        <StatCard
+        {showOverdue && <StatCard
           title="Em Atraso"
           value={formatCurrency(stats.emAtraso)}
           icon="⏰"
           color="red"
           subtitle="Cobranças vencidas"
-        />
+        />}
         
-        <StatCard
+        {showFinancial && <StatCard
           title="Taxa de Recebimento"
           value={`${stats.taxaRecebimento}%`}
           icon="📊"
           color="purple"
           subtitle={`${formatCurrency(stats.valorRecebido)} recebido`}
-        />
+        />}
+        {showFinancial && <DailyReceivedCard />}
       </div>
     </>
   );
 };
+
+function startOfLocalDay(date = new Date()) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function isSameLocalDay(left: Date, right: Date) {
+  return left.getFullYear() === right.getFullYear()
+    && left.getMonth() === right.getMonth()
+    && left.getDate() === right.getDate();
+}
+
+function DailyReceivedCard() {
+  const [value, setValue] = useState(0);
+  const [count, setCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    const today = startOfLocalDay();
+    try {
+      setLoading(true);
+      const payments = await listarPagamentosDaData(today);
+      const todaysPayments = payments.filter((payment: any) => {
+        const date = asCivilPaymentDate(payment.pagoEm || payment.dataOriginalPagamento || payment.data_pagamento || payment.dataPagamento);
+        return date ? isSameLocalDay(date, today) : false;
+      });
+      const total = todaysPayments.reduce((sum: number, payment: any) => {
+        const paid = Number(payment.valorTotalPago ?? payment.valor_pago ?? payment.valor ?? 0);
+        return sum + (Number.isFinite(paid) ? paid : 0);
+      }, 0);
+      setValue(total);
+      setCount(todaysPayments.length);
+    } catch (error) {
+      console.error('Erro ao carregar recebimentos do dia:', error);
+      setValue(0);
+      setCount(0);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+    const timer = window.setInterval(load, 5 * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [load]);
+
+  return <StatCard
+    title="Recebido hoje"
+    value={loading ? '...' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)}
+    icon="🟢"
+    color="green"
+    subtitle={loading ? 'Consultando pagamentos' : `${count} pagamento${count === 1 ? '' : 's'} no dia`}
+  />;
+}
 
 export default CobrancasStatistics;

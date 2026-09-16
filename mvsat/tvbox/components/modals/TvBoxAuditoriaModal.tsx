@@ -9,6 +9,8 @@ interface TvBoxAuditoriaModalProps {
   loading: boolean;
   result: TvBoxAuditoriaResult | null;
   onRun: () => void;
+  onApplyFix?: () => Promise<void>;
+  fixCount?: number;
 }
 
 function formatDateTimeBR(iso: string) {
@@ -21,13 +23,17 @@ function toFileDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export function TvBoxAuditoriaModal({ open, onClose, loading, result, onRun }: TvBoxAuditoriaModalProps) {
+export function TvBoxAuditoriaModal({ open, onClose, loading, result, onRun, onApplyFix, fixCount = 0 }: TvBoxAuditoriaModalProps) {
   const modalRef = useRef<HTMLDivElement | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
+  const [confirmingFix, setConfirmingFix] = useState(false);
 
   useEffect(() => {
-    if (open) setCopyStatus('idle');
+    if (open) {
+      setCopyStatus('idle');
+      setConfirmingFix(false);
+    }
   }, [open]);
 
   const whatsappText = useMemo(() => {
@@ -203,6 +209,11 @@ export function TvBoxAuditoriaModal({ open, onClose, loading, result, onRun }: T
           <Button variant="secondary" onClick={onRun} loading={loading} disabled={exportingPdf}>
             {result ? 'Atualizar Auditoria' : 'Executar Auditoria'}
           </Button>
+          {onApplyFix && fixCount > 0 && (
+            <Button variant="secondary" onClick={() => setConfirmingFix(true)} disabled={loading || exportingPdf}>
+              Aplicar correções ({fixCount})
+            </Button>
+          )}
           <Button onClick={handleExportPdf} loading={exportingPdf} disabled={!result || loading}>
             Exportar PDF
           </Button>
@@ -308,6 +319,19 @@ export function TvBoxAuditoriaModal({ open, onClose, loading, result, onRun }: T
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {confirmingFix && onApplyFix && (
+          <div style={{ padding: '16px', border: '1px solid #fbbf24', borderRadius: 12, background: '#fffbeb' }}>
+            <div style={{ fontWeight: 900, color: '#92400e' }}>Confirmar correções</div>
+            <p style={{ margin: '8px 0 14px', color: '#78350f', fontSize: 13 }}>
+              A auditoria encontrou {fixCount} registro(s) que podem ser corrigidos. Esta ação alterará dados dos aparelhos no Firestore.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <Button variant="secondary" onClick={() => setConfirmingFix(false)} disabled={loading}>Cancelar</Button>
+              <Button onClick={async () => { setConfirmingFix(false); await onApplyFix(); }} loading={loading} disabled={loading}>Confirmar correções</Button>
+            </div>
           </div>
         )}
       </div>

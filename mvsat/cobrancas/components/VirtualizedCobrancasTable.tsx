@@ -1,12 +1,20 @@
-import React, { useMemo, useCallback, memo } from 'react';
+import React, { useMemo, useCallback, memo, useEffect, useState } from 'react';
 import { OptimizedCobranca } from '../utils/dataProcessing';
 
 interface VirtualizedCobrancasTableProps {
   cobrancas: OptimizedCobranca[];
-  onEdit: (cobranca: OptimizedCobranca) => void;
-  onPay: (cobranca: OptimizedCobranca) => void;
-  onDelete: (cobranca: OptimizedCobranca) => void;
+  onEdit?: (cobranca: OptimizedCobranca) => void;
+  onPay?: (cobranca: OptimizedCobranca) => void;
+  onDelete?: (cobranca: OptimizedCobranca) => void;
   loading?: boolean;
+  serverPagination?: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+    onPageChange: (page: number) => void;
+    onPageSizeChange: (pageSize: number) => void;
+  };
 }
 
 // Componente de linha memoizado para evitar re-renders desnecessários
@@ -17,9 +25,9 @@ const CobrancaRow = memo(({
   onDelete 
 }: {
   cobranca: OptimizedCobranca;
-  onEdit: (cobranca: OptimizedCobranca) => void;
-  onPay: (cobranca: OptimizedCobranca) => void;
-  onDelete: (cobranca: OptimizedCobranca) => void;
+  onEdit?: (cobranca: OptimizedCobranca) => void;
+  onPay?: (cobranca: OptimizedCobranca) => void;
+  onDelete?: (cobranca: OptimizedCobranca) => void;
 }) => {
   const formatCurrency = useCallback((value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -63,19 +71,36 @@ const CobrancaRow = memo(({
     );
   }, []);
 
+  const daysOverdue = useMemo(() => {
+    if (cobranca._effectiveStatus !== 'em_atraso' || !cobranca._parsedDate) return 0;
+    const today = new Date();
+    const due = new Date(cobranca._parsedDate.getFullYear(), cobranca._parsedDate.getMonth(), cobranca._parsedDate.getDate());
+    const current = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    return Math.max(0, Math.floor((current.getTime() - due.getTime()) / 86400000));
+  }, [cobranca._effectiveStatus, cobranca._parsedDate]);
+
+  const overdueLabel = daysOverdue > 30
+    ? `⚠ CRÍTICO · ${daysOverdue} dias em atraso`
+    : daysOverdue > 15
+      ? `⚠ Urgente · ${daysOverdue} dias em atraso`
+      : daysOverdue > 7
+        ? `⚠ Atrasado há ${daysOverdue} dias`
+        : `Vencido há ${daysOverdue} dias`;
+
+  const previousMonthLabel = cobranca._parsedDate
+    ? cobranca._parsedDate.toLocaleDateString('pt-BR', { month: 'long' })
+    : 'mês anterior';
+
   const handleEdit = useCallback(() => {
-    console.log('[TABELA] Clicou em editar cobrança:', cobranca.id);
-    onEdit(cobranca);
+    onEdit?.(cobranca);
   }, [cobranca, onEdit]);
   
   const handlePay = useCallback(() => {
-    console.log('[TABELA] Clicou em pagar cobrança:', cobranca.id);
-    onPay(cobranca);
+    onPay?.(cobranca);
   }, [cobranca, onPay]);
   
   const handleDelete = useCallback(() => {
-    console.log('[TABELA] Clicou em deletar cobrança:', cobranca.id);
-    onDelete(cobranca);
+    onDelete?.(cobranca);
   }, [cobranca, onDelete]);
 
   const isPago = cobranca._effectiveStatus === 'paga';
@@ -83,7 +108,11 @@ const CobrancaRow = memo(({
   const foiPaga = isPago || temDataPagamento;
 
   return (
-    <tr style={{ borderBottom: '1px solid var(--border-primary)' }}>
+    <tr style={{
+      borderBottom: '1px solid var(--border-primary)',
+      borderLeft: cobranca._isPreviousDebt ? '3px solid var(--color-error-400)' : undefined,
+      backgroundColor: cobranca._isPreviousDebt ? 'var(--color-error-50)' : undefined
+    }}>
       <td style={{ padding: '16px 24px', fontSize: '14px', fontWeight: '600', color: 'var(--color-gray-900)', textAlign: 'center' }}>
         {cobranca?.cliente_nome || 'N/A'}
       </td>
@@ -95,6 +124,11 @@ const CobrancaRow = memo(({
       </td>
       <td style={{ padding: '16px 24px', fontSize: '14px', color: 'var(--color-gray-700)', textAlign: 'center' }}>
         {formatDateForDisplay(cobranca._parsedDate || null)}
+        {cobranca._isPreviousDebt && (
+          <div style={{ color: 'var(--color-error-700)', fontSize: '11px', fontWeight: 700, marginTop: '4px' }}>
+            ⚠ Pendência de {previousMonthLabel}
+          </div>
+        )}
       </td>
       <td style={{ padding: '16px 24px', fontSize: '14px', fontWeight: '600', color: 'var(--color-gray-900)', textAlign: 'center' }}>
         {cobranca?.valor ? formatCurrency(cobranca.valor) : 'N/A'}
@@ -105,9 +139,15 @@ const CobrancaRow = memo(({
       </td>
       <td style={{ padding: '16px 24px', textAlign: 'center' }}>
         {getStatusBadge(cobranca._effectiveStatus || 'desconhecido')}
+        {daysOverdue > 0 && (
+          <div style={{ color: 'var(--color-error-700)', fontSize: '11px', fontWeight: 600, marginTop: '4px' }}>
+            {overdueLabel}
+          </div>
+        )}
       </td>
       <td style={{ padding: '16px 24px', fontSize: '14px', fontWeight: '500', textAlign: 'center' }}>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'center' }}>
+          {onEdit && (
           <button 
             style={{ 
               color: 'var(--color-primary-600)', 
@@ -139,8 +179,9 @@ const CobrancaRow = memo(({
               {foiPaga ? 'Ver' : 'Editar'}
             </span>
           </button>
+          )}
           
-          {!foiPaga && (
+          {!foiPaga && onPay && (
             <button 
               style={{ 
                 color: 'var(--color-success-600)', 
@@ -165,6 +206,7 @@ const CobrancaRow = memo(({
             </button>
           )}
           
+          {onDelete && (
           <button 
             style={{ 
               color: 'var(--color-error-600)', 
@@ -187,6 +229,7 @@ const CobrancaRow = memo(({
             </svg>
             <span style={{ fontSize: '12px', fontWeight: 500 }}>Excluir</span>
           </button>
+          )}
         </div>
       </td>
     </tr>
@@ -200,25 +243,48 @@ export const VirtualizedCobrancasTable: React.FC<VirtualizedCobrancasTableProps>
   onEdit,
   onPay,
   onDelete,
-  loading = false
+  loading = false,
+  serverPagination
 }) => {
-  // Para datasets pequenos (< 100), renderizar tudo
-  // Para datasets grandes, implementar virtualização simples
-  const shouldVirtualize = cobrancas.length > 100;
-  
-  const visibleCobrancas = useMemo(() => {
-    if (!shouldVirtualize) {
-      return cobrancas;
-    }
-    
-    // REMOVER LIMITE: Mostrar TODAS as cobranças
-    console.log(`📊 [TABELA] Exibindo TODAS as ${cobrancas.length} cobranças`);
-    return cobrancas;
-  }, [cobrancas, shouldVirtualize]);
+  const [localPage, setLocalPage] = useState(1);
+  const [localPageSize, setLocalPageSize] = useState(20);
+  const page = serverPagination?.page ?? localPage;
+  const pageSize = serverPagination?.pageSize ?? localPageSize;
+  const totalItems = serverPagination?.totalItems ?? cobrancas.length;
+  const totalPages = Math.max(1, Math.ceil(cobrancas.length / pageSize));
+
+  useEffect(() => {
+    if (!serverPagination) setLocalPage(1);
+  }, [cobrancas, pageSize, serverPagination]);
+
+  useEffect(() => {
+    if (!serverPagination) setLocalPage((current) => Math.min(current, totalPages));
+  }, [totalPages, serverPagination]);
+
+  const localVisibleCobrancas = useMemo(
+    () => cobrancas.slice((page - 1) * pageSize, page * pageSize),
+    [cobrancas, page, pageSize]
+  );
+  const visibleCobrancas = serverPagination ? cobrancas : localVisibleCobrancas;
+  const rangeStart = totalItems === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeEnd = Math.min(page * pageSize, totalItems);
+  const pageNumbers = useMemo<(number | string)[]>(() => {
+    const effectiveTotalPages = serverPagination?.totalPages ?? totalPages;
+    const candidates = new Set([1, effectiveTotalPages, page - 1, page, page + 1]);
+    const visiblePages = [...candidates]
+      .filter((item) => item >= 1 && item <= effectiveTotalPages)
+      .sort((a, b) => a - b);
+    const pages: (number | string)[] = [];
+    visiblePages.forEach((item, index) => {
+      if (index > 0 && item - visiblePages[index - 1] > 1) pages.push('…');
+      pages.push(item);
+    });
+    return pages;
+  }, [page, totalPages, serverPagination]);
 
   if (loading) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+      <div className="cobrancas-empty-state" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
         Carregando cobranças...
       </div>
     );
@@ -233,50 +299,113 @@ export const VirtualizedCobrancasTable: React.FC<VirtualizedCobrancasTableProps>
   }
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--color-gray-900)' }}>
+    <div className="cobrancas-table-container">
+      <div className="cobrancas-table-scroll">
+      <table className="cobrancas-table" style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--color-gray-900)' }}>
         <thead style={{ backgroundColor: 'var(--color-gray-100)' }}>
           <tr>
-            <th style={{ padding: '12px 24px', textAlign: 'center', fontSize: '12px', fontWeight: '700', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '700', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Cliente
             </th>
-            <th style={{ padding: '12px 24px', textAlign: 'center', fontSize: '12px', fontWeight: '700', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '700', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Bairro
             </th>
-            <th style={{ padding: '12px 24px', textAlign: 'center', fontSize: '12px', fontWeight: '700', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '700', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Tipo
             </th>
-            <th style={{ padding: '12px 24px', textAlign: 'center', fontSize: '12px', fontWeight: '700', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '700', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Vencimento
             </th>
-            <th style={{ padding: '12px 24px', textAlign: 'center', fontSize: '12px', fontWeight: '700', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '700', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Valor
             </th>
-            <th style={{ padding: '12px 24px', textAlign: 'center', fontSize: '12px', fontWeight: '700', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '700', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Data Pagamento
             </th>
-            <th style={{ padding: '12px 24px', textAlign: 'center', fontSize: '12px', fontWeight: '700', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '700', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Status
             </th>
-            <th style={{ padding: '12px 24px', textAlign: 'center', fontSize: '12px', fontWeight: '700', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '700', color: 'var(--color-gray-700)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Ações
             </th>
           </tr>
         </thead>
         <tbody style={{ backgroundColor: 'white', color: 'var(--color-gray-900)' }}>
-          {visibleCobrancas.map((cobranca) => (
-            <CobrancaRow
-              key={cobranca.id}
-              cobranca={cobranca}
-              onEdit={onEdit}
-              onPay={onPay}
-              onDelete={onDelete}
-            />
-          ))}
+          {visibleCobrancas.map((cobranca, index) => {
+            const startsPrevious = Boolean(cobranca._isPreviousDebt) && !visibleCobrancas[index - 1]?._isPreviousDebt;
+            const startsMonth = !cobranca._isPreviousDebt && Boolean(visibleCobrancas[index - 1]?._isPreviousDebt);
+            return (
+              <React.Fragment key={cobranca.id}>
+                {(startsPrevious || startsMonth) && (
+                  <tr className="cobrancas-table__section-row">
+                    <td colSpan={8} style={{ padding: '12px 24px', background: 'var(--color-gray-50)', color: 'var(--color-gray-700)', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase' }}>
+                      {startsPrevious ? '⚠ Pendências anteriores' : 'Cobranças da competência selecionada'}
+                    </td>
+                  </tr>
+                )}
+                <CobrancaRow
+                  cobranca={cobranca}
+                  onEdit={onEdit}
+                  onPay={onPay}
+                  onDelete={onDelete}
+                />
+              </React.Fragment>
+            );
+          })}
         </tbody>
       </table>
-      
-      {/* AVISO REMOVIDO - AGORA MOSTRA TODAS */}
+      </div>
+      <footer className="cobrancas-pagination">
+        <div className="cobrancas-pagination__summary">
+          <strong>{rangeStart}–{rangeEnd}</strong>
+          <span>de {totalItems} cobranças</span>
+        </div>
+        <div className="cobrancas-pagination__controls">
+          <button
+            type="button"
+            className="cobrancas-pagination__nav"
+            onClick={() => serverPagination ? serverPagination.onPageChange(Math.max(1, page - 1)) : setLocalPage((current) => Math.max(1, current - 1))}
+            disabled={page === 1}
+            aria-label="Página anterior"
+          >
+            <span aria-hidden="true">‹</span><span>Anterior</span>
+          </button>
+          <div className="cobrancas-pagination__pages" aria-label="Páginas">
+            {pageNumbers.map((item, index) => item === '…' ? (
+              <span className="cobrancas-pagination__ellipsis" key={`ellipsis-${index}`} aria-hidden="true">…</span>
+            ) : (
+              <button
+                key={item}
+                type="button"
+                className={item === page ? 'is-active' : ''}
+                onClick={() => serverPagination ? serverPagination.onPageChange(item as number) : setLocalPage(item as number)}
+                aria-label={`Ir para página ${item}`}
+                aria-current={item === page ? 'page' : undefined}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="cobrancas-pagination__nav"
+            onClick={() => serverPagination ? serverPagination.onPageChange(Math.min(serverPagination.totalPages, page + 1)) : setLocalPage((current) => Math.min(totalPages, current + 1))}
+            disabled={page === (serverPagination?.totalPages ?? totalPages)}
+            aria-label="Próxima página"
+          >
+            <span>Próxima</span><span aria-hidden="true">›</span>
+          </button>
+          <label className="cobrancas-pagination__page-size">
+            <span>Mostrar</span>
+            <select value={pageSize} onChange={(event) => serverPagination ? serverPagination.onPageSizeChange(Number(event.target.value)) : setLocalPageSize(Number(event.target.value))} aria-label="Itens por página">
+              <option value={20}>20</option>
+              <option value={30}>30</option>
+              <option value={40}>40</option>
+              <option value={50}>50</option>
+            </select>
+          </label>
+        </div>
+      </footer>
     </div>
   );
 };

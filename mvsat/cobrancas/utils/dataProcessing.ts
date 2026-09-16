@@ -21,6 +21,7 @@ export interface OptimizedCobranca {
   _searchableText?: string;
   _monthYear?: string;
   _dayOfMonth?: number;
+  _isPreviousDebt?: boolean;
 }
 
 /**

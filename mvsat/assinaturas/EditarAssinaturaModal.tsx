@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { serverTimestamp, updateDoc } from 'firebase/firestore';
 import { getDb } from '../config/database.config';
 import { Modal } from '../shared/components/ui/Modal';
 import { Input } from '../shared/components/ui/Input';
-import './NovaAssinaturaModal.css';
+import { tenantDoc } from '../shared/saas/firestoreTenant';
+import './EditarAssinaturaModal.css';
 
 interface EditarAssinaturaModalProps {
   isOpen: boolean;
@@ -137,9 +138,18 @@ export default function EditarAssinaturaModal({ isOpen, onClose, onSave, assinat
 
     try {
       setLoading(true);
-      await updateDoc(doc(getDb(), 'assinaturas', assinatura.id), {
-        ...assinaturaEditavel,
-        updatedAt: new Date()
+      await updateDoc(tenantDoc(getDb(), 'assinaturas', assinatura.id), {
+        codigo: assinaturaEditavel.codigo,
+        nomeCompleto: assinaturaEditavel.nomeCompleto,
+        cpf: assinaturaEditavel.cpf,
+        rg: assinaturaEditavel.rg,
+        dataNascimento: assinaturaEditavel.dataNascimento,
+        email: assinaturaEditavel.email,
+        telefone: assinaturaEditavel.telefone,
+        plano: assinaturaEditavel.plano,
+        status: assinaturaEditavel.status,
+        endereco: assinaturaEditavel.endereco,
+        updatedAt: serverTimestamp(),
       });
       
       onSave();
@@ -195,8 +205,9 @@ export default function EditarAssinaturaModal({ isOpen, onClose, onSave, assinat
       onClose={onClose}
       title="Editar Dados da Assinatura"
       size="lg"
+      className="editar-assinatura-modal"
     >
-      <form onSubmit={handleSubmit} style={{ padding: '20px' }}>
+      <form onSubmit={handleSubmit} className="editar-assinatura-form">
             {/* Identificação */}
             <div style={{ marginBottom: '20px' }}>
               <div style={{ marginBottom: '12px' }}>

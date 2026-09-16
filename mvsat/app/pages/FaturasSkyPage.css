@@ -1,0 +1,417 @@
+.faturas-sky-page {
+  min-height: 100vh;
+  padding: 30px 34px 48px;
+  color: #243b53;
+}
+
+.faturas-sky-header,
+.faturas-sky-section-heading,
+.faturas-sky-invoice-top,
+.faturas-sky-invoice-actions,
+.faturas-sky-modal header,
+.faturas-sky-modal footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.faturas-sky-header {
+  margin-bottom: 24px;
+}
+
+.faturas-sky-eyebrow,
+.faturas-sky-section-heading > div > span,
+.faturas-sky-card-eyebrow,
+.faturas-sky-stat > span {
+  color: #829ab1;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.faturas-sky-header h1,
+.faturas-sky-section-heading h2,
+.faturas-sky-invoice h3,
+.faturas-sky-modal h2,
+.faturas-sky-modal p {
+  margin: 0;
+}
+
+.faturas-sky-header h1 {
+  margin-top: 5px;
+  color: #102a43;
+  font-size: 28px;
+  letter-spacing: -.03em;
+}
+
+.faturas-sky-header p {
+  margin: 5px 0 0;
+  color: #627d98;
+  font-size: 13px;
+}
+
+.faturas-sky-month-nav {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 5px;
+  border: 1px solid #d9e2ec;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.faturas-sky-month-nav button {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  color: #2563eb;
+  background: #eff6ff;
+  cursor: pointer;
+  font-size: 22px;
+}
+
+.faturas-sky-month-nav button:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
+.faturas-sky-month-nav strong {
+  min-width: 150px;
+  color: #243b53;
+  font-size: 13px;
+  text-align: center;
+}
+
+.faturas-sky-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 12px 15px;
+  border: 1px solid #f5d7a1;
+  border-radius: 12px;
+  background: #fffbeb;
+}
+
+.faturas-sky-alert > span {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  color: #a16207;
+  background: #fef3c7;
+  font-weight: 800;
+}
+
+.faturas-sky-alert strong,
+.faturas-sky-alert small {
+  display: block;
+}
+
+.faturas-sky-alert strong { color: #92400e; font-size: 13px; }
+.faturas-sky-alert small { margin-top: 2px; color: #a16207; font-size: 12px; }
+
+.faturas-sky-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 13px;
+  margin-bottom: 28px;
+}
+
+.faturas-sky-stat {
+  min-height: 86px;
+  padding: 16px 17px;
+  border: 1px solid #e5eaf0;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 5px 18px rgba(36, 59, 83, .04);
+}
+
+.faturas-sky-stat strong,
+.faturas-sky-stat small {
+  display: block;
+}
+
+.faturas-sky-stat strong {
+  margin: 8px 0 4px;
+  color: #102a43;
+  font-size: 20px;
+}
+
+.faturas-sky-stat small { color: #829ab1; font-size: 11px; }
+.faturas-sky-stat.success { border-top: 3px solid #35a76a; }
+.faturas-sky-stat.warning { border-top: 3px solid #e3a008; }
+
+.faturas-sky-current,
+.faturas-sky-history {
+  margin-top: 24px;
+}
+
+.faturas-sky-section-heading {
+  margin-bottom: 13px;
+}
+
+.faturas-sky-section-heading h2 {
+  margin-top: 4px;
+  color: #243b53;
+  font-size: 17px;
+}
+
+.faturas-sky-section-heading small {
+  color: #829ab1;
+  font-size: 11px;
+}
+
+.faturas-sky-history-context {
+  display: block;
+  margin-top: 4px;
+}
+
+.faturas-sky-history-filter {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #829ab1;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.faturas-sky-history-filter select {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid #d9e2ec;
+  border-radius: 8px;
+  color: #486581;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.faturas-sky-section-heading select {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid #d9e2ec;
+  border-radius: 8px;
+  color: #486581;
+  background: #fff;
+}
+
+.faturas-sky-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 17px;
+}
+
+.faturas-sky-invoice {
+  padding: 21px;
+  border: 1px solid #e5eaf0;
+  border-top: 3px solid #9fb3c8;
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 7px 22px rgba(36, 59, 83, .05);
+}
+
+.faturas-sky-invoice.success { border-top-color: #35a76a; }
+.faturas-sky-invoice.warning { border-top-color: #e3a008; }
+.faturas-sky-invoice.danger { border-top-color: #d64545; }
+.faturas-sky-invoice.info { border-top-color: #3b82f6; }
+
+.faturas-sky-invoice-top { align-items: flex-start; }
+.faturas-sky-invoice h3 { margin-top: 4px; color: #243b53; font-size: 16px; }
+.faturas-sky-invoice-top small { display: block; margin-top: 3px; color: #829ab1; font-size: 11px; }
+
+.faturas-sky-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+
+.faturas-sky-status.neutral { color: #627d98; background: #f1f5f9; }
+.faturas-sky-status.info { color: #1d4ed8; background: #eff6ff; }
+.faturas-sky-status.warning { color: #a16207; background: #fef3c7; }
+.faturas-sky-status.danger { color: #b83232; background: #fff1f2; }
+.faturas-sky-status.success { color: #16734a; background: #ecfdf3; }
+
+.faturas-sky-invoice-value {
+  margin: 23px 0 20px;
+}
+
+.faturas-sky-invoice-value span,
+.faturas-sky-dates span,
+.faturas-sky-context span,
+.faturas-sky-details span {
+  display: block;
+  color: #829ab1;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.faturas-sky-invoice-value strong {
+  display: block;
+  margin-top: 5px;
+  color: #102a43;
+  font-size: 25px;
+}
+
+.faturas-sky-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 14px 0;
+  border-top: 1px solid #edf1f5;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.faturas-sky-dates strong,
+.faturas-sky-context strong,
+.faturas-sky-details strong {
+  display: block;
+  margin-top: 4px;
+  color: #334e68;
+  font-size: 13px;
+}
+
+.faturas-sky-invoice-note {
+  min-height: 34px;
+  padding: 12px 0 8px;
+  color: #627d98;
+  font-size: 12px;
+}
+
+.faturas-sky-invoice-actions { justify-content: flex-end; margin-top: 11px; }
+.faturas-sky-primary,
+.faturas-sky-secondary,
+.faturas-sky-more,
+.faturas-sky-link {
+  min-height: 37px;
+  padding: 0 13px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.faturas-sky-primary {
+  border: 1px solid #2563eb;
+  color: #fff;
+  background: #2563eb;
+}
+
+.faturas-sky-secondary,
+.faturas-sky-more {
+  border: 1px solid #d9e2ec;
+  color: #486581;
+  background: #fff;
+}
+
+.faturas-sky-primary:disabled { opacity: .6; cursor: wait; }
+.faturas-sky-link { min-height: 0; padding: 0; border: 0; color: #2563eb; background: transparent; }
+
+.faturas-sky-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e5eaf0;
+  border-radius: 13px;
+  background: #fff;
+}
+
+.faturas-sky-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.faturas-sky-table-wrap th,
+.faturas-sky-table-wrap td {
+  padding: 13px 15px;
+  border-bottom: 1px solid #edf1f5;
+  text-align: left;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.faturas-sky-table-wrap th { color: #829ab1; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; }
+.faturas-sky-table-wrap td { color: #486581; }
+.faturas-sky-table-wrap tr:last-child td { border-bottom: 0; }
+.faturas-sky-empty { padding: 34px; color: #829ab1; text-align: center; font-size: 13px; }
+.faturas-sky-more { display: block; margin: 14px auto 0; }
+
+.faturas-sky-skeleton { min-height: 280px; animation: faturas-pulse 1.3s ease-in-out infinite alternate; }
+.faturas-sky-skeleton div { height: 12px; margin: 18px 0; border-radius: 5px; background: #edf1f5; }
+.faturas-sky-skeleton div:first-child { width: 45%; height: 18px; }
+@keyframes faturas-pulse { from { opacity: .65; } to { opacity: 1; } }
+
+.faturas-sky-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, .55);
+}
+
+.faturas-sky-modal {
+  width: min(570px, 100%);
+  max-height: 90vh;
+  overflow: hidden;
+  border: 1px solid #e5eaf0;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, .22);
+}
+
+.faturas-sky-modal header {
+  padding: 20px 23px;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.faturas-sky-modal header > div > span { color: #2563eb; font-size: 10px; font-weight: 800; letter-spacing: .1em; }
+.faturas-sky-modal h2 { margin-top: 4px; color: #102a43; font-size: 18px; }
+.faturas-sky-modal header p { margin-top: 4px; color: #627d98; font-size: 12px; }
+.faturas-sky-modal header button { border: 0; color: #627d98; background: transparent; cursor: pointer; font-size: 25px; }
+.faturas-sky-modal-body { max-height: 65vh; overflow: auto; padding: 22px 23px; }
+.faturas-sky-modal footer { justify-content: flex-end; padding: 15px 23px; border-top: 1px solid #edf1f5; }
+.faturas-sky-context { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 19px; padding: 13px 14px; border-radius: 11px; background: #f8fafc; }
+.faturas-sky-modal label { display: block; margin: 14px 0 6px; color: #486581; font-size: 12px; font-weight: 700; }
+.faturas-sky-input { box-sizing: border-box; width: 100%; min-height: 41px; padding: 9px 11px; border: 1px solid #d9e2ec; border-radius: 8px; color: #243b53; background: #fff; font: inherit; font-size: 13px; }
+textarea.faturas-sky-input { min-height: 72px; resize: vertical; }
+.faturas-sky-input:focus { border-color: #4c8bf5; outline: 0; box-shadow: 0 0 0 3px rgba(76, 139, 245, .12); }
+.faturas-sky-file { width: 100%; color: #627d98; font-size: 12px; }
+.faturas-sky-form-error { margin-top: 12px; padding: 10px; border-radius: 8px; color: #b83232; background: #fff1f2; font-size: 12px; }
+.faturas-sky-details { display: grid; grid-template-columns: 1fr 1fr; gap: 17px; }
+.faturas-sky-details > .faturas-sky-status,
+.faturas-sky-details > a { grid-column: 1 / -1; }
+.faturas-sky-details a { color: #2563eb; font-size: 13px; font-weight: 700; }
+
+@media (max-width: 800px) {
+  .faturas-sky-page { padding: 22px 17px 36px; }
+  .faturas-sky-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .faturas-sky-card-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .faturas-sky-header { display: block; }
+  .faturas-sky-month-nav { width: fit-content; margin-top: 17px; }
+  .faturas-sky-stat-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .faturas-sky-stat { padding: 13px; }
+  .faturas-sky-stat strong { font-size: 17px; }
+  .faturas-sky-section-heading { align-items: flex-start; }
+  .faturas-sky-section-heading small { display: none; }
+  .faturas-sky-history-filter { align-items: flex-start; flex-direction: column; gap: 5px; }
+}

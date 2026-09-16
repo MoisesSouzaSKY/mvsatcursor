@@ -2,13 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { Navigate } from 'react-router-dom';
 import { loadTenantSession } from '../../shared/saas/session';
+import { hasPermissionForCurrentUser } from '../../shared/permissions';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole: string;
+  requiredRole?: string;
+  requiredPermission?: { module: string; action: string };
 }
 
-export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, requiredRole, requiredPermission }: ProtectedRouteProps) {
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
@@ -27,7 +29,9 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
         const tipo = session?.tipo || '';
         setUserRole(tipo || '—');
 
-        if (requiredRole === 'Admin') {
+        if (requiredPermission) {
+          setHasAccess(tipo === 'admin' || await hasPermissionForCurrentUser(requiredPermission.module, requiredPermission.action));
+        } else if (requiredRole === 'Admin') {
           setHasAccess(tipo === 'admin');
         } else if (requiredRole === 'Gerente') {
           setHasAccess(tipo === 'admin' || tipo === 'gerente');
@@ -41,7 +45,7 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
         setLoading(false);
       }
     });
-  }, [requiredRole]);
+  }, [requiredRole, requiredPermission?.module, requiredPermission?.action]);
 
   if (loading) {
     return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>Verificando permissões...</div>;
@@ -64,7 +68,7 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
         </p>
         <p style={{ color: '#9ca3af', fontSize: '14px' }}>
           Seu cargo atual: <strong>{userRole || 'Não definido'}</strong><br />
-          Cargo necessário: <strong>{requiredRole}</strong>
+          Permissão necessária: <strong>{requiredPermission ? `${requiredPermission.module}.${requiredPermission.action}` : requiredRole}</strong>
         </p>
         <button 
           onClick={() => window.history.back()} 

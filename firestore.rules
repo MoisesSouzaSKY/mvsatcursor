@@ -43,6 +43,17 @@ service cloud.firestore {
       return isTenantMember(empresaId) && (userTipo() == 'admin' || userTipo() == 'gerente');
     }
 
+    function permissionDocPath(empresaId) {
+      return /databases/$(database)/documents/empresas/$(empresaId)/employee_permissions/$(request.auth.uid);
+    }
+
+    function hasPermission(empresaId, module, action) {
+      return isTenantAdmin(empresaId)
+        || (isTenantMember(empresaId)
+          && exists(permissionDocPath(empresaId))
+          && get(permissionDocPath(empresaId)).data.permissions[module][action] == true);
+    }
+
     // ===== LEGADO (claims antigas) - compatibilidade temporária =====
     function isAdminLegacy() {
       return isAuthenticated() &&
@@ -111,21 +122,24 @@ service cloud.firestore {
       allow update, delete: if isTenantAdmin(empresaId);
 
       match /clientes/{docId} {
-        allow read: if isTenantMember(empresaId);
-        allow create, update: if isTenantAdminOrGerente(empresaId) || (isTenantMember(empresaId) && userTipo() == 'funcionario');
-        allow delete: if isTenantAdminOrGerente(empresaId);
+        allow read: if hasPermission(empresaId, 'clientes', 'view');
+        allow create: if hasPermission(empresaId, 'clientes', 'create');
+        allow update: if hasPermission(empresaId, 'clientes', 'edit');
+        allow delete: if hasPermission(empresaId, 'clientes', 'delete');
       }
 
       match /assinaturas/{docId} {
-        allow read: if isTenantMember(empresaId);
-        allow create, update: if isTenantAdminOrGerente(empresaId) || (isTenantMember(empresaId) && userTipo() == 'funcionario');
-        allow delete: if isTenantAdminOrGerente(empresaId);
+        allow read: if hasPermission(empresaId, 'sky', 'assinaturas.view');
+        allow create: if hasPermission(empresaId, 'sky', 'assinaturas.create');
+        allow update: if hasPermission(empresaId, 'sky', 'assinaturas.edit');
+        allow delete: if hasPermission(empresaId, 'sky', 'assinaturas.delete');
       }
 
       match /equipamentos/{docId} {
-        allow read: if isTenantMember(empresaId);
-        allow create, update: if isTenantAdminOrGerente(empresaId) || (isTenantMember(empresaId) && userTipo() == 'funcionario');
-        allow delete: if isTenantAdminOrGerente(empresaId);
+        allow read: if hasPermission(empresaId, 'sky', 'equipamentos.view');
+        allow create: if hasPermission(empresaId, 'sky', 'equipamentos.create');
+        allow update: if hasPermission(empresaId, 'sky', 'equipamentos.edit');
+        allow delete: if hasPermission(empresaId, 'sky', 'equipamentos.delete');
 
         // Histórico de trocas de equipamento
         match /trocas/{swapId} {
@@ -150,15 +164,17 @@ service cloud.firestore {
       }
 
       match /tvbox/{docId} {
-        allow read: if isTenantMember(empresaId);
-        allow create, update: if isTenantAdminOrGerente(empresaId) || (isTenantMember(empresaId) && userTipo() == 'funcionario');
-        allow delete: if isTenantAdminOrGerente(empresaId);
+        allow read: if hasPermission(empresaId, 'tvbox', 'view');
+        allow create: if hasPermission(empresaId, 'tvbox', 'create');
+        allow update: if hasPermission(empresaId, 'tvbox', 'edit');
+        allow delete: if hasPermission(empresaId, 'tvbox', 'delete');
       }
 
       match /tvbox_assinaturas/{docId} {
-        allow read: if isTenantMember(empresaId);
-        allow create, update: if isTenantAdminOrGerente(empresaId) || (isTenantMember(empresaId) && userTipo() == 'funcionario');
-        allow delete: if isTenantAdminOrGerente(empresaId);
+        allow read: if hasPermission(empresaId, 'tvbox', 'view');
+        allow create: if hasPermission(empresaId, 'tvbox', 'create');
+        allow update: if hasPermission(empresaId, 'tvbox', 'edit') || hasPermission(empresaId, 'tvbox', 'renew');
+        allow delete: if hasPermission(empresaId, 'tvbox', 'delete');
 
         // Histórico importado do LEGADO (somente leitura no client)
         match /historico_legado/{legacyDocId} {
@@ -173,23 +189,66 @@ service cloud.firestore {
       }
 
       match /cobrancas/{docId} {
-        allow read: if isTenantMember(empresaId);
-        // financeiro não existe no modelo novo (admin/gerente/funcionario). Conservador:
-        allow create, update, delete: if isTenantAdminOrGerente(empresaId);
+        allow read: if hasPermission(empresaId, 'cobrancas', 'view');
+        allow create: if hasPermission(empresaId, 'cobrancas', 'create');
+        allow update: if hasPermission(empresaId, 'cobrancas', 'edit') || hasPermission(empresaId, 'cobrancas', 'registerPayment');
+        allow delete: if hasPermission(empresaId, 'cobrancas', 'delete');
       }
 
       match /cobrancas_arquivadas/{docId} {
-        allow read: if isTenantMember(empresaId);
-        allow create, update, delete: if isTenantAdminOrGerente(empresaId);
+        allow read: if hasPermission(empresaId, 'cobrancas', 'view');
+        allow create: if hasPermission(empresaId, 'cobrancas', 'create');
+        allow update: if hasPermission(empresaId, 'cobrancas', 'edit') || hasPermission(empresaId, 'cobrancas', 'registerPayment');
+        allow delete: if hasPermission(empresaId, 'cobrancas', 'delete');
       }
 
       match /despesas/{docId} {
-        allow read: if isTenantMember(empresaId);
-        allow create, update, delete: if isTenantAdminOrGerente(empresaId);
+        allow read: if hasPermission(empresaId, 'despesas', 'view');
+        allow create: if hasPermission(empresaId, 'despesas', 'create');
+        allow update: if hasPermission(empresaId, 'despesas', 'edit');
+        allow delete: if hasPermission(empresaId, 'despesas', 'delete');
+      }
+
+      match /faturas_sky/{docId} {
+        allow read: if hasPermission(empresaId, 'sky', 'faturas.view');
+        function validFaturaSky(data) {
+          return data.keys().hasAll([
+              'assinaturaId', 'codigoAssinatura', 'nomeAssinatura',
+              'competencia', 'vencimento', 'verificarEm',
+              'possivelCorteEm', 'valor', 'valorPago'
+            ])
+            && data.keys().hasOnly([
+              'assinaturaId', 'codigoAssinatura', 'nomeAssinatura',
+              'competencia', 'vencimento', 'verificarEm',
+              'possivelCorteEm', 'valor', 'valorPago', 'status',
+              'dataValorInformado', 'valorInformadoPor', 'dataPagamento',
+              'formaPagamento', 'pagamentoRegistradoPor', 'comprovante',
+              'numeroReferencia', 'observacoes', 'despesaId',
+              'createdAt', 'updatedAt'
+            ])
+            && data.assinaturaId is string
+            && data.codigoAssinatura is string
+            && data.nomeAssinatura is string
+            && data.competencia is string
+            && data.vencimento is timestamp
+            && data.verificarEm is timestamp
+            && data.possivelCorteEm is timestamp
+            && (data.valor == null || data.valor is number)
+            && (data.valorPago == null || data.valorPago is number);
+        }
+
+        allow create: if (hasPermission(empresaId, 'sky', 'faturas.edit') || hasPermission(empresaId, 'sky', 'faturas.regularize'))
+          && validFaturaSky(request.resource.data);
+        allow update: if (hasPermission(empresaId, 'sky', 'faturas.edit') || hasPermission(empresaId, 'sky', 'faturas.regularize'))
+          && validFaturaSky(request.resource.data)
+          && request.resource.data.assinaturaId == resource.data.assinaturaId
+          && request.resource.data.competencia == resource.data.competencia
+          && request.resource.data.codigoAssinatura == resource.data.codigoAssinatura;
+        allow delete: if hasPermission(empresaId, 'sky', 'faturas.edit');
       }
 
       match /funcionarios/{docId} {
-        allow read: if isTenantMember(empresaId);
+        allow read: if isTenantAdmin(empresaId) || (isTenantMember(empresaId) && request.auth.uid == docId);
         allow create, update, delete: if isTenantAdmin(empresaId);
       }
 
@@ -204,13 +263,22 @@ service cloud.firestore {
       }
 
       match /employee_permissions/{docId} {
-        allow read: if isTenantMember(empresaId);
+        allow read: if isTenantAdmin(empresaId) || (isTenantMember(empresaId) && request.auth.uid == docId);
         allow create, update, delete: if isTenantAdmin(empresaId);
       }
 
       match /audit_logs/{docId} {
-        allow read: if isTenantAdminOrGerente(empresaId);
-        allow create: if isTenantMember(empresaId);
+        allow read: if isTenantAdmin(empresaId)
+          || hasPermission(empresaId, 'admin', 'history.view')
+          || hasPermission(empresaId, 'cobrancas', 'view');
+        allow create: if isTenantMember(empresaId)
+          && (
+            isTenantAdmin(empresaId)
+            || request.resource.data.actorUserId == request.auth.uid
+            || request.resource.data.usuarioId == request.auth.uid
+            || (request.resource.data.keys().hasAny(['performedBy'])
+              && request.resource.data.performedBy.uid == request.auth.uid)
+          );
         allow update, delete: if false;
       }
 

@@ -29,6 +29,7 @@ interface NovaAssinaturaTvBox {
 
 export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: NovaAssinaturaTvBoxModalProps) {
   const [loading, setLoading] = useState(false);
+  const [senhaVisivel, setSenhaVisivel] = useState(false);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [assinatura, setAssinatura] = useState<NovaAssinaturaTvBox>({
     assinatura: '',
@@ -105,6 +106,10 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
 
   // Carregar clientes ao abrir o modal
   useEffect(() => {
+    if (!isOpen) {
+      setSenhaVisivel(false);
+      return;
+    }
     if (isOpen) {
       const carregarClientes = async () => {
         try {
@@ -219,7 +224,6 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
       dadosParaSalvar.equipamentos = equipamentosProcessados;
 
       // Salvar no Firestore
-      console.log('💾 Salvando assinatura no Firestore:', dadosParaSalvar);
       const docRef = await addDoc(tenantCollection(db, 'tvbox_assinaturas'), dadosParaSalvar);
       console.log('✅ Assinatura salva com sucesso! ID:', docRef.id);
       
@@ -261,6 +265,7 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
           { nds: '', mac: '', deviceId: '', cliente_id: null, cliente_nome: 'Disponível' }
         ]
       });
+      setSenhaVisivel(false);
       
       alert(`✅ Assinatura "${assinatura.assinatura}" criada com sucesso!\n\n📊 Dados salvos:\n• Status: ${assinatura.status}\n• Tipo: ${assinatura.tipo}\n• Login: ${assinatura.login}\n• Equipamentos: ${equipamentosProcessados.length}`);
     } catch (error: any) {
@@ -317,7 +322,7 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
   if (!isOpen) return null;
 
   return (
-    <div style={{
+    <div className="tvbox-new-modal-backdrop" style={{
       position: 'fixed',
       top: 0,
       left: 0,
@@ -332,7 +337,7 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       padding: '20px'
     }}>
-      <div style={{
+      <div className="tvbox-modal tvbox-new-modal" style={{
         backgroundColor: 'white',
         borderRadius: '20px',
         padding: '0',
@@ -344,7 +349,7 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
         border: '1px solid rgba(255, 255, 255, 0.1)'
       }}>
         {/* Header */}
-        <div style={{
+        <div className="tvbox-modal__header tvbox-new-modal__header" style={{
           background: 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)',
           padding: '32px',
           color: 'white',
@@ -376,7 +381,7 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
                 color: 'white',
                 textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
               }}>
-                🆕 Nova Assinatura TV Box
+                Nova assinatura TV Box
               </h2>
               <p style={{
                 margin: 0,
@@ -384,7 +389,7 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
                 color: 'rgba(255, 255, 255, 0.9)',
                 fontWeight: '400'
               }}>
-                Preencha os dados para criar uma nova assinatura
+                Cadastre a assinatura, credenciais e aparelhos vinculados.
               </p>
             </div>
             <button
@@ -419,7 +424,7 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
         </div>
 
         {/* Conteúdo do Modal */}
-        <div style={{
+        <div className="tvbox-modal__content tvbox-new-modal__content" style={{
           padding: '40px',
           maxHeight: 'calc(90vh - 140px)',
           overflow: 'auto'
@@ -429,7 +434,7 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '32px' }}>
             {/* Seção A: Dados da Assinatura */}
-            <div style={{ 
+            <div className="tvbox-form-section tvbox-form-section--subscription" style={{
               marginBottom: '32px',
               backgroundColor: '#f8fafc',
               borderRadius: '16px',
@@ -445,13 +450,6 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
                 alignItems: 'center',
                 gap: '12px'
               }}>
-                <span style={{ 
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  borderRadius: '8px',
-                  padding: '8px',
-                  fontSize: '16px'
-                }}>📋</span>
                 Dados da Assinatura
               </h3>
               
@@ -536,7 +534,7 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
                         fontWeight: '500'
                       }}
                     >
-                      🔄 Gerar Próximo Número
+                      Gerar próximo número
                     </button>
                   </div>
                 
@@ -597,20 +595,31 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
                   <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151' }}>
                     Senha*
                   </label>
-                  <input
-                    type="text"
-                    value={assinatura.senha}
-                    onChange={(e) => handleInputChange('senha', e.target.value)}
-                    placeholder="Digite a senha"
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                  />
+                  <div className="tvbox-password-field">
+                    <input
+                      type={senhaVisivel ? 'text' : 'password'}
+                      value={assinatura.senha}
+                      onChange={(e) => handleInputChange('senha', e.target.value)}
+                      placeholder="Digite a senha"
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '12px 48px 12px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="tvbox-password-toggle"
+                      onClick={() => setSenhaVisivel((visible) => !visible)}
+                      aria-label={senhaVisivel ? 'Ocultar senha' : 'Mostrar senha'}
+                      title={senhaVisivel ? 'Ocultar senha' : 'Mostrar senha'}
+                    >
+                      {senhaVisivel ? '◉' : '◌'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -668,7 +677,7 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
             </div>
 
             {/* Seção B: Equipamentos */}
-            <div style={{ marginBottom: '24px' }}>
+            <div className="tvbox-form-section tvbox-form-section--devices" style={{ marginBottom: '24px' }}>
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -676,7 +685,7 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
                 marginBottom: '16px'
               }}>
                 <h3 style={{ fontSize: '18px', fontWeight: '600', margin: 0, color: '#374151' }}>
-                  📡 Equipamentos
+                  Aparelhos
                 </h3>
                 <div style={{
                   padding: '4px 12px',
@@ -691,7 +700,7 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
               </div>
               
               {assinatura.equipamentos.map((equipamento, index) => (
-                <div key={index} style={{
+                <div className="tvbox-slot-card" key={index} style={{
                   border: '1px solid #e5e7eb',
                   borderRadius: '8px',
                   padding: '16px',
@@ -802,7 +811,7 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
           </div>
 
           {/* Botões */}
-          <div style={{
+          <div className="tvbox-modal__footer tvbox-new-modal__footer" style={{
             display: 'flex',
             gap: '16px',
             justifyContent: 'flex-end',
@@ -873,7 +882,7 @@ export default function NovaAssinaturaTvBoxModal({ isOpen, onClose, onSave }: No
                 }
               }}
             >
-              {loading ? '💾 Criando...' : '💾 Criar Assinatura'}
+              {loading ? 'Criando...' : 'Criar assinatura'}
             </button>
           </div>
         </form>

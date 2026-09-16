@@ -1,4 +1,5 @@
 import React from 'react';
+import './EquipmentModals.css';
 
 export type MotivoTrocaEquipamento =
   | 'Defeito'
@@ -48,18 +49,6 @@ const formatSmartCard = (value: string): string => {
   return digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
 };
 
-const labelPillStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 6,
-  padding: '4px 10px',
-  borderRadius: 999,
-  background: '#eef2ff',
-  color: '#3730a3',
-  fontSize: 12,
-  fontWeight: 700,
-};
-
 export default function TrocaEquipamentoModal({
   isOpen,
   onClose,
@@ -77,6 +66,8 @@ export default function TrocaEquipamentoModal({
   const [statusAntigo, setStatusAntigo] = React.useState<StatusEquipamento>('defeito');
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [equipmentDropdownOpen, setEquipmentDropdownOpen] = React.useState(false);
+  const equipmentPickerRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
     if (!isOpen) return;
@@ -90,17 +81,57 @@ export default function TrocaEquipamentoModal({
     setStatusAntigo('defeito');
     setSaving(false);
     setError(null);
+    setEquipmentDropdownOpen(false);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
   }, [isOpen]);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!equipmentPickerRef.current?.contains(event.target as Node)) {
+        setEquipmentDropdownOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (equipmentDropdownOpen) {
+          setEquipmentDropdownOpen(false);
+          return;
+        }
+        if (!saving) onClose();
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, equipmentDropdownOpen, saving, onClose]);
 
   const equipamentosFiltrados = React.useMemo(() => {
     const term = buscaNovoEquipamento.trim().toLowerCase();
-    if (!term) return equipamentosDisponiveis;
-    return equipamentosDisponiveis.filter((e) => {
+    const digits = buscaNovoEquipamento.replace(/\D/g, '');
+    const list = equipamentosDisponiveis.slice().sort((a, b) => (a.nds || '').localeCompare(b.nds || '', 'pt-BR'));
+    if (!term) return list;
+    return list.filter((e) => {
       const nds = String(e.nds || '').toLowerCase();
       const sc = String(e.smartcard || '').toLowerCase();
-      return nds.includes(term) || sc.includes(term);
+      const scDigits = String(e.smartcard || '').replace(/\D/g, '');
+      return nds.includes(term) || sc.includes(term) || (digits && scDigits.includes(digits));
     });
   }, [buscaNovoEquipamento, equipamentosDisponiveis]);
+
+  const selecionarEquipamento = (id: string) => {
+    setNovoEquipamentoId(id);
+    setBuscaNovoEquipamento('');
+    setEquipmentDropdownOpen(false);
+    setError(null);
+  };
 
   const normalizeNds = (v: string) => String(v || '').trim();
   const normalizeSmartcard = (v: string) => String(v || '').replace(/\D/g, '').trim();
@@ -131,7 +162,9 @@ export default function TrocaEquipamentoModal({
   const handleConfirm = async () => {
     setError(null);
     if (!canConfirm) {
-      setError('Preencha os campos obrigatórios.');
+      setError(modoNovoEquipamento === 'existente' && !novoEquipamentoId
+        ? 'Selecione um equipamento disponível.'
+        : 'Preencha os campos obrigatórios.');
       return;
     }
 
@@ -164,423 +197,182 @@ export default function TrocaEquipamentoModal({
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.35)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1200,
-        padding: 16,
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 860,
-          background: 'white',
-          borderRadius: 14,
-          boxShadow: '0 18px 45px rgba(2, 6, 23, 0.18)',
-          overflow: 'hidden',
-          maxHeight: '90vh',
-          border: '1px solid rgba(15, 23, 42, 0.08)',
-        }}
-      >
-        <div
-          style={{
-            padding: 18,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderBottom: '1px solid #e5e7eb',
-            background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
-            color: '#0f172a',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: '#ecfdf5',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px solid #a7f3d0',
-              }}
-            >
-              🔄
-            </div>
+    <div className="eq-modal-overlay" role="presentation">
+      <div className="eq-modal eq-modal--swap" role="dialog" aria-modal="true" aria-labelledby="troca-equipamento-title">
+        <header className="eq-modal__header">
+          <div className="eq-modal__header-main">
+            <div className="eq-modal__icon" aria-hidden="true">⇄</div>
             <div>
-              <div style={{ fontWeight: 900, fontSize: 16 }}>Troca de Equipamento</div>
-              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 700 }}>
-                Substituir equipamento sem perder dados do cliente/assinatura
-              </div>
+              <h2 id="troca-equipamento-title" className="eq-modal__title">Troca de Equipamento</h2>
+              <p className="eq-modal__subtitle">Substitua o equipamento mantendo o vínculo do cliente e da assinatura.</p>
             </div>
           </div>
+          <button type="button" className="eq-modal__close" onClick={onClose} disabled={saving} aria-label="Fechar">✕</button>
+        </header>
 
-          <button
-            onClick={onClose}
-            disabled={saving}
-            style={{
-              background: 'white',
-              color: '#0f172a',
-              border: '1px solid #e5e7eb',
-              width: 38,
-              height: 38,
-              borderRadius: 10,
-              cursor: saving ? 'not-allowed' : 'pointer',
-              boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)',
-            }}
-            aria-label="Fechar"
-            title="Fechar"
-            type="button"
-          >
-            ✕
-          </button>
-        </div>
+        <div className="eq-modal__body">
+          {error && <div className="eq-alert eq-alert--error">{error}</div>}
 
-        <div style={{ padding: 18, overflow: 'auto' }}>
-          {error && (
-            <div
-              style={{
-                background: '#fee2e2',
-                color: '#991b1b',
-                border: '1px solid #fecaca',
-                padding: '10px 12px',
-                borderRadius: 10,
-                marginBottom: 14,
-                fontWeight: 600,
-              }}
-            >
-              {error}
-            </div>
-          )}
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 14,
-            }}
-          >
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 14, background: '#ffffff' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <div style={{ fontWeight: 900, color: '#111827' }}>Equipamento atual</div>
-                <span style={labelPillStyle}>Em uso</span>
+          <div className="eq-grid-2">
+            <section className="eq-card">
+              <div className="eq-card__head">
+                <h3 className="eq-card__title">Equipamento atual</h3>
+                <span className="eq-badge eq-badge--use">Em uso</span>
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="eq-kv">
                 <div>
-                  <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 700 }}>NDS</div>
-                  <div style={{ fontWeight: 900, color: '#111827' }}>{equipamentoAtual.nds || '—'}</div>
+                  <span>NDS</span>
+                  <strong>{equipamentoAtual.nds || '—'}</strong>
                 </div>
                 <div>
-                  <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 700 }}>Smart Card</div>
-                  <div style={{ fontWeight: 900, color: '#111827' }}>{formatSmartCard(equipamentoAtual.smartcard) || '—'}</div>
+                  <span>Smart Card</span>
+                  <strong>{formatSmartCard(equipamentoAtual.smartcard) || '—'}</strong>
                 </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 700 }}>Cliente vinculado</div>
-                  <div style={{ fontWeight: 800, color: '#111827' }}>{clienteNome}</div>
+                <div className="eq-kv__full">
+                  <span>Cliente</span>
+                  <strong>{clienteNome}</strong>
                 </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 700 }}>Assinatura vinculada</div>
-                  <div style={{ fontWeight: 900, color: '#111827' }}>
-                    {assinaturaCodigo}
-                    {assinaturaNome ? <span style={{ fontWeight: 700, color: '#6b7280' }}> — {assinaturaNome}</span> : null}
-                  </div>
+                <div className="eq-kv__full">
+                  <span>Assinatura</span>
+                  <strong>{assinaturaCodigo}</strong>
+                  {assinaturaNome ? <em>{assinaturaNome}</em> : null}
                 </div>
               </div>
-            </div>
+            </section>
 
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 14, background: '#ffffff' }}>
-              <div style={{ fontWeight: 900, color: '#111827', marginBottom: 10 }}>Novo equipamento</div>
-              <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => setModoNovoEquipamento('existente')}
-                  disabled={saving}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: 10,
-                    border: modoNovoEquipamento === 'existente' ? '1px solid #111827' : '1px solid #e5e7eb',
-                    background: modoNovoEquipamento === 'existente' ? '#0f172a' : 'white',
-                    color: modoNovoEquipamento === 'existente' ? 'white' : '#0f172a',
-                    fontWeight: 900,
-                    cursor: saving ? 'not-allowed' : 'pointer',
-                    fontSize: 13,
-                  }}
-                >
-                  Selecionar existente
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModoNovoEquipamento('novo')}
-                  disabled={saving}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: 10,
-                    border: modoNovoEquipamento === 'novo' ? '1px solid #111827' : '1px solid #e5e7eb',
-                    background: modoNovoEquipamento === 'novo' ? '#0f172a' : 'white',
-                    color: modoNovoEquipamento === 'novo' ? 'white' : '#0f172a',
-                    fontWeight: 900,
-                    cursor: saving ? 'not-allowed' : 'pointer',
-                    fontSize: 13,
-                  }}
-                >
-                  Cadastrar novo
-                </button>
-                <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 800, alignSelf: 'center' }}>
-                  O novo equipamento precisa estar “Disponível”
-                </span>
+            <section className="eq-card">
+              <div className="eq-card__head">
+                <h3 className="eq-card__title">Novo equipamento</h3>
+              </div>
+              <div className="eq-segment" role="tablist" aria-label="Modo do novo equipamento">
+                <button type="button" className={modoNovoEquipamento === 'existente' ? 'is-active' : ''} onClick={() => setModoNovoEquipamento('existente')} disabled={saving}>Selecionar existente</button>
+                <button type="button" className={modoNovoEquipamento === 'novo' ? 'is-active' : ''} onClick={() => setModoNovoEquipamento('novo')} disabled={saving}>Cadastrar novo</button>
+              </div>
+              <div className="eq-alert eq-alert--info">
+                <span aria-hidden="true">ⓘ</span>
+                <span>Apenas equipamentos com status Disponível podem ser utilizados nesta troca.</span>
               </div>
 
               {modoNovoEquipamento === 'existente' && (
                 <>
-                  <label style={{ fontSize: 12, color: '#374151', fontWeight: 800, display: 'block', marginBottom: 6 }}>
-                    Buscar por NDS ou Smart Card
-                  </label>
-                  <input
-                    value={buscaNovoEquipamento}
-                    onChange={(e) => setBuscaNovoEquipamento(e.target.value)}
-                    disabled={saving}
-                    placeholder="Digite para filtrar..."
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      borderRadius: 10,
-                      border: '1px solid #d1d5db',
-                      outline: 'none',
-                      fontWeight: 700,
-                      marginBottom: 10,
-                    }}
-                  />
-
-              <label style={{ fontSize: 12, color: '#374151', fontWeight: 800, display: 'block', marginBottom: 6 }}>
-                Selecionar equipamento disponível <span style={{ color: '#ef4444' }}>*</span>
-              </label>
-              <select
-                value={novoEquipamentoId}
-                onChange={(e) => setNovoEquipamentoId(e.target.value)}
-                disabled={saving}
-                style={{
-                  width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: 10,
-                  border: '1px solid #d1d5db',
-                  outline: 'none',
-                  fontWeight: 700,
-                  cursor: saving ? 'not-allowed' : 'pointer',
-                }}
-              >
-                <option value="">{equipamentosFiltrados.length ? 'Selecione...' : 'Nenhum equipamento disponível'}</option>
-                {equipamentosFiltrados
-                  .slice()
-                  .sort((a, b) => (a.nds || '').localeCompare(b.nds || '', 'pt-BR'))
-                  .map((eq) => (
-                    <option key={eq.id} value={eq.id}>
-                      {eq.nds} — {formatSmartCard(eq.smartcard)}
-                    </option>
-                  ))}
-              </select>
-
-              {equipamentoNovo && (
-                <div style={{ marginTop: 10, padding: 12, borderRadius: 10, background: '#f8fafc', border: '1px solid #e5e7eb' }}>
-                  <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 800 }}>Selecionado</div>
-                  <div style={{ fontWeight: 900, color: '#111827' }}>{equipamentoNovo.nds}</div>
-                  <div style={{ fontSize: 13, color: '#374151', fontWeight: 800 }}>{formatSmartCard(equipamentoNovo.smartcard)}</div>
-                </div>
-              )}
+                  <div className="eq-field">
+                    <label className="eq-label" htmlFor="equipamento-disponivel-search">Buscar equipamento disponível <span>*</span></label>
+                    <div className="eq-combobox" ref={equipmentPickerRef}>
+                      <div className="eq-combobox__control">
+                        <span aria-hidden="true">⌕</span>
+                        <input
+                          id="equipamento-disponivel-search"
+                          value={buscaNovoEquipamento}
+                          onChange={(e) => {
+                            setBuscaNovoEquipamento(e.target.value);
+                            setEquipmentDropdownOpen(true);
+                            if (novoEquipamentoId) setNovoEquipamentoId('');
+                          }}
+                          onFocus={() => setEquipmentDropdownOpen(true)}
+                          disabled={saving}
+                          placeholder="Digite NDS ou Smart Card..."
+                          autoComplete="off"
+                          role="combobox"
+                          aria-expanded={equipmentDropdownOpen}
+                          aria-controls="equipamentos-disponiveis-list"
+                        />
+                        <button type="button" onClick={() => setEquipmentDropdownOpen((open) => !open)} disabled={saving} aria-label="Abrir equipamentos disponíveis">⌄</button>
+                      </div>
+                      {equipmentDropdownOpen && (
+                        <div className="eq-combobox__menu" id="equipamentos-disponiveis-list" role="listbox">
+                          <div className="eq-combobox__count">{equipamentosFiltrados.length} equipamentos disponíveis</div>
+                          {equipamentosFiltrados.length === 0 ? (
+                            <div className="eq-combobox__empty">
+                              <strong>Nenhum equipamento disponível encontrado</strong>
+                              <div>Tente outro NDS ou Smart Card.</div>
+                            </div>
+                          ) : (
+                            equipamentosFiltrados.map((eq) => (
+                              <button
+                                type="button"
+                                className={`eq-combobox__option${eq.id === novoEquipamentoId ? ' is-selected' : ''}`}
+                                key={eq.id}
+                                onClick={() => selecionarEquipamento(eq.id)}
+                                role="option"
+                                aria-selected={eq.id === novoEquipamentoId}
+                              >
+                                <span>
+                                  <strong>{eq.nds || 'NDS não informado'}</strong>
+                                  <small>Smart Card · {formatSmartCard(eq.smartcard) || 'não informado'}</small>
+                                </span>
+                                <span className="eq-badge eq-badge--ok">Disponível</span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {equipamentoNovo && (
+                    <div className="eq-selected">
+                      <div>
+                        <span>Equipamento selecionado</span>
+                        <strong>{equipamentoNovo.nds}</strong>
+                        <em>Smart Card · {formatSmartCard(equipamentoNovo.smartcard)}</em>
+                      </div>
+                      <button type="button" onClick={() => { setNovoEquipamentoId(''); setBuscaNovoEquipamento(''); setEquipmentDropdownOpen(true); }} disabled={saving}>Alterar</button>
+                    </div>
+                  )}
                 </>
               )}
 
               {modoNovoEquipamento === 'novo' && (
-                <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <div>
-                      <label style={{ fontSize: 12, color: '#374151', fontWeight: 800, display: 'block', marginBottom: 6 }}>
-                        NDS do novo equipamento <span style={{ color: '#ef4444' }}>*</span>
-                      </label>
-                      <input
-                        value={novoCadastroNds}
-                        onChange={(e) => setNovoCadastroNds(e.target.value)}
-                        disabled={saving}
-                        placeholder="Ex.: CE0A01255759583B"
-                        style={{
-                          width: '100%',
-                          padding: '12px 14px',
-                          borderRadius: 10,
-                          border: '1px solid #d1d5db',
-                          outline: 'none',
-                          fontWeight: 700,
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 12, color: '#374151', fontWeight: 800, display: 'block', marginBottom: 6 }}>
-                        Smart Card do novo equipamento <span style={{ color: '#ef4444' }}>*</span>
-                      </label>
-                      <input
-                        value={novoCadastroSmartcard}
-                        onChange={(e) => setNovoCadastroSmartcard(e.target.value)}
-                        disabled={saving}
-                        placeholder="Somente números"
-                        inputMode="numeric"
-                        style={{
-                          width: '100%',
-                          padding: '12px 14px',
-                          borderRadius: 10,
-                          border: '1px solid #d1d5db',
-                          outline: 'none',
-                          fontWeight: 700,
-                        }}
-                      />
-                    </div>
+                <div className="eq-grid-2">
+                  <div className="eq-field">
+                    <label className="eq-label">NDS do novo equipamento <span>*</span></label>
+                    <input className="eq-input" value={novoCadastroNds} onChange={(e) => setNovoCadastroNds(e.target.value)} disabled={saving} placeholder="Ex.: CE0A01255759583B" />
                   </div>
-                  <div style={{ marginTop: 10, fontSize: 12, color: '#6b7280', fontWeight: 800 }}>
-                    Ao confirmar, o sistema cria este equipamento como <strong>Disponível</strong> e já realiza a troca.
+                  <div className="eq-field">
+                    <label className="eq-label">Smart Card do novo equipamento <span>*</span></label>
+                    <input className="eq-input" value={novoCadastroSmartcard} onChange={(e) => setNovoCadastroSmartcard(e.target.value)} disabled={saving} placeholder="Somente números" inputMode="numeric" />
                   </div>
-                </>
+                </div>
               )}
-            </div>
+            </section>
           </div>
 
-          <div style={{ marginTop: 14, border: '1px solid #e5e7eb', borderRadius: 12, padding: 14, background: '#ffffff' }}>
-            <div style={{ fontWeight: 900, color: '#111827', marginBottom: 10 }}>Motivo e status</div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div>
-                <label style={{ fontSize: 12, color: '#374151', fontWeight: 800, display: 'block', marginBottom: 6 }}>
-                  Motivo da troca <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <select
-                  value={motivo}
-                  onChange={(e) => setMotivo(e.target.value as MotivoTrocaEquipamento)}
-                  disabled={saving}
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    borderRadius: 10,
-                    border: '1px solid #d1d5db',
-                    outline: 'none',
-                    fontWeight: 700,
-                    cursor: saving ? 'not-allowed' : 'pointer',
-                  }}
-                >
+          <section className="eq-card eq-card--spaced">
+            <h3 className="eq-card__title">Motivo e destino</h3>
+            <div className="eq-grid-2 eq-card--spaced">
+              <div className="eq-field">
+                <label className="eq-label">Motivo da troca <span>*</span></label>
+                <select className="eq-select" value={motivo} onChange={(e) => setMotivo(e.target.value as MotivoTrocaEquipamento)} disabled={saving}>
                   <option value="Defeito">Defeito</option>
                   <option value="Garantia">Garantia</option>
                   <option value="Atualização de equipamento">Atualização de equipamento</option>
                   <option value="Troca solicitada pelo cliente">Troca solicitada pelo cliente</option>
                   <option value="Outro">Outro</option>
                 </select>
-
                 {motivo === 'Outro' && (
-                  <div style={{ marginTop: 10 }}>
-                    <label style={{ fontSize: 12, color: '#374151', fontWeight: 800, display: 'block', marginBottom: 6 }}>
-                      Descreva o motivo <span style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <input
-                      value={motivoOutroTexto}
-                      onChange={(e) => setMotivoOutroTexto(e.target.value)}
-                      disabled={saving}
-                      placeholder="Ex.: troca por melhoria do sinal..."
-                      style={{
-                        width: '100%',
-                        padding: '12px 14px',
-                        borderRadius: 10,
-                        border: '1px solid #d1d5db',
-                        outline: 'none',
-                        fontWeight: 700,
-                      }}
-                    />
-                  </div>
+                  <input className="eq-input eq-input--follow" value={motivoOutroTexto} onChange={(e) => setMotivoOutroTexto(e.target.value)} disabled={saving} placeholder="Descreva o motivo" />
                 )}
               </div>
-
-              <div>
-                <label style={{ fontSize: 12, color: '#374151', fontWeight: 800, display: 'block', marginBottom: 6 }}>
-                  Status do equipamento antigo após troca <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <select
-                  value={statusAntigo}
-                  onChange={(e) => setStatusAntigo(e.target.value)}
-                  disabled={saving}
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    borderRadius: 10,
-                    border: '1px solid #d1d5db',
-                    outline: 'none',
-                    fontWeight: 700,
-                    cursor: saving ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  <option value="defeito">Defeito</option>
-                  <option value="reserva">Reserva</option>
-                  <option value="descartado">Descartado</option>
-                  <option value="disponivel">Disponível</option>
+              <div className="eq-field">
+                <label className="eq-label">Status do equipamento antigo após troca <span>*</span></label>
+                <select className="eq-select" value={statusAntigo} onChange={(e) => setStatusAntigo(e.target.value)} disabled={saving}>
+                  <option value="defeito">● Defeito</option>
+                  <option value="reserva">● Reserva</option>
+                  <option value="descartado">● Descartado</option>
+                  <option value="disponivel">● Disponível</option>
                 </select>
-                <div style={{ fontSize: 12, marginTop: 8, color: '#6b7280', fontWeight: 700 }}>
-                  O equipamento antigo terá o vínculo removido automaticamente.
-                </div>
+                <p className="eq-hint">Após a troca, o vínculo atual será removido e o equipamento antigo assumirá o status selecionado.</p>
               </div>
             </div>
-          </div>
+          </section>
         </div>
 
-        <div
-          style={{
-            padding: 18,
-            borderTop: '1px solid #e5e7eb',
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: 10,
-            background: '#ffffff',
-          }}
-        >
-          <button
-            onClick={onClose}
-            disabled={saving}
-            style={{
-              padding: '12px 14px',
-              borderRadius: 10,
-              border: '1px solid #d1d5db',
-              background: 'white',
-              cursor: saving ? 'not-allowed' : 'pointer',
-              fontWeight: 800,
-              color: '#111827',
-            }}
-            type="button"
-          >
-            Cancelar
+        <footer className="eq-modal__footer">
+          <button type="button" className="eq-btn eq-btn--secondary" onClick={onClose} disabled={saving}>Cancelar</button>
+          <button type="button" className="eq-btn eq-btn--primary" onClick={handleConfirm} disabled={saving || !canConfirm}>
+            {saving ? 'Processando troca...' : '⇄ Confirmar troca'}
           </button>
-
-          <button
-            onClick={handleConfirm}
-            disabled={saving || !canConfirm}
-            style={{
-              padding: '12px 16px',
-              borderRadius: 10,
-              border: 'none',
-              background: saving || !canConfirm ? '#94a3b8' : '#16a34a',
-              color: 'white',
-              cursor: saving || !canConfirm ? 'not-allowed' : 'pointer',
-              fontWeight: 900,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              boxShadow: saving || !canConfirm ? 'none' : '0 10px 22px rgba(22, 163, 74, 0.22)',
-            }}
-            type="button"
-          >
-            {saving ? 'Trocando...' : '✅ Confirmar troca'}
-          </button>
-        </div>
+        </footer>
       </div>
     </div>
   );
 }
-

@@ -8,6 +8,7 @@ export type TenantCollectionName =
   | 'cobrancas'
   | 'cobrancas_arquivadas'
   | 'despesas'
+  | 'faturas_sky'
   | 'tvbox'
   | 'tvbox_assinaturas'
   | 'lost_devices'

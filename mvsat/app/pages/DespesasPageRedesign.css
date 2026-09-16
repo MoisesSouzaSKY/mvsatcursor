@@ -1,0 +1,215 @@
+.despesas-page {
+  min-height: 100vh;
+  padding: 24px 30px 44px;
+  color: #172033;
+  background: #f8fafc;
+}
+
+.despesas-page__header,
+.despesas-panel-heading,
+.despesas-list-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.despesas-page__header {
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.despesas-eyebrow,
+.despesas-section-label {
+  display: block;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.despesas-page h1 {
+  margin: 5px 0 3px;
+  font-size: 28px;
+  letter-spacing: -.03em;
+}
+
+.despesas-page h2 {
+  margin: 5px 0 0;
+  font-size: 18px;
+  letter-spacing: -.02em;
+}
+
+.despesas-page p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.despesas-primary-button,
+.despesas-competencia-actions button,
+.despesas-actions button,
+.despesas-period-card button {
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.despesas-primary-button {
+  min-height: 40px;
+  padding: 0 16px;
+  color: #fff;
+  background: #2563eb;
+  box-shadow: 0 5px 14px rgba(37, 99, 235, .18);
+}
+
+.despesas-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.despesas-stat-card {
+  min-height: 112px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-top: 3px solid #93c5fd;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 5px 16px rgba(15, 23, 42, .04);
+}
+
+.despesas-stat-card.is-amber { border-top-color: #f59e0b; }
+.despesas-stat-card.is-green { border-top-color: #10b981; }
+.despesas-stat-card.is-slate { border-top-color: #94a3b8; }
+.despesas-stat-card span { display: block; color: #64748b; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+.despesas-stat-card strong { display: block; margin: 10px 0 6px; color: #1e293b; font-size: 24px; letter-spacing: -.03em; }
+.despesas-stat-card small { color: #94a3b8; font-size: 11px; }
+
+.despesas-competencia,
+.despesas-month-summary,
+.despesas-history-panel,
+.despesas-list-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 5px 16px rgba(15, 23, 42, .035);
+}
+
+.despesas-competencia {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding: 14px 16px;
+}
+
+.despesas-month-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.despesas-month-nav strong { min-width: 190px; text-align: center; font-size: 15px; }
+.despesas-month-nav button { width: 30px; height: 30px; border: 1px solid #dbe2ec; border-radius: 7px; color: #334155; background: #fff; cursor: pointer; }
+.despesas-month-nav button:disabled { cursor: not-allowed; opacity: .4; }
+.despesas-competencia-actions { display: flex; gap: 8px; }
+.despesas-competencia-actions select,
+.despesas-filter-bar select,
+.despesas-pagination select { min-height: 36px; padding: 0 10px; border: 1px solid #dbe2ec; border-radius: 8px; color: #475569; background: #fff; font-size: 12px; }
+.despesas-competencia-actions button { min-height: 36px; padding: 0 12px; color: #475569; border: 1px solid #dbe2ec; background: #fff; }
+.despesas-competencia-actions button.is-active { color: #1d4ed8; border-color: #93c5fd; background: #eff6ff; }
+.despesas-competencia-actions .despesas-return-button { color: #1d4ed8; border-color: #bfdbfe; background: #f8fbff; }
+
+.despesas-month-summary,
+.despesas-history-panel,
+.despesas-list-panel { margin-bottom: 14px; padding: 16px; }
+.despesas-panel-heading > strong,
+.despesas-list-heading > small { color: #64748b; font-size: 12px; font-weight: 500; }
+
+.despesas-composition {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.despesas-composition > div { padding: 11px 12px; border: 1px solid #eef2f7; border-radius: 9px; background: #f8fafc; }
+.despesas-composition span,
+.despesas-composition small { display: block; color: #64748b; font-size: 11px; }
+.despesas-composition strong { display: inline-block; margin: 5px 9px 0 0; color: #1e293b; font-size: 15px; }
+.despesas-composition small { display: inline-block; color: #2563eb; font-weight: 700; }
+
+.despesas-list-heading { margin-bottom: 12px; }
+.despesas-filter-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.despesas-search { display: flex; flex: 1; align-items: center; gap: 7px; min-height: 36px; padding: 0 10px; border: 1px solid #dbe2ec; border-radius: 8px; color: #94a3b8; }
+.despesas-search input { width: 100%; border: 0; outline: 0; color: #334155; font-size: 12px; }
+.despesas-clear-button { min-height: 34px; padding: 0 10px; border: 1px solid #dbe2ec; border-radius: 8px; color: #64748b; background: #fff; cursor: pointer; font-size: 11px; }
+
+.despesas-table-scroll { overflow-x: auto; border: 1px solid #eef2f7; border-radius: 9px; }
+.despesas-table { width: 100%; min-width: 760px; border-collapse: collapse; }
+.despesas-table th { padding: 10px 12px; color: #64748b; background: #f8fafc; font-size: 10px; font-weight: 800; letter-spacing: .07em; text-align: left; text-transform: uppercase; }
+.despesas-table td { padding: 12px; border-top: 1px solid #f1f5f9; color: #475569; font-size: 12px; vertical-align: middle; }
+.despesas-table tr:hover { background: #f8fbff; }
+.despesas-table td strong { display: block; color: #1e293b; font-size: 12px; font-weight: 650; }
+.despesas-table td small { display: block; margin-top: 4px; color: #94a3b8; font-size: 11px; }
+.despesas-reference { color: #64748b; font-size: 11px; }
+.despesas-value { color: #1e293b !important; font-size: 13px !important; font-weight: 700; white-space: nowrap; }
+.despesas-actions { display: flex; flex-wrap: wrap; gap: 6px; white-space: nowrap; }
+.despesas-actions button { margin-right: 0; padding: 6px 8px; font-size: 10px; }
+.despesas-actions .is-view { color: #2563eb; border: 1px solid #bfdbfe; background: #eff6ff; }
+.despesas-actions .is-edit { color: #4338ca; border: 1px solid #c7d2fe; background: #eef2ff; }
+.despesas-actions .is-pay { color: #047857; border: 1px solid #a7f3d0; background: #ecfdf5; }
+.despesas-actions .is-danger { color: #b91c1c; border: 1px solid #fecaca; background: #fef2f2; }
+
+.despesas-edit-form { display: flex; flex-direction: column; gap: 14px; }
+.despesas-edit-form label { display: flex; flex-direction: column; gap: 6px; color: #334155; font-size: 12px; font-weight: 700; }
+.despesas-edit-form input,
+.despesas-edit-form textarea { padding: 10px 12px; border: 1px solid #dbe2ec; border-radius: 8px; color: #172033; font-size: 13px; font-weight: 500; }
+.despesas-edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.despesas-period-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.despesas-period-card { padding: 14px; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc; }
+.despesas-period-card > div { display: flex; justify-content: space-between; gap: 12px; }
+.despesas-period-card span { color: #334155; font-size: 12px; font-weight: 800; }
+.despesas-period-card strong { color: #1e293b; font-size: 16px; }
+.despesas-period-card small { display: block; margin: 8px 0 10px; color: #64748b; font-size: 11px; }
+.despesas-period-card button { padding: 7px 10px; color: #1d4ed8; border: 1px solid #bfdbfe; background: #eff6ff; font-size: 11px; }
+
+.despesas-empty { padding: 34px 16px; color: #64748b; font-size: 13px; text-align: center; }
+.despesas-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; color: #64748b; font-size: 11px; }
+.despesas-pagination > div { display: flex; align-items: center; gap: 4px; }
+.despesas-pagination label { display: flex; align-items: center; gap: 5px; margin-right: 8px; }
+.despesas-pagination button { min-width: 30px; min-height: 30px; padding: 0 8px; border: 1px solid #dbe2ec; border-radius: 7px; color: #475569; background: #fff; cursor: pointer; font-size: 11px; }
+.despesas-pagination button.is-active { color: #fff; border-color: #2563eb; background: #2563eb; }
+.despesas-pagination button:disabled { cursor: not-allowed; opacity: .45; }
+
+@media (max-width: 900px) {
+  .despesas-page { padding: 18px 16px 32px; }
+  .despesas-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .despesas-competencia { align-items: flex-start; flex-direction: column; }
+  .despesas-competencia-actions { width: 100%; }
+}
+
+@media (max-width: 640px) {
+  .despesas-page__header,
+  .despesas-panel-heading,
+  .despesas-list-heading { align-items: flex-start; flex-direction: column; }
+  .despesas-primary-button { width: 100%; }
+  .despesas-stat-grid,
+  .despesas-composition,
+  .despesas-period-grid { grid-template-columns: 1fr; }
+  .despesas-competencia-actions,
+  .despesas-filter-bar { align-items: stretch; flex-direction: column; }
+  .despesas-competencia-actions select,
+  .despesas-competencia-actions button { width: 100%; }
+  .despesas-month-nav strong { min-width: 0; }
+  .despesas-pagination { align-items: flex-start; flex-direction: column; }
+  .despesas-pagination > div { flex-wrap: wrap; }
+  .despesas-edit-grid { grid-template-columns: 1fr; }
+}

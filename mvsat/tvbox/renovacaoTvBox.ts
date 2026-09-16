@@ -14,6 +14,8 @@ type RenovacaoResult = {
   error: string;
 };
 
+export const TVBOX_RENEWAL_EXPENSE_VALUE = 10.00;
+
 function formatCompetenciaFromDateBelem(date: Date): string {
   // YYYY-MM da data informada considerando America/Belem
   return new Intl.DateTimeFormat('en-CA', {
@@ -185,7 +187,7 @@ export async function renovarTvBox(assinaturaId: string): Promise<RenovacaoResul
         origemId: assinaturaId,
         descricao: `Renovação TV Box — login ${login}`,
         origemNome: login,
-        valor: 10.00,
+        valor: TVBOX_RENEWAL_EXPENSE_VALUE,
         competencia: competencia, // YYYY-MM (America/Belem)
         dataVencimento: vencimentoAtualEmUTC, // igual ao valor atual (fixado 12:00 UTC)
         dataPagamento: dataPagamento, // agora (UTC)

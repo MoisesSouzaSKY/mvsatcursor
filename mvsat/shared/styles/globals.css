@@ -296,7 +296,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .sidebar {
-  width: 240px;
+  width: 200px;
   background: var(--color-gray-800);
   color: white;
   transition: 0.3s;
@@ -370,7 +370,7 @@ input:focus, select:focus, textarea:focus {
 
   .sidebar {
     position: fixed;
-    left: -240px;
+    left: -200px;
     top: 0;
     height: 100%;
     z-index: 999;

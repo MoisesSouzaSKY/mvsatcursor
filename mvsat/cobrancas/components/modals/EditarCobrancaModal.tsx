@@ -115,8 +115,11 @@ export const EditarCobrancaModal: React.FC<EditarCobrancaModalProps> = ({
 
     setIsSubmitting(true);
     try {
+      const cliente = clientes.find((item) => item.id === formData.cliente_id);
       const dadosParaAtualizar = {
         cliente_id: formData.cliente_id,
+        cliente_nome: cliente?.nome,
+        bairro: cliente?.bairro,
         valor: parseFloat(formData.valor),
         data_vencimento: formData.dataVencimento,
         tipo: formData.tipoAssinatura,
@@ -143,19 +146,40 @@ export const EditarCobrancaModal: React.FC<EditarCobrancaModalProps> = ({
   if (!open) return null;
 
   const isPaidCobranca = cobranca?._effectiveStatus === 'paga';
+  const dueDate = cobranca?._parsedDate || null;
+  const today = new Date();
+  const daysOverdue = dueDate
+    ? Math.max(0, Math.floor((new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime() - new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate()).getTime()) / 86400000))
+    : 0;
+  const formatDate = (date: Date | null) => date ? date.toLocaleDateString('pt-BR') : 'Não informado';
+  const statusLabel = cobranca?._effectiveStatus === 'em_atraso' ? 'Vencida' : cobranca?._effectiveStatus === 'paga' ? 'Paga' : 'Em dia';
 
   return (
     <Modal
       open={open}
       onClose={handleClose}
-      title={isPaidCobranca ? "Visualizar Cobrança" : "Editar Cobrança"}
+      title={isPaidCobranca ? 'Visualizar cobrança' : '✎ Editar cobrança'}
+      size="lg"
+      className="cobrancas-modal cobrancas-modal--edit"
+      maskClosable={!isSubmitting}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {/* Cliente */}
-        <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-            Cliente *
-          </label>
+      <div className="cobrancas-modal__body">
+        <p className="cobrancas-modal__description">Atualize os dados e condições desta cobrança.</p>
+        {cobranca && (
+          <div className="cobrancas-modal__summary">
+            <div><span className="cobrancas-modal__summary-label">Cliente</span><strong>{cobranca.cliente_nome || 'Não informado'}</strong><small>{cobranca.bairro || 'Bairro não informado'}</small></div>
+            <div><span className="cobrancas-modal__summary-label">Tipo</span><strong>{cobranca.tipo || '—'}</strong></div>
+            <div><span className="cobrancas-modal__summary-label">Vencimento</span><strong>{formatDate(dueDate)}</strong></div>
+            <div><span className="cobrancas-modal__summary-label">Situação</span><strong>{statusLabel}</strong></div>
+          </div>
+        )}
+        {daysOverdue > 0 && !isPaidCobranca && (
+          <div className="cobrancas-modal__overdue">⚠ Esta cobrança está vencida há {daysOverdue} dias. Alterações no vencimento ou valor podem afetar os indicadores financeiros.</div>
+        )}
+        <span className="cobrancas-modal__section-title">Dados da cobrança</span>
+        <div className="cobrancas-modal__form-grid">
+        <div className="cobrancas-modal__field cobrancas-modal__field--full">
+          <label>Cliente *</label>
           <select
             value={formData.cliente_id}
             onChange={(e) => handleInputChange('cliente_id', e.target.value)}
@@ -177,17 +201,12 @@ export const EditarCobrancaModal: React.FC<EditarCobrancaModalProps> = ({
             ))}
           </select>
           {errors.cliente_id && (
-            <span style={{ color: 'var(--color-error-500)', fontSize: '12px' }}>
-              {errors.cliente_id}
-            </span>
+            <span className="cobrancas-modal__error">{errors.cliente_id}</span>
           )}
         </div>
 
-        {/* Tipo */}
-        <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-            Tipo de Cobrança
-          </label>
+        <div className="cobrancas-modal__field">
+          <label>Tipo de cobrança</label>
           <select
             value={formData.tipoAssinatura}
             onChange={(e) => handleInputChange('tipoAssinatura', e.target.value)}
@@ -207,11 +226,8 @@ export const EditarCobrancaModal: React.FC<EditarCobrancaModalProps> = ({
           </select>
         </div>
 
-        {/* Valor */}
-        <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-            Valor *
-          </label>
+        <div className="cobrancas-modal__field">
+          <label>Valor (R$) *</label>
           <Input
             type="number"
             step="0.01"
@@ -225,17 +241,12 @@ export const EditarCobrancaModal: React.FC<EditarCobrancaModalProps> = ({
             }}
           />
           {errors.valor && (
-            <span style={{ color: 'var(--color-error-500)', fontSize: '12px' }}>
-              {errors.valor}
-            </span>
+            <span className="cobrancas-modal__error">{errors.valor}</span>
           )}
         </div>
 
-        {/* Data de Vencimento */}
-        <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-            Data de Vencimento *
-          </label>
+        <div className="cobrancas-modal__field">
+          <label>Data de vencimento *</label>
           <Input
             type="date"
             value={formData.dataVencimento}
@@ -247,18 +258,13 @@ export const EditarCobrancaModal: React.FC<EditarCobrancaModalProps> = ({
             }}
           />
           {errors.dataVencimento && (
-            <span style={{ color: 'var(--color-error-500)', fontSize: '12px' }}>
-              {errors.dataVencimento}
-            </span>
+            <span className="cobrancas-modal__error">{errors.dataVencimento}</span>
           )}
         </div>
 
-        {/* Status */}
         {!isPaidCobranca && (
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-              Status
-            </label>
+          <div className="cobrancas-modal__field">
+            <label>Status</label>
             <select
               value={formData.status}
               onChange={(e) => handleInputChange('status', e.target.value)}
@@ -278,11 +284,8 @@ export const EditarCobrancaModal: React.FC<EditarCobrancaModalProps> = ({
           </div>
         )}
 
-        {/* Observação */}
-        <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-            Observação
-          </label>
+        <div className="cobrancas-modal__field cobrancas-modal__field--full">
+          <label>Observações</label>
           <textarea
             value={formData.observacao}
             onChange={(e) => handleInputChange('observacao', e.target.value)}
@@ -300,23 +303,13 @@ export const EditarCobrancaModal: React.FC<EditarCobrancaModalProps> = ({
             }}
           />
         </div>
+        </div>
 
-        {/* Error message */}
         {errors.submit && (
-          <div style={{
-            padding: '12px',
-            backgroundColor: 'var(--color-error-50)',
-            border: '1px solid var(--color-error-200)',
-            borderRadius: '8px',
-            color: 'var(--color-error-700)',
-            fontSize: '14px'
-          }}>
-            {errors.submit}
-          </div>
+          <div className="cobrancas-modal__error">{errors.submit}</div>
         )}
 
-        {/* Buttons */}
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
+        <div className="cobrancas-modal__footer">
           <Button 
             variant="outline" 
             onClick={handleClose}
@@ -330,7 +323,7 @@ export const EditarCobrancaModal: React.FC<EditarCobrancaModalProps> = ({
               onClick={handleSubmit}
               disabled={isSubmitting || loading}
             >
-              {isSubmitting ? 'Salvando...' : 'Salvar'}
+              {isSubmitting ? '⏳ Salvando...' : 'Salvar alterações'}
             </Button>
           )}
         </div>

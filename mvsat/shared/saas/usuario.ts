@@ -10,6 +10,7 @@ export interface UsuarioDoc {
   empresaId: string;
   tipo: TipoUsuario;
   ativo: boolean;
+  mustChangePassword?: boolean;
   criadoEm?: any;
 }
 
@@ -25,6 +26,7 @@ export async function fetchUsuarioDoc(uid: string): Promise<UsuarioDoc | null> {
     empresaId: String(data?.empresaId ?? ''),
     tipo: (String(data?.tipo ?? '').toLowerCase() as any) || 'funcionario',
     ativo: Boolean(data?.ativo ?? true),
+    mustChangePassword: data?.mustChangePassword === true,
     criadoEm: data?.criadoEm ?? data?.createdAt ?? null,
   };
 }
@@ -54,6 +56,7 @@ export async function provisionTenantForNewUser(
       empresaId,
       tipo: 'admin',
       ativo: true,
+      mustChangePassword: false,
       criadoEm: serverTimestamp(),
       ...(cpf ? { cpf } : {}),
       ...(telefone ? { telefone } : {}),
@@ -133,27 +136,6 @@ export async function bootstrapTenantSessionFromUser(user: User): Promise<Tenant
     throw new Error('Admin com empresaId inválido. Acesso bloqueado para evitar mistura de dados.');
   }
 
-  // Bloqueio por hostname (evita "misturar" tenants entre sites/canais)
-  // Obs: isso é uma barreira de APP (rules não enxergam o host).
-  try {
-    const host = String(window.location.host || '').toLowerCase();
-    const email = emailLower;
-    const PROD_HOST = 'mvsat-428a2.web.app';
-    const PREVIEW_HOST = 'mvsat-428a2--multitenant-preview-eyc5hhiy.web.app';
-
-    if (host === PROD_HOST && email && email !== 'moisestimesky@gmail.com') {
-      clearTenantSession();
-      throw new Error('Este usuário não tem permissão para acessar o site de produção.');
-    }
-    if ((host === PREVIEW_HOST || host.includes('--multitenant-preview')) && email && email !== 'igor8560@gmail.com') {
-      clearTenantSession();
-      throw new Error('Este usuário não tem permissão para acessar o site de preview.');
-    }
-  } catch (e) {
-    // Re-throw com mensagem já amigável (mantém o fluxo de erro do App.tsx)
-    throw e;
-  }
-
   const session: TenantSession = {
     uid: user.uid,
     email: String(usuario.email || user.email || ''),
@@ -161,6 +143,7 @@ export async function bootstrapTenantSessionFromUser(user: User): Promise<Tenant
     empresaId,
     tipo,
     ativo: true,
+    mustChangePassword: usuario.mustChangePassword === true,
     loadedAt: Date.now(),
   };
 

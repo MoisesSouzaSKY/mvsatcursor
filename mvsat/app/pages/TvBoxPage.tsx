@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { NavLink } from 'react-router-dom';
 import { collection, getDocs, doc, updateDoc, deleteField, addDoc, writeBatch, serverTimestamp, getDoc, setDoc, increment, arrayUnion, onSnapshot, orderBy, query, deleteDoc, where, limit } from 'firebase/firestore';
 import { getDb } from '../../config/database.config';
 import { clienteAssinaturaService } from '../../shared/services/ClienteAssinaturaService';
@@ -12,6 +13,20 @@ import type { TvBoxAuditoriaResult } from '../../tvbox/types/auditoria.types';
 import { tenantCollection, tenantConfigDoc, tenantDoc } from '../../shared/saas/firestoreTenant';
 import { getAuth } from 'firebase/auth';
 import { uiLog } from '../../shared/utils/uiLog';
+import './TvBoxAssinaturasPage.css';
+import { renovarTvBox, TVBOX_RENEWAL_EXPENSE_VALUE } from '../../tvbox/renovacaoTvBox';
+import { useModulePermissions } from '../../shared/hooks/useModulePermissions';
+
+const TvBoxModuleTabs: React.FC<{ active: 'assinaturas' | 'aparelhos' }> = ({ active }) => (
+  <nav className="tvbox-module-tabs" aria-label="Visões do módulo TV Box">
+    <NavLink className={active === 'assinaturas' ? 'is-active' : ''} to="/tvbox/assinaturas">
+      Assinaturas
+    </NavLink>
+    <NavLink className={active === 'aparelhos' ? 'is-active' : ''} to="/tvbox/aparelhos">
+      Aparelhos
+    </NavLink>
+  </nav>
+);
 
 // Componente StatusBadge para exibir status com cores padronizadas
 const StatusBadge: React.FC<{ status: 'ativa' | 'pendente' | 'cancelada' }> = ({ status }) => {
@@ -123,6 +138,7 @@ interface TVBox {
   equipamentos: Equipamento[];
   dataInstalacao: string;
   dataRenovacao: string;
+  ultimaRenovacao?: string;
   renovacaoDia?: number | null;
   renovacaoData?: Date | null;
   tipo: string;
@@ -130,7 +146,13 @@ interface TVBox {
   senha: string;
 }
 
-export default function TvBoxPage() {
+interface TvBoxPageProps {
+  view?: 'legacy' | 'assinaturas' | 'aparelhos' | 'renovacoes';
+  auditOnly?: boolean;
+}
+
+export default function TvBoxPage({ view = 'legacy', auditOnly = false }: TvBoxPageProps) {
+  const tvboxPermissions = useModulePermissions('tvbox', ['create', 'edit', 'renew', 'delete'] as const);
   // Sistema de logging condicional para performance - DESABILITADO para reduzir logs
   const isDevelopment = false; // process.env.NODE_ENV === 'development';
   
@@ -216,6 +238,7 @@ export default function TvBoxPage() {
   const [filtroCliente, setFiltroCliente] = useState<string>('');
   const [filtroStatus, setFiltroStatus] = useState<string>('');
   const [filtroSistema, setFiltroSistema] = useState<string>('');
+  const [filtroOcupacao, setFiltroOcupacao] = useState<string>('todos');
   const [busca, setBusca] = useState<string>('');
   const [buscaDebounced, setBuscaDebounced] = useState<string>('');
   const [sortConfig, setSortConfig] = useState<{ key: 'assinatura' | 'login' | 'cliente' | 'status' | 'renovacao' | 'dias'; direction: 'asc' | 'desc' }>({
@@ -228,6 +251,7 @@ export default function TvBoxPage() {
   const [tvboxEditando, setTvboxEditando] = useState<TVBox | null>(null);
   const [historicoLegado, setHistoricoLegado] = useState<any[]>([]);
   const [historicoLegadoLoading, setHistoricoLegadoLoading] = useState(false);
+  const [historicoSlotsAbertos, setHistoricoSlotsAbertos] = useState<Set<number>>(new Set());
   const [showModalNovaAssinatura, setShowModalNovaAssinatura] = useState(false);
   const [showModalRenovar, setShowModalRenovar] = useState(false);
   const [tvboxParaRenovar, setTvboxParaRenovar] = useState<TVBox | null>(null);
@@ -235,12 +259,15 @@ export default function TvBoxPage() {
   const [toastMessage, setToastMessage] = useState('');
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(15);
+  const [assinaturasPagina, setAssinaturasPagina] = useState(1);
+  const [assinaturasItensPorPagina, setAssinaturasItensPorPagina] = useState(20);
   const [showAlertaRenovacao, setShowAlertaRenovacao] = useState(false);
   const [tvboxAlertaRenovacao, setTvboxAlertaRenovacao] = useState<TVBox | null>(null);
 
   const [executandoTarefa, setExecutandoTarefa] = useState(false);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [senhasVisiveis, setSenhasVisiveis] = useState<Set<string>>(new Set());
+  const [senhaEditandoVisivel, setSenhaEditandoVisivel] = useState(false);
   const [clientesFiltrados, setClientesFiltrados] = useState<Cliente[]>([]);
   const [novoCliente, setNovoCliente] = useState({ nome: '', telefone: '', email: '' });
   const [mostrarCriarCliente, setMostrarCriarCliente] = useState(false);
@@ -251,6 +278,8 @@ export default function TvBoxPage() {
 
   const [showModalCredito, setShowModalCredito] = useState(false);
   const [quantidadeCredito, setQuantidadeCredito] = useState('');
+  const [valorTotalCredito, setValorTotalCredito] = useState('');
+  const [salvandoCredito, setSalvandoCredito] = useState(false);
 
   // Lost devices (extraviados/defeito)
   const [showLostDevices, setShowLostDevices] = useState(false);
@@ -259,6 +288,30 @@ export default function TvBoxPage() {
   const [lostSearch, setLostSearch] = useState('');
   const [lostSelected, setLostSelected] = useState<any | null>(null);
   const [showLostDetails, setShowLostDetails] = useState(false);
+  const [aparelhoSelecionado, setAparelhoSelecionado] = useState<any | null>(null);
+  const [showModalAparelho, setShowModalAparelho] = useState(false);
+  const [filtroAparelhoStatus, setFiltroAparelhoStatus] = useState('todos');
+  const [filtroAparelhoAssinatura, setFiltroAparelhoAssinatura] = useState('todas');
+  const [buscaAparelho, setBuscaAparelho] = useState('');
+  const [paginaAparelhos, setPaginaAparelhos] = useState(1);
+  const [itensAparelhosPorPagina, setItensAparelhosPorPagina] = useState(20);
+  const [renovacaoCompetencia, setRenovacaoCompetencia] = useState(() => (
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Belem',
+      year: 'numeric',
+      month: '2-digit'
+    }).format(new Date())
+  ));
+  const [renovacaoDespesas, setRenovacaoDespesas] = useState<any[]>([]);
+  const [renovacaoDespesasLoading, setRenovacaoDespesasLoading] = useState(false);
+  const [renovacaoDespesasError, setRenovacaoDespesasError] = useState<string | null>(null);
+  const [renovacaoRefreshKey, setRenovacaoRefreshKey] = useState(0);
+  const [showModalRenovacaoCentral, setShowModalRenovacaoCentral] = useState(false);
+  const [filtroRenovacaoStatus, setFiltroRenovacaoStatus] = useState('todos');
+  const [buscaRenovacao, setBuscaRenovacao] = useState('');
+  const [paginaRenovacoes, setPaginaRenovacoes] = useState(1);
+  const [itensRenovacoesPorPagina, setItensRenovacoesPorPagina] = useState(20);
+  const [ordenacaoRenovacoes, setOrdenacaoRenovacoes] = useState<'urgencia' | 'renovacao' | 'assinatura'>('urgencia');
 
   const [showMarkLostConfirm, setShowMarkLostConfirm] = useState(false);
   const [markLostReason, setMarkLostReason] = useState<'extravio' | 'queimado' | 'perdido' | ''>('');
@@ -275,12 +328,18 @@ export default function TvBoxPage() {
   } | null>(null);
   const [creditosDisponiveis, setCreditosDisponiveis] = useState(0);
   const [showModalHistoricoCredito, setShowModalHistoricoCredito] = useState(false);
-  const [historicoCreditos, setHistoricoCreditos] = useState<Array<{quantidade: number, data: Date}>>([]);
+  const [historicoCreditos, setHistoricoCreditos] = useState<any[]>([]);
   const [showCredenciaisUniTV, setShowCredenciaisUniTV] = useState(false);
   const [showModalProximosVencimentos, setShowModalProximosVencimentos] = useState(false);
   const [showAuditoriaTvBox, setShowAuditoriaTvBox] = useState(false);
   const [auditoriaTvBoxLoading, setAuditoriaTvBoxLoading] = useState(false);
   const [auditoriaTvBoxResult, setAuditoriaTvBoxResult] = useState<TvBoxAuditoriaResult | null>(null);
+
+  const abrirModalCredito = () => {
+    setQuantidadeCredito('');
+    setValorTotalCredito('');
+    setShowModalCredito(true);
+  };
 
   // Carregar créditos do Firestore na montagem
   useEffect(() => {
@@ -297,13 +356,18 @@ export default function TvBoxPage() {
           setCreditosDisponiveis(typeof data.disponiveis === 'number' ? data.disponiveis : 0);
           if (Array.isArray(data.historico)) {
             setHistoricoCreditos(
-              data.historico.map((h: any) => ({ quantidade: h.quantidade, data: h.data?.toDate ? h.data.toDate() : new Date(h.data) }))
+              data.historico.map((h: any) => ({
+                ...h,
+                quantidade: h.quantidade,
+                data: h.data?.toDate ? h.data.toDate() : new Date(h.data)
+              }))
             );
           }
         } else {
-          // inicializa documento
-          console.log('📝 Inicializando documento de créditos...');
-          await setDoc(ref, { disponiveis: 0, historico: [] });
+          // Leitura não cria documentos. A primeira entrada será persistida
+          // pelo fluxo explícito de adicionar créditos.
+          setCreditosDisponiveis(0);
+          setHistoricoCreditos([]);
         }
       } catch (e) {
         console.error('Erro ao carregar créditos do Firestore:', e);
@@ -346,51 +410,12 @@ export default function TvBoxPage() {
       // console.log('🔄 Carregando TV Boxes...');
       
       const db = getDb();
-      const [snap, clientesSnap] = await Promise.all([
-        getDocs(tenantCollection(db, 'tvbox_assinaturas')),
-        getDocs(tenantCollection(db, 'clientes'))
-      ]);
+      const snap = await getDocs(tenantCollection(db, 'tvbox_assinaturas'));
       const clientesPorId = new Map<string, string>();
-      clientesSnap.docs.forEach((clienteDoc) => {
-        const clienteData = clienteDoc.data() as any;
+      clientes.forEach((clienteData: any) => {
         const nome = String(clienteData?.nome ?? clienteData?.nomeCompleto ?? '').trim();
-        if (nome) clientesPorId.set(clienteDoc.id, nome);
+        if (nome) clientesPorId.set(String(clienteData.id), nome);
       });
-
-      // Registrar a versão dos aparelhos: somente os Device IDs informados
-      // estão na V1.6.36; os demais ficam sinalizados para atualização.
-      const versaoBatch = writeBatch(db);
-      let versaoBatchOps = 0;
-      snap.docs.forEach((docSnap) => {
-        const data = docSnap.data() as any;
-        const equipamentos = Array.isArray(data?.equipamentos)
-          ? data.equipamentos.slice(0, 2)
-          : [];
-        let alterouVersao = false;
-        const equipamentosComVersao = equipamentos.map((eq: any) => {
-          const deviceId = eq?.deviceId ?? eq?.device_id ?? '';
-          const temAparelho = Boolean(
-            String(eq?.nds ?? eq?.NDS ?? '').trim() ||
-            String(eq?.mac ?? eq?.MAC ?? '').trim() ||
-            String(eq?.idAparelho ?? '').trim() ||
-            String(deviceId).trim()
-          );
-          if (!temAparelho) return eq;
-
-          const versao = getVersaoEquipamento(deviceId, eq?.versao);
-          if (eq?.versao !== versao) alterouVersao = true;
-          return { ...eq, versao };
-        });
-
-        if (alterouVersao) {
-          versaoBatch.update(docSnap.ref, {
-            equipamentos: equipamentosComVersao,
-            updatedAt: serverTimestamp()
-          });
-          versaoBatchOps += 1;
-        }
-      });
-      if (versaoBatchOps > 0) await versaoBatch.commit();
 
       const tvboxes: TVBox[] = [];
       
@@ -428,11 +453,7 @@ export default function TvBoxPage() {
             (eq as any)?.clienteAtualId ??
             null;
           
-          const nomeNormalizado = cliente_nome.toLowerCase().trim();
-          const nomeAtualValido = cliente_nome && 
-                                  !nomeNormalizado.includes('disponível') &&
-                                  !nomeNormalizado.includes('vazio') &&
-                                  !nomeNormalizado.includes('sem cliente');
+          const nomeAtualValido = cliente_nome && !isNomeDisponivel(cliente_nome);
           // Quando o ID está preenchido, o nome oficial do cadastro deve ter
           // prioridade sobre nomes antigos ou inconsistentes gravados no slot.
           const nomeClientePorId = cliente_id
@@ -480,6 +501,9 @@ export default function TvBoxPage() {
           equipamentos: equipamentosProcessados,
           dataInstalacao: data.data_instalacao ? new Date(data.data_instalacao.toDate()).toLocaleDateString('pt-BR') : 'Data não definida',
           dataRenovacao: data.data_renovacao ? new Date(data.data_renovacao.toDate()).toLocaleDateString('pt-BR') : 'Data não definida',
+          ultimaRenovacao: data.ultimo_pagamento_em
+            ? formatarDataCurta(data.ultimo_pagamento_em.toDate ? data.ultimo_pagamento_em.toDate() : data.ultimo_pagamento_em)
+            : 'Não registrada',
           renovacaoDia: typeof (data as any).dia_vencimento === 'number' ? (data as any).dia_vencimento : null,
           renovacaoData: data.data_renovacao ? new Date(data.data_renovacao.toDate()) : null,
           tipo: data.tipo || 'IPTV',
@@ -586,7 +610,7 @@ export default function TvBoxPage() {
 
   // Lost devices: carregar em tempo real quando abrir o modal
   useEffect(() => {
-    if (!showLostDevices) return;
+    if (!showLostDevices && view !== 'aparelhos') return;
     try {
       setLostLoading(true);
       const db = getDb();
@@ -609,7 +633,7 @@ export default function TvBoxPage() {
       setLostLoading(false);
       return;
     }
-  }, [showLostDevices]);
+  }, [showLostDevices, view]);
 
   const lostFiltered = useMemo(() => {
     const norm = (value: any): string => {
@@ -845,6 +869,37 @@ export default function TvBoxPage() {
     carregarTVBoxes();
   }, []);
 
+  useEffect(() => {
+    if (view !== 'renovacoes') return;
+    let cancelled = false;
+    (async () => {
+      setRenovacaoDespesasLoading(true);
+      setRenovacaoDespesasError(null);
+      try {
+        const db = getDb();
+        const snapshot = await getDocs(query(
+          tenantCollection(db, 'despesas'),
+          where('competencia', '==', renovacaoCompetencia)
+        ));
+        if (cancelled) return;
+        setRenovacaoDespesas(
+          snapshot.docs
+            .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+            .filter((despesa: any) => despesa.origemTipo === 'ASSINATURA_TVBOX' && despesa.status === 'PAGO')
+        );
+      } catch (error: any) {
+        if (cancelled) return;
+        setRenovacaoDespesas([]);
+        setRenovacaoDespesasError(error?.message || 'Não foi possível consultar as renovações da competência.');
+      } finally {
+        if (!cancelled) setRenovacaoDespesasLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [view, renovacaoCompetencia, renovacaoRefreshKey]);
+
   const normalizeText = useCallback((value: any): string => {
     return String(value ?? '')
       .toLowerCase()
@@ -985,13 +1040,17 @@ export default function TvBoxPage() {
 
       const isDisponivel = (eq: any) => {
         const nome = clean(eq?.cliente_nome || eq?.cliente);
+        const nomeNormalizado = normalizeText(nome);
+        const nomeCompactado = nomeNormalizado.replace(/\s+/g, '');
         // Histórico não representa vínculo atual. Só é disponível quando
         // não existe cliente atual nem nome de cliente válido no slot.
         return !eq?.cliente_id && (
           !nome ||
-          normalizeText(nome) === 'disponivel' ||
-          normalizeText(nome).includes('sem cliente') ||
-          normalizeText(nome).includes('vazio')
+          nomeNormalizado === 'disponivel' ||
+          nomeCompactado === 'disponvel' ||
+          (nomeNormalizado.includes('dispon') && nomeNormalizado.includes('vel')) ||
+          nomeNormalizado.includes('sem cliente') ||
+          nomeNormalizado.includes('vazio')
         );
       };
 
@@ -1153,62 +1212,6 @@ export default function TvBoxPage() {
       clientesSemCobranca.sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
       assinaturasSemDeviceId.sort((a, b) => a.assinatura.localeCompare(b.assinatura, 'pt-BR'));
 
-      // AUTO-FIX: preencher deviceId ausente para slots com cliente ativo
-      // Fonte do deviceId: deviceId atual (se válido) -> idAparelho -> NDS -> MAC
-      let slotsCorrigidos = 0;
-      const batch = writeBatch(db);
-      let batchOps = 0;
-
-      for (const row of assinaturasSemDeviceId) {
-        const tvboxId = String((row as any)?.tvboxId || '').trim();
-        if (!tvboxId) continue;
-
-        const docRef = tenantDoc(db, 'tvbox_assinaturas', tvboxId);
-        const snap = await getDoc(docRef);
-        if (!snap.exists()) continue;
-        const data = snap.data() as any;
-        const eqs = Array.isArray(data?.equipamentos) ? data.equipamentos.slice(0, 2) : [];
-        while (eqs.length < 2) eqs.push({ nds: '', mac: '', idAparelho: '', deviceId: '', cliente_id: null, cliente_nome: 'Disponível' });
-
-        let changed = false;
-        for (const s of (row as any).slotsSemId || []) {
-          const idx = Number(s.slot) - 1;
-          if (idx !== 0 && idx !== 1) continue;
-
-          const cur = eqs[idx] || {};
-          const curNome = String(cur?.cliente_nome || cur?.cliente || '').trim();
-          const isDisp = !cur?.cliente_id || normalizeText(curNome) === 'disponivel';
-          if (isDisp) continue; // só slots com cliente ativo
-
-          const deviceIdCur = String(cur?.deviceId ?? cur?.device_id ?? '').trim();
-          if (!isInvalidDeviceId(deviceIdCur)) continue;
-
-          const suggested = String((s as any)?.suggestedDeviceId || '').trim();
-          if (!suggested) continue;
-
-          eqs[idx] = { ...cur, deviceId: suggested };
-          changed = true;
-          slotsCorrigidos += 1;
-        }
-
-        if (changed) {
-          batch.update(docRef, { equipamentos: eqs, updatedAt: serverTimestamp() });
-          batchOps += 1;
-          if (batchOps >= 400) {
-            await batch.commit();
-            batchOps = 0;
-          }
-        }
-      }
-
-      if (batchOps > 0) {
-        await batch.commit();
-      }
-
-      if (slotsCorrigidos > 0) {
-        uiLog('TV Box: deviceId preenchido (auto-fix)', { slots: slotsCorrigidos });
-      }
-
       const result: TvBoxAuditoriaResult = {
         ranAt: new Date().toISOString(),
         totals: {
@@ -1232,6 +1235,64 @@ export default function TvBoxPage() {
       setAuditoriaTvBoxLoading(false);
     }
   }, [tvboxes, clientes, normalizeText, hasCobrancaRecente]);
+
+  const aplicarCorrecoesAuditoria = useCallback(async () => {
+    const rows = auditoriaTvBoxResult?.assinaturasSemDeviceId || [];
+    if (rows.length === 0) return;
+    setAuditoriaTvBoxLoading(true);
+    try {
+      const db = getDb();
+      const batch = writeBatch(db);
+      let batchOps = 0;
+      let slotsCorrigidos = 0;
+
+      for (const row of rows) {
+        const tvboxId = String(row.tvboxId || '').trim();
+        if (!tvboxId) continue;
+        const docRef = tenantDoc(db, 'tvbox_assinaturas', tvboxId);
+        const snap = await getDoc(docRef);
+        if (!snap.exists()) continue;
+        const data = snap.data() as any;
+        const eqs = Array.isArray(data?.equipamentos) ? data.equipamentos.slice(0, 2) : [];
+        while (eqs.length < 2) {
+          eqs.push({ nds: '', mac: '', idAparelho: '', deviceId: '', cliente_id: null, cliente_nome: 'Disponível' });
+        }
+
+        let changed = false;
+        for (const slot of row.slotsSemId || []) {
+          const index = Number(slot.slot) - 1;
+          if (index !== 0 && index !== 1) continue;
+          const current = eqs[index] || {};
+          const currentName = String(current?.cliente_nome || current?.cliente || '').trim();
+          if (!current?.cliente_id || normalizeText(currentName) === 'disponivel') continue;
+          if (!['', 'a definir'].includes(String(current?.deviceId ?? current?.device_id ?? '').trim().toLowerCase())) continue;
+          const suggested = String((slot as any).suggestedDeviceId || '').trim();
+          if (!suggested) continue;
+          eqs[index] = { ...current, deviceId: suggested };
+          changed = true;
+          slotsCorrigidos += 1;
+        }
+
+        if (changed) {
+          batch.update(docRef, { equipamentos: eqs, updatedAt: serverTimestamp() });
+          batchOps += 1;
+          if (batchOps >= 400) {
+            await batch.commit();
+            batchOps = 0;
+          }
+        }
+      }
+
+      if (batchOps > 0) await batch.commit();
+      uiLog('TV Box: correções de auditoria aplicadas', { slots: slotsCorrigidos });
+      await runAuditoriaTvBox();
+    } catch (error: any) {
+      console.error('Erro ao aplicar correções da auditoria TV Box:', error?.message || 'falha desconhecida');
+      alert(`Não foi possível aplicar as correções: ${error?.message || 'falha desconhecida'}`);
+    } finally {
+      setAuditoriaTvBoxLoading(false);
+    }
+  }, [auditoriaTvBoxResult, normalizeText, runAuditoriaTvBox]);
 
   useEffect(() => {
     if (!showAuditoriaTvBox) return;
@@ -1333,7 +1394,7 @@ export default function TvBoxPage() {
         senha: data.senha || 'Senha não definida'
       };
       
-      console.log('✅ Dados recuperados com sucesso:', tvboxRecuperado);
+      console.log('✅ Dados recuperados com sucesso:', tvboxRecuperado.id);
       return tvboxRecuperado;
       
     } catch (error) {
@@ -1419,9 +1480,40 @@ export default function TvBoxPage() {
     }
   };
 
+  const excluirAssinaturaTvBox = async (tvbox: TVBox) => {
+    if (!tvboxPermissions.delete) {
+      setToastMessage('Você não tem permissão para excluir TV Box.');
+      setShowToast(true);
+      return;
+    }
+    if (!window.confirm(`Excluir a assinatura ${tvbox.assinatura}? Esta ação não pode ser desfeita.`)) return;
+    try {
+      setExecutandoTarefa(true);
+      await deleteDoc(tenantDoc(getDb(), 'tvbox_assinaturas', tvbox.id));
+      setTvboxes((current) => current.filter((item) => item.id !== tvbox.id));
+      setShowModalVisualizar(false);
+      setShowModalEditar(false);
+      setTvboxSelecionado(null);
+      setToastMessage('Assinatura TV Box excluída.');
+      setShowToast(true);
+    } catch (reason: any) {
+      setToastMessage(reason?.message || 'Não foi possível excluir a assinatura.');
+      setShowToast(true);
+    } finally {
+      setExecutandoTarefa(false);
+    }
+  };
+
   // Função para abrir modal de edição
   const abrirModalEditar = async (tvbox: TVBox) => {
+    if (!tvboxPermissions.edit) {
+      setToastMessage('Você não tem permissão para editar TV Box.');
+      setShowToast(true);
+      return;
+    }
     try {
+      setSenhaEditandoVisivel(false);
+      setHistoricoSlotsAbertos(new Set());
       uiLog('TV Box: abrir Visualizar/Editar', { assinatura: tvbox.assinatura, login: tvbox.login });
       
       // Verificar integridade dos dados antes de abrir
@@ -1489,8 +1581,6 @@ export default function TvBoxPage() {
       }
       return eq;
     });
-    
-    console.log('✅ Todos os equipamentos validados:', equipamentosValidados);
     
     try {
       setExecutandoTarefa(true);
@@ -1639,14 +1729,11 @@ export default function TvBoxPage() {
             cliente: eq.cliente_nome || eq.cliente || 'Disponível',
             historicoClientes
           };
-          console.log(`📤 Equipamento ${index} para Firestore:`, equipamentoParaSalvar);
           return equipamentoParaSalvar;
         }),
         clientes: equipamentosValidados.map((e: any) => String(e?.cliente_nome || e?.cliente || 'Disponível').trim() || 'Disponível'),
         updatedAt: serverTimestamp()
       };
-      
-      console.log('📤 Dados validados para salvar no Firestore:', dadosParaSalvar);
       
       // Atualiza o documento no Firestore
       await updateDoc(docRef, dadosParaSalvar);
@@ -1670,11 +1757,6 @@ export default function TvBoxPage() {
         const novoEstado = prev.map(tvbox => 
           tvbox.id === tvboxEditando.id ? tvboxAtualizado : tvbox
         );
-        console.log('🔄 Estado global atualizado:', {
-          tvboxId: tvboxEditando.id,
-          equipamentosAnteriores: prev.find(t => t.id === tvboxEditando.id)?.equipamentos,
-          equipamentosNovos: tvboxAtualizado.equipamentos
-        });
         return novoEstado;
       });
       
@@ -1825,7 +1907,13 @@ export default function TvBoxPage() {
 
   const isNomeDisponivel = (nome: string) => {
     const n = normalizeText(String(nome || '').trim());
-    return !n || n === 'disponivel' || n.includes('sem cliente') || n.includes('vazio');
+    const compact = n.replace(/\s+/g, '');
+    return !n ||
+      n === 'disponivel' ||
+      compact === 'disponvel' ||
+      (n.includes('dispon') && n.includes('vel')) ||
+      n.includes('sem cliente') ||
+      n.includes('vazio');
   };
 
   const getSelectValueForEquipamento = (eq: Equipamento) => {
@@ -2219,6 +2307,11 @@ export default function TvBoxPage() {
 
   // Função para abrir modal de renovação
   const abrirModalRenovar = async (tvbox: TVBox) => {
+    if (!tvboxPermissions.renew) {
+      setToastMessage('Você não tem permissão para renovar TV Box.');
+      setShowToast(true);
+      return;
+    }
     // Abrir diretamente; se houver duplicidade real, o backend retornará erro idempotente
     setTvboxParaRenovar(tvbox);
     setShowModalRenovar(true);
@@ -2238,7 +2331,6 @@ export default function TvBoxPage() {
 
     try {
       setExecutandoTarefa(true);
-      const { renovarTvBox } = await import('../../tvbox/renovacaoTvBox');
       const resp = await renovarTvBox(tvboxParaRenovar.id);
       if (!resp.ok) {
         const msg = String(resp.error || '').toLowerCase();
@@ -2251,6 +2343,7 @@ export default function TvBoxPage() {
         // Se já houver baixa na competência, mostrar alerta específico e não bloquear próximas
         if (msg.includes('já existe baixa') || msg.includes('duplic') || msg.includes('competência')) {
           setShowModalRenovar(false);
+          setShowModalRenovacaoCentral(false);
           setTvboxParaRenovar(null);
           setTvboxAlertaRenovacao(tvboxParaRenovar);
           setShowAlertaRenovacao(true);
@@ -2264,6 +2357,7 @@ export default function TvBoxPage() {
 
       if (resp.duplicada) {
         setShowModalRenovar(false);
+        setShowModalRenovacaoCentral(false);
         setTvboxParaRenovar(null);
         setTvboxAlertaRenovacao(tvboxParaRenovar);
         setShowAlertaRenovacao(true);
@@ -2277,6 +2371,7 @@ export default function TvBoxPage() {
 
       // Forçar atualização completa recarregando do Firestore
       await carregarTVBoxes();
+      setRenovacaoRefreshKey((current) => current + 1);
 
       // Realçar linha por 2s
       setLinhasRealcadas(prev => new Set(prev).add(tvboxParaRenovar.id));
@@ -2290,6 +2385,7 @@ export default function TvBoxPage() {
 
       // Fechar modal e mostrar toast de sucesso
       setShowModalRenovar(false);
+      setShowModalRenovacaoCentral(false);
       setTvboxParaRenovar(null);
       
       // Mostrar toast de sucesso
@@ -2717,8 +2813,6 @@ export default function TvBoxPage() {
       console.log('✅ Banco obtido:', db);
       
       console.log('🔄 Verificando TVBoxes disponíveis:', tvboxes.length);
-      console.log('🔄 Todos os logins disponíveis:', tvboxes.map(t => t.login).sort());
-      console.log('🔄 Primeiros 3 logins:', tvboxes.slice(0, 3).map(t => t.login));
       
       let atualizados = 0;
       let naoEncontrados = 0;
@@ -2727,33 +2821,17 @@ export default function TvBoxPage() {
       console.log('🔄 Iniciando atualização de renovações em lote...');
 
       for (const item of dadosRenovacao) {
-        console.log(`🔍 Procurando login: ${item.login}`);
-        
         // Buscar TVBox pelo login - busca mais robusta
         const tvboxEncontrado = tvboxes.find(t => {
           const matchExato = t.login === item.login;
           const matchCaseInsensitive = t.login?.toLowerCase() === item.login?.toLowerCase();
           const matchTrimmed = t.login?.trim() === item.login?.trim();
-          
-          console.log(`  📋 TVBox ID: ${t.id}, Assinatura: ${t.assinatura}, Login: "${t.login}", Match: ${matchExato || matchCaseInsensitive || matchTrimmed}`);
-          
-          // Log especial para Assinatura 38
-          if (t.assinatura === 'Assinatura 38') {
-            console.log(`🔍 ASSINATURA 38 ENCONTRADA:`, {
-              id: t.id,
-              login: t.login,
-              dataRenovacao: t.dataRenovacao,
-              dataInstalacao: t.dataInstalacao
-            });
-          }
-          
+
           return matchExato || matchCaseInsensitive || matchTrimmed;
         });
         
         if (tvboxEncontrado) {
           try {
-            console.log(`🔄 Processando login ${item.login} (${item.dataValidade}) para Assinatura: ${tvboxEncontrado.assinatura}`);
-            
             // Converter data do formato dd/MM/yyyy para Date
             const [dia, mes, ano] = item.dataValidade.split('/');
             const dataValidade = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
@@ -2765,8 +2843,6 @@ export default function TvBoxPage() {
               data_renovacao: dataValidade
             });
 
-            console.log(`✅ Firestore atualizado para login ${item.login}`);
-
             // Atualizar estado local
             setTvboxes(prev => prev.map(t => 
               t.id === tvboxEncontrado.id 
@@ -2774,13 +2850,11 @@ export default function TvBoxPage() {
                 : t
             ));
 
-            console.log(`✅ Estado local atualizado para login ${item.login}: ${item.dataValidade}`);
             atualizados++;
           } catch (error) {
-            console.error(`❌ Erro ao atualizar login ${item.login}:`, error);
+            console.error('❌ Erro ao atualizar renovação em lote:', error);
           }
         } else {
-          console.warn(`⚠️ Login não encontrado: ${item.login}`);
           loginsNaoEncontrados.push(item.login);
           naoEncontrados++;
         }
@@ -2945,12 +3019,920 @@ export default function TvBoxPage() {
     return null;
   };
 
+  const creditosNecessariosAtuais = useMemo(() => {
+    const renovadas = new Set(
+      renovacaoDespesas
+        .filter((despesa: any) => despesa.origemId)
+        .map((despesa: any) => String(despesa.origemId))
+    );
+    return tvboxes.filter((tvbox) => {
+      const dueDate = getRenovacaoDate(tvbox);
+      const competencia = dueDate
+        ? `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}`
+        : '';
+      const occupied = tvbox.equipamentos.filter((eq) => {
+        const name = String(eq.cliente_nome || eq.cliente || '').trim();
+        return Boolean(eq.cliente_id || eq.clienteId || (name && !isNomeDisponivel(name)));
+      }).length;
+      return competencia === renovacaoCompetencia && occupied > 0 && !renovadas.has(tvbox.id);
+    }).length;
+  }, [renovacaoCompetencia, renovacaoDespesas, tvboxes]);
+
   const toggleSort = (key: 'assinatura' | 'login' | 'cliente' | 'status' | 'renovacao' | 'dias') => {
     setSortConfig(prev => ({
       key,
       direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
     }));
   };
+
+  const renovacoesView = view === 'renovacoes' ? (() => {
+    const parseDate = (value: any): Date | null => {
+      if (!value) return null;
+      if (value instanceof Date) return value;
+      if (typeof value.toDate === 'function') return value.toDate();
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    };
+    const competenceDate = new Date(`${renovacaoCompetencia}-01T12:00:00Z`);
+    const competenceLabel = competenceDate.toLocaleDateString('pt-BR', {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC'
+    });
+    const currentCompetencia = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Belem',
+      year: 'numeric',
+      month: '2-digit'
+    }).format(new Date());
+    const shiftCompetencia = (offset: number) => {
+      const next = new Date(Date.UTC(
+        competenceDate.getUTCFullYear(),
+        competenceDate.getUTCMonth() + offset,
+        1,
+        12
+      ));
+      setRenovacaoCompetencia(`${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}`);
+    };
+    const expenseBySubscription = new Map<string, any>();
+    renovacaoDespesas.forEach((expense: any) => {
+      if (expense.origemId) expenseBySubscription.set(String(expense.origemId), expense);
+    });
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const getDays = (date: Date | null) => {
+      if (!date) return null;
+      const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      return Math.floor((target.getTime() - todayStart.getTime()) / 86400000);
+    };
+    const getMonthKey = (date: Date | null) => date
+      ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      : '';
+    const getUsage = (tvbox: TVBox) => {
+      const occupied = tvbox.equipamentos.filter((eq) => {
+        const name = String(eq.cliente_nome || eq.cliente || '').trim();
+        return Boolean(eq.cliente_id || eq.clienteId || (name && !isNomeDisponivel(name)));
+      }).length;
+      return {
+        occupied,
+        label: occupied === 0 ? 'sem-clientes' : occupied === 1 ? 'parcial' : 'completo',
+      };
+    };
+    const getSituation = (renewed: boolean, dueDate: Date | null, occupied: number) => {
+      if (renewed) return 'renovada';
+      if (occupied === 0) return 'standby';
+      const days = getDays(dueDate);
+      if (days === null) return 'pendente';
+      if (days < 0) return 'atrasada';
+      if (days === 0) return 'vence-hoje';
+      if (days <= 5) return 'proximos';
+      return 'pendente';
+    };
+    const situationLabel: Record<string, string> = {
+      renovada: 'Renovada',
+      atrasada: 'Atrasada',
+      'vence-hoje': 'Vence hoje',
+      proximos: 'Próximos dias',
+      pendente: 'Pendente',
+      standby: 'Stand-by sugerido'
+    };
+    const rows = tvboxes
+      .map((tvbox) => {
+        const dueDate = tvbox.renovacaoData || null;
+        const expense = expenseBySubscription.get(tvbox.id);
+        const renewed = Boolean(expense);
+        const usage = getUsage(tvbox);
+        const dueInSelectedMonth = getMonthKey(dueDate) === renovacaoCompetencia;
+        if (!dueInSelectedMonth && !renewed) return null;
+        return {
+          tvbox,
+          expense,
+          renewed,
+          dueDate,
+          days: getDays(dueDate),
+          usage,
+          situation: getSituation(renewed, dueDate, usage.occupied),
+          searchText: normalizeText(`${tvbox.assinatura} ${tvbox.login || ''} ${tvbox.equipamentos.map((eq) => eq.nds || '').join(' ')}`)
+        };
+      })
+      .filter(Boolean) as Array<{
+        tvbox: TVBox;
+        expense: any;
+        renewed: boolean;
+        dueDate: Date | null;
+        days: number | null;
+        situation: string;
+        usage: { occupied: number; label: string };
+        searchText: string;
+      }>;
+    const filtered = rows
+      .filter((row) => !buscaRenovacao || row.searchText.includes(normalizeText(buscaRenovacao)))
+      .filter((row) => {
+        if (filtroRenovacaoStatus === 'todos') return true;
+        if (filtroRenovacaoStatus === 'atrasada') return row.situation === 'atrasada';
+        if (filtroRenovacaoStatus === 'vence-hoje') return row.situation === 'vence-hoje';
+        if (filtroRenovacaoStatus === 'proximos') return row.situation === 'proximos';
+        if (filtroRenovacaoStatus === 'pendente') return row.situation === 'pendente';
+        if (filtroRenovacaoStatus === 'renovar-agora') return row.usage.occupied > 0 && !row.renewed;
+        if (filtroRenovacaoStatus === 'sem-clientes') return row.usage.occupied === 0 && !row.renewed;
+        if (filtroRenovacaoStatus === 'renovada') return row.situation === 'renovada';
+        return true;
+      })
+      .sort((a, b) => {
+        if (ordenacaoRenovacoes === 'renovacao') return (a.days ?? 999) - (b.days ?? 999);
+        if (ordenacaoRenovacoes === 'assinatura') {
+          const aNumber = Number(a.tvbox.assinatura.match(/\d+/)?.[0] || 0);
+          const bNumber = Number(b.tvbox.assinatura.match(/\d+/)?.[0] || 0);
+          return aNumber - bNumber;
+        }
+        const rank: Record<string, number> = {
+          atrasada: 0,
+          'vence-hoje': 1,
+          proximos: 2,
+          pendente: 3,
+          standby: 4,
+          renovada: 5
+        };
+        const usageRank = (row: typeof rows[number]) => row.situation === 'renovada' ? 1 : row.usage.occupied > 0 ? 0 : 1;
+        return (usageRank(a) - usageRank(b)) || ((rank[a.situation] ?? 9) - (rank[b.situation] ?? 9));
+      });
+    const totalPaginas = Math.max(1, Math.ceil(filtered.length / itensRenovacoesPorPagina));
+    const pagina = Math.min(paginaRenovacoes, totalPaginas);
+    const pageItems = filtered.slice((pagina - 1) * itensRenovacoesPorPagina, pagina * itensRenovacoesPorPagina);
+    const monthlyMovements = historicoCreditos.filter((movement: any) => {
+      const date = parseDate(movement.data);
+      return movement.competencia === renovacaoCompetencia || getMonthKey(date) === renovacaoCompetencia;
+    });
+    const entries = monthlyMovements.filter((movement: any) => Number(movement.quantidade) > 0)
+      .reduce((total: number, movement: any) => total + Number(movement.quantidade || 0), 0);
+    const used = Math.abs(monthlyMovements.filter((movement: any) => Number(movement.quantidade) < 0)
+      .reduce((total: number, movement: any) => total + Number(movement.quantidade || 0), 0));
+    const totalSubscriptions = tvboxes.length;
+    const subscriptionsInUse = tvboxes.filter((tvbox) => getUsage(tvbox).occupied > 0).length;
+    const subscriptionsWithoutClients = tvboxes.filter((tvbox) => getUsage(tvbox).occupied === 0).length;
+    const renewedCount = rows.filter((row) => row.renewed).length;
+    const priorityRows = rows.filter((row) => row.usage.occupied > 0 && !row.renewed);
+    const renewNowCount = priorityRows.length;
+    const pendingCount = rows.filter((row) => !row.renewed).length;
+    const overdueCount = priorityRows.filter((row) => row.situation === 'atrasada').length;
+    const dueTodayCount = priorityRows.filter((row) => row.situation === 'vence-hoje').length;
+    const nextFiveCount = priorityRows.filter((row) => row.situation === 'proximos').length;
+    const standbyCount = rows.filter((row) => row.usage.occupied === 0 && !row.renewed).length;
+    const creditsNeededNow = renewNowCount;
+    const creditsMissing = Math.max(0, creditsNeededNow - creditosDisponiveis);
+    const nextTenCount = priorityRows.filter((row) => row.days !== null && row.days >= 0 && row.days <= 10).length;
+    const usagePercent = totalSubscriptions > 0 ? Math.round((subscriptionsInUse / totalSubscriptions) * 100) : 0;
+    const renewalProgress = rows.length > 0 ? Math.round((renewedCount / rows.length) * 100) : 0;
+    const entryOperations = monthlyMovements.filter((movement: any) => Number(movement.quantidade) > 0).length;
+    const consumptionOperations = monthlyMovements.filter((movement: any) => Number(movement.quantidade) < 0).length;
+    const netMovement = entries - used;
+    const lastMovement = [...historicoCreditos]
+      .filter((movement: any) => movement.data)
+      .sort((a: any, b: any) => (parseDate(b.data)?.getTime() ?? -Infinity) - (parseDate(a.data)?.getTime() ?? -Infinity))[0] || null;
+    const openRenewal = (row: typeof rows[number]) => {
+      setTvboxParaRenovar(row.tvbox);
+      setShowModalRenovacaoCentral(true);
+    };
+    const formatDate = (date: Date | null) => date ? date.toLocaleDateString('pt-BR') : 'Não definida';
+
+    return (
+      <div className="tvbox-renovacoes-page">
+        <header className="tvbox-renovacoes-header">
+          <div>
+            <span className="tvbox-assinaturas-eyebrow">TV BOX</span>
+            <h1>Renovações TV Box</h1>
+            <p>Acompanhe vencimentos, créditos e renovações das assinaturas.</p>
+          </div>
+          <button className="tvbox-renovacoes-credit-button" onClick={abrirModalCredito}>
+            ＋ Adicionar créditos
+          </button>
+        </header>
+
+        <div className="tvbox-renovacoes-competencia">
+          <button onClick={() => shiftCompetencia(-1)} aria-label="Competência anterior">←</button>
+          <strong>{competenceLabel}</strong>
+          <button onClick={() => shiftCompetencia(1)} aria-label="Próxima competência">→</button>
+          {renovacaoCompetencia !== currentCompetencia && (
+            <button className="is-current" onClick={() => setRenovacaoCompetencia(currentCompetencia)}>Voltar ao mês atual</button>
+          )}
+        </div>
+
+        <section className="tvbox-assinaturas-stats tvbox-renovacoes-stats" aria-label="Resumo das renovações">
+          <div className="tvbox-renovacoes-rich-card">
+            <span>ASSINATURAS</span><strong>{totalSubscriptions}</strong>
+            <div><b>{subscriptionsInUse}</b> em uso · <b>{subscriptionsWithoutClients}</b> sem clientes</div>
+            <small>{usagePercent}% em uso · {competenceLabel}</small>
+          </div>
+          <div className="tvbox-renovacoes-rich-card">
+            <span>RENOVAÇÕES DO MÊS</span><strong>{rows.length}</strong>
+            <div><b>{renewedCount}</b> renovadas · <b>{pendingCount}</b> pendentes</div>
+            <div className="tvbox-renovacoes-progress"><i style={{ width: `${renewalProgress}%` }} /></div>
+            <small>{renewedCount} / {rows.length} concluídas · {renewalProgress}%</small>
+          </div>
+          <div className="tvbox-renovacoes-rich-card is-warning">
+            <span>PRECISAM DE ATENÇÃO</span><strong>{renewNowCount}</strong>
+            <div><b>{overdueCount}</b> atrasadas · <b>{dueTodayCount}</b> vencem hoje</div>
+            <small>{nextFiveCount} nos próximos 5 dias · {renewNowCount - overdueCount - dueTodayCount} demais</small>
+          </div>
+          <div className="tvbox-renovacoes-rich-card is-credit">
+            <span>CRÉDITOS</span><strong>{creditosDisponiveis}</strong>
+            <div><b>{creditsNeededNow}</b> necessários · <b>{creditsMissing}</b> faltando</div>
+            <button onClick={abrirModalCredito}>Adicionar créditos</button>
+          </div>
+          <div className="tvbox-renovacoes-rich-card is-neutral">
+            <span>PODEM AGUARDAR</span><strong>{standbyCount}</strong>
+            <div>Sem clientes vinculados</div>
+            <small>{standbyCount} crédito(s) preservável(is) por enquanto</small>
+          </div>
+          <div className="tvbox-renovacoes-rich-card">
+            <span>PRÓXIMOS VENCIMENTOS</span><strong>{dueTodayCount + nextFiveCount}</strong>
+            <div><b>Hoje:</b> {dueTodayCount} · <b>5 dias:</b> {nextFiveCount}</div>
+            <small>Até 10 dias: {nextTenCount}</small>
+          </div>
+        </section>
+
+        {(overdueCount > 0 || dueTodayCount > 0 || creditsMissing > 0 || standbyCount > 0) && (
+          <section className="tvbox-renovacoes-alerts">
+            {(overdueCount > 0 || dueTodayCount > 0) && <div className="is-danger"><b>ATENÇÃO IMEDIATA</b><strong>{overdueCount + dueTodayCount}</strong><span>assinatura(s) em uso precisam de atenção imediata.</span><button onClick={() => { setFiltroRenovacaoStatus('renovar-agora'); setPaginaRenovacoes(1); }}>Ver urgentes</button></div>}
+            {creditsMissing > 0 && <div className="is-warning"><b>CRÉDITOS INSUFICIENTES</b><strong>Faltam {creditsMissing}</strong><span>Saldo: {creditosDisponiveis} · necessários: {creditsNeededNow}.</span><button onClick={abrirModalCredito}>Adicionar créditos</button></div>}
+            {standbyCount > 0 && <div className="is-info"><b>ECONOMIA POSSÍVEL</b><strong>{standbyCount} assinatura(s)</strong><span>Sem clientes e adiáveis por enquanto.</span><button onClick={() => { setFiltroRenovacaoStatus('sem-clientes'); setPaginaRenovacoes(1); }}>Ver stand-by</button></div>}
+          </section>
+        )}
+
+        <section className="tvbox-renovacoes-credit-strip">
+          <div className="tvbox-renovacoes-credit-overview">
+            <span>CRÉDITOS TV BOX</span>
+            <div className="tvbox-renovacoes-credit-metrics">
+              <strong><small>Saldo atual</small>{creditosDisponiveis}</strong>
+              <strong><small>Necessários agora</small>{creditsNeededNow}</strong>
+              <strong><small>Faltam</small>{creditsMissing}</strong>
+              <strong><small>Adiáveis</small>{standbyCount}</strong>
+            </div>
+            <small>{entries} créditos adicionados em {entryOperations} entrada(s) · {used} utilizados em {consumptionOperations} consumo(s) · saldo líquido {netMovement >= 0 ? '+' : ''}{netMovement}</small>
+            {lastMovement && <small>Última movimentação: {lastMovement.data.toLocaleDateString('pt-BR')} · {Number(lastMovement.quantidade) >= 0 ? 'Entrada' : 'Consumo'} {Number(lastMovement.quantidade) >= 0 ? '+' : ''}{lastMovement.quantidade} crédito(s)</small>}
+          </div>
+          <div className="tvbox-renovacoes-credit-actions">
+            <button onClick={abrirModalCredito}>＋ Adicionar créditos</button>
+            <button onClick={() => setShowModalHistoricoCredito(true)}>Ver movimentações</button>
+          </div>
+        </section>
+
+        <section className="tvbox-assinaturas-toolbar tvbox-renovacoes-toolbar">
+          <div className="tvbox-assinaturas-search">
+            <span>⌕</span>
+            <input value={buscaRenovacao} onChange={(event) => { setBuscaRenovacao(event.target.value); setPaginaRenovacoes(1); }} placeholder="Buscar por assinatura, login ou NDS..." aria-label="Buscar por assinatura, login ou NDS" />
+          </div>
+          <div className="tvbox-renovacoes-filter-chips" aria-label="Filtros de renovação">
+            {([
+              ['todos', 'Todas', rows.length],
+              ['renovar-agora', 'Renovar agora', renewNowCount],
+              ['atrasada', 'Atrasadas', overdueCount],
+              ['vence-hoje', 'Vence hoje', dueTodayCount],
+              ['proximos', 'Próximos 5 dias', nextFiveCount],
+              ['sem-clientes', 'Sem clientes', standbyCount],
+              ['renovada', 'Renovadas', renewedCount],
+            ] as const).map(([value, label, count]) => (
+              <button key={value} className={filtroRenovacaoStatus === value ? 'is-active' : ''} onClick={() => { setFiltroRenovacaoStatus(value); setPaginaRenovacoes(1); }}>
+                {label} <b>{count}</b>
+              </button>
+            ))}
+          </div>
+          <select value={ordenacaoRenovacoes} onChange={(event) => { setOrdenacaoRenovacoes(event.target.value as typeof ordenacaoRenovacoes); setPaginaRenovacoes(1); }} aria-label="Ordenar renovações">
+            <option value="urgencia">Ordenar: Urgência</option>
+            <option value="renovacao">Vencimento</option>
+            <option value="assinatura">Assinatura</option>
+          </select>
+          {filtroRenovacaoStatus !== 'todos' && <button className="tvbox-renovacoes-clear-filter" onClick={() => { setFiltroRenovacaoStatus('todos'); setPaginaRenovacoes(1); }}>Limpar filtro</button>}
+        </section>
+
+        <section className="tvbox-assinaturas-table-card">
+          <div className="tvbox-assinaturas-table-heading">
+            <div><h2>Central de renovações</h2><p>{filtered.length} assinatura(s) na competência selecionada</p></div>
+            <span className="tvbox-assinaturas-page-indicator">Página {pagina} de {totalPaginas}</span>
+          </div>
+          {renovacaoDespesasLoading ? (
+            <div className="tvbox-renovacoes-state">Consultando despesas da competência...</div>
+          ) : renovacaoDespesasError ? (
+            <div className="tvbox-renovacoes-state is-error"><b>Não foi possível carregar a competência.</b><span>{renovacaoDespesasError}</span><button onClick={() => setRenovacaoRefreshKey((current) => current + 1)}>Tentar novamente</button></div>
+          ) : (
+            <div className="tvbox-assinaturas-table-scroll">
+              <table className="tvbox-assinaturas-table tvbox-renovacoes-table">
+                <thead><tr><th>Assinatura</th><th>Login</th><th>Uso</th><th>Vencimento</th><th>Situação</th><th>Última renovação</th><th>Próxima renovação</th><th>Ação</th></tr></thead>
+                <tbody>
+                  {pageItems.length === 0 ? (
+                    <tr><td colSpan={8} className="tvbox-assinaturas-empty">Nenhuma renovação encontrada para este período.</td></tr>
+                  ) : pageItems.map((row) => (
+                    <tr key={row.tvbox.id}>
+                      <td><strong>{row.tvbox.assinatura}</strong><small>{row.tvbox.status}</small></td>
+                      <td><strong className="tvbox-renovacoes-login">{row.tvbox.login || 'Não informado'}</strong></td>
+                      <td>
+                        <div className={`tvbox-renovacoes-usage tvbox-renovacoes-usage--${row.usage.label}`}>
+                          {row.usage.occupied === 0 ? 'Sem clientes' : `${row.usage.occupied}/2 em uso`}
+                        </div>
+                        {row.usage.occupied === 0 && !row.renewed && <small className="tvbox-renovacoes-standby-note">Stand-by sugerido</small>}
+                      </td>
+                      <td><strong>{formatDate(row.dueDate)}</strong><small className="tvbox-renovacoes-due-context">{row.days === null ? 'Sem data' : row.days === 0 ? 'Hoje' : row.days > 0 ? `Em ${row.days} dia${row.days === 1 ? '' : 's'}` : `${Math.abs(row.days)} dia${Math.abs(row.days) === 1 ? '' : 's'} em atraso`}</small></td>
+                      <td><span className={`tvbox-assinaturas-status tvbox-renovacoes-status--${row.situation}`}>{situationLabel[row.situation]}</span></td>
+                      <td>{row.tvbox.ultimaRenovacao || 'Não registrada'}</td>
+                      <td>{formatDate(row.dueDate)}</td>
+                      <td><button className={`tvbox-renovacoes-action ${row.usage.occupied === 0 ? 'is-secondary' : ''}`} disabled={row.renewed || executandoTarefa} onClick={() => openRenewal(row)}>{row.renewed ? 'Concluída' : row.usage.occupied === 0 ? 'Renovar mesmo assim' : 'Renovar'}</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className="tvbox-assinaturas-pagination">
+            <span>Mostrando {filtered.length === 0 ? 0 : (pagina - 1) * itensRenovacoesPorPagina + 1}-{Math.min(filtered.length, pagina * itensRenovacoesPorPagina)} de {filtered.length}</span>
+            <div>
+              <select value={itensRenovacoesPorPagina} onChange={(event) => { setItensRenovacoesPorPagina(Number(event.target.value)); setPaginaRenovacoes(1); }} aria-label="Itens por página de renovações"><option value={20}>20 por página</option><option value={30}>30 por página</option><option value={40}>40 por página</option><option value={50}>50 por página</option></select>
+              <button disabled={pagina <= 1} onClick={() => setPaginaRenovacoes(1)}>«</button><button disabled={pagina <= 1} onClick={() => setPaginaRenovacoes((current) => current - 1)}>‹</button><button disabled={pagina >= totalPaginas} onClick={() => setPaginaRenovacoes((current) => current + 1)}>›</button><button disabled={pagina >= totalPaginas} onClick={() => setPaginaRenovacoes(totalPaginas)}>»</button>
+            </div>
+          </div>
+        </section>
+
+        {showModalRenovacaoCentral && tvboxParaRenovar && (
+          <div className="tvbox-assinaturas-modal-backdrop" role="presentation" onClick={() => !executandoTarefa && setShowModalRenovacaoCentral(false)}>
+            <section className="tvbox-renovacoes-confirm-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+              <header><div><span>CONFIRMAÇÃO OPERACIONAL</span><h2>Renovar assinatura</h2><p>{tvboxParaRenovar.assinatura}</p></div><button onClick={() => !executandoTarefa && setShowModalRenovacaoCentral(false)} aria-label="Fechar confirmação">×</button></header>
+              <div className="tvbox-renovacoes-confirm-content">
+                <div className="tvbox-renovacoes-confirm-grid"><div><small>VENCIMENTO ATUAL</small><strong>{tvboxParaRenovar.dataRenovacao}</strong></div><div><small>PRÓXIMA RENOVAÇÃO PREVISTA</small><strong>{calcularProximoVencimento(tvboxParaRenovar.renovacaoData || null, tvboxParaRenovar.renovacaoDia ?? null)?.toLocaleDateString('pt-BR') || '—'}</strong></div></div>
+                {(() => {
+                  const occupied = tvboxParaRenovar.equipamentos.filter((eq) => {
+                    const name = String(eq.cliente_nome || eq.cliente || '').trim();
+                    return Boolean(eq.cliente_id || eq.clienteId || (name && !isNomeDisponivel(name)));
+                  }).length;
+                  return (
+                    <div className={occupied === 0 ? 'tvbox-renovacoes-confirm-warning' : 'tvbox-renovacoes-confirm-usage'}>
+                      <small>USO ATUAL</small>
+                      <strong>{occupied === 0 ? 'Sem clientes vinculados' : `${occupied}/2 slots em uso`}</strong>
+                      {occupied === 0 && <span>Esta assinatura não possui clientes vinculados. A renovação pode ser adiada neste momento.</span>}
+                    </div>
+                  );
+                })()}
+                <div className="tvbox-renovacoes-cost"><span>Créditos necessários <b>1</b></span><span>Saldo atual <b>{creditosDisponiveis}</b></span><span>Custo registrado <b>R$ {TVBOX_RENEWAL_EXPENSE_VALUE.toFixed(2).replace('.', ',')}</b></span></div>
+                {creditosDisponiveis <= 0 && <div className="tvbox-renovacoes-insufficient"><b>CRÉDITOS INSUFICIENTES</b><span>Esta renovação necessita de 1 crédito. Saldo disponível: {creditosDisponiveis}.</span><button onClick={() => { setShowModalRenovacaoCentral(false); abrirModalCredito(); }}>Adicionar créditos</button></div>}
+              </div>
+              <footer><button disabled={executandoTarefa} onClick={() => setShowModalRenovacaoCentral(false)}>Cancelar</button><button className="is-primary" disabled={executandoTarefa || creditosDisponiveis <= 0} onClick={darBaixaRenovacao}>{executandoTarefa ? 'Processando...' : 'Confirmar renovação'}</button></footer>
+            </section>
+          </div>
+        )}
+      </div>
+    );
+  })() : null;
+
+  const aparelhosView = view === 'aparelhos' ? (() => {
+    const normalize = (value: any) => normalizeText(String(value ?? ''));
+    const hasPhysicalDevice = (eq: any) => Boolean(
+      String(eq?.nds || '').trim() ||
+      String(eq?.mac || '').trim() ||
+      String(eq?.deviceId || eq?.device_id || '').trim() ||
+      String(eq?.idAparelho || '').trim()
+    );
+    const getActiveSituation = (eq: any) => {
+      const nome = String(eq?.cliente_nome || eq?.cliente || '').trim();
+      return eq?.cliente_id || eq?.clienteId || (nome && !isNomeDisponivel(nome))
+        ? 'alugado'
+        : 'disponivel';
+    };
+    const getLostSituation = (device: any) => {
+      const raw = normalize(device?.reason || device?.status);
+      return raw.includes('queim') || raw.includes('defeit') ? 'defeituoso' : 'extraviado';
+    };
+
+    const activeDevices = tvboxes.flatMap((tvbox) =>
+      tvbox.equipamentos
+        .map((eq: any, index) => ({
+          key: `${tvbox.id}-${index + 1}`,
+          kind: 'active',
+          subscriptionId: tvbox.id,
+          assinatura: tvbox.assinatura,
+          slotIndex: index,
+          cliente: eq?.cliente_nome || eq?.cliente || 'Disponível',
+          clienteId: eq?.cliente_id || eq?.clienteId || null,
+          nds: eq?.nds || '',
+          mac: eq?.mac || '',
+          deviceId: eq?.deviceId || eq?.device_id || '',
+          versao: eq?.versao || '',
+          situacao: getActiveSituation(eq),
+          historico: getHistoricoClientesArray(eq),
+          equipamento: eq,
+          tvbox
+        }))
+        .filter((row) => hasPhysicalDevice(row.equipamento))
+    );
+
+    const lostRows = lostDevices.map((device: any) => ({
+      key: `lost-${device.id}`,
+      kind: 'lost',
+      subscriptionId: device.subscriptionId || '',
+      assinatura: device.subscriptionNumber || 'Assinatura não identificada',
+      slotIndex: Number.isFinite(Number(device.originalSlotIndex)) ? Number(device.originalSlotIndex) : null,
+      cliente: device.oldClientName || 'Sem cliente',
+      clienteId: device.oldClientId || null,
+      nds: device.nds || '',
+      mac: device.mac || '',
+      deviceId: device.deviceId || '',
+      versao: '',
+      situacao: getLostSituation(device),
+      historico: [],
+      equipamento: null,
+      lostDevice: device,
+      tvbox: null
+    }));
+
+    const allRows = [...activeDevices, ...lostRows];
+    const filtered = allRows.filter((row) => {
+      const search = normalize(buscaAparelho);
+      const matchesSearch = !search || [
+        row.nds,
+        row.mac,
+        row.deviceId,
+        row.cliente,
+        row.assinatura
+      ].some((value) => normalize(value).includes(search));
+      const matchesStatus = filtroAparelhoStatus === 'todos' || row.situacao === filtroAparelhoStatus;
+      const matchesSubscription = filtroAparelhoAssinatura === 'todas' || row.subscriptionId === filtroAparelhoAssinatura;
+      return matchesSearch && matchesStatus && matchesSubscription;
+    });
+    const totalPaginas = Math.max(1, Math.ceil(filtered.length / itensAparelhosPorPagina));
+    const pagina = Math.min(paginaAparelhos, totalPaginas);
+    const pageItems = filtered.slice((pagina - 1) * itensAparelhosPorPagina, pagina * itensAparelhosPorPagina);
+    const activeRented = activeDevices.filter((row) => row.situacao === 'alugado').length;
+    const activeAvailable = activeDevices.filter((row) => row.situacao === 'disponivel').length;
+    const lostCount = lostRows.filter((row) => row.situacao === 'extraviado').length;
+    const defectiveCount = lostRows.filter((row) => row.situacao === 'defeituoso').length;
+
+    const openDetails = (row: any) => {
+      setAparelhoSelecionado(row);
+      setShowModalAparelho(true);
+    };
+
+    return (
+      <div className="tvbox-aparelhos-page">
+        <header className="tvbox-aparelhos-header">
+          <div>
+            <span className="tvbox-assinaturas-eyebrow">TV BOX</span>
+            <h1>Aparelhos TV Box</h1>
+            <p>Controle equipamentos, vínculos, disponibilidade e ocorrências.</p>
+          </div>
+          <button className="tvbox-aparelhos-occurrences-button" onClick={() => setShowLostDevices(true)}>
+            ⚠ Ocorrências
+          </button>
+        </header>
+        <TvBoxModuleTabs active="aparelhos" />
+
+        <section className="tvbox-assinaturas-stats tvbox-aparelhos-stats" aria-label="Resumo dos aparelhos">
+          {[
+            ['Total', activeDevices.length, 'Equipamentos vinculados às assinaturas', 'blue'],
+            ['Alugados', activeRented, 'Com cliente atual', 'amber'],
+            ['Disponíveis', activeAvailable, 'Sem cliente atual', 'slate'],
+            ['Extraviados', lostCount, 'Registros ativos', 'red'],
+            ['Defeituosos', defectiveCount, 'Registros ativos', 'violet'],
+          ].map(([label, value, helper, tone]) => (
+            <div className={`tvbox-assinaturas-stat tvbox-assinaturas-stat--${tone}`} key={String(label)}>
+              <span>{label}</span>
+              <strong>{value}</strong>
+              <small>{helper}</small>
+            </div>
+          ))}
+        </section>
+
+        <section className="tvbox-assinaturas-toolbar tvbox-aparelhos-toolbar">
+          <div className="tvbox-assinaturas-search">
+            <span>⌕</span>
+            <input
+              value={buscaAparelho}
+              onChange={(event) => { setBuscaAparelho(event.target.value); setPaginaAparelhos(1); }}
+              placeholder="Buscar NDS, MAC, cliente ou assinatura..."
+              aria-label="Buscar NDS, MAC, cliente ou assinatura"
+            />
+          </div>
+          <select value={filtroAparelhoStatus} onChange={(event) => { setFiltroAparelhoStatus(event.target.value); setPaginaAparelhos(1); }} aria-label="Filtrar situação">
+            <option value="todos">Situação: Todos</option>
+            <option value="alugado">Alugados</option>
+            <option value="disponivel">Disponíveis</option>
+            <option value="extraviado">Extraviados</option>
+            <option value="defeituoso">Defeituosos</option>
+          </select>
+          <select value={filtroAparelhoAssinatura} onChange={(event) => { setFiltroAparelhoAssinatura(event.target.value); setPaginaAparelhos(1); }} aria-label="Filtrar assinatura">
+            <option value="todas">Assinatura: Todas</option>
+            {tvboxes.map((tvbox) => <option key={tvbox.id} value={tvbox.id}>{tvbox.assinatura}</option>)}
+          </select>
+        </section>
+
+        <section className="tvbox-assinaturas-table-card">
+          <div className="tvbox-assinaturas-table-heading">
+            <div>
+              <h2>Inventário de aparelhos</h2>
+              <p>{filtered.length} aparelho(s) encontrado(s)</p>
+            </div>
+            <span className="tvbox-assinaturas-page-indicator">Página {pagina} de {totalPaginas}</span>
+          </div>
+          <div className="tvbox-assinaturas-table-scroll">
+            <table className="tvbox-assinaturas-table tvbox-aparelhos-table">
+              <thead>
+                <tr>
+                  <th>Aparelho</th>
+                  <th>Identificação</th>
+                  <th>Assinatura</th>
+                  <th>Cliente</th>
+                  <th>Situação</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageItems.length === 0 ? (
+                  <tr><td colSpan={6} className="tvbox-assinaturas-empty">Nenhum aparelho encontrado com os filtros atuais.</td></tr>
+                ) : pageItems.map((row: any) => (
+                  <tr key={row.key}>
+                    <td>
+                      <button className="tvbox-assinaturas-name" onClick={() => openDetails(row)}>
+                        Slot {row.slotIndex === null ? '—' : row.slotIndex + 1}
+                      </button>
+                      <small>{row.kind === 'lost' ? 'Registro de ocorrência' : 'Equipamento cadastrado'}</small>
+                    </td>
+                    <td>
+                      <div className="tvbox-aparelhos-identifier"><b>NDS</b> {row.nds || 'Não informado'}</div>
+                      <div className="tvbox-aparelhos-identifier"><b>MAC</b> {row.mac || 'Não informado'}</div>
+                    </td>
+                    <td>
+                      <strong>{row.assinatura}</strong>
+                      <small>{row.kind === 'active' ? `Slot ${row.slotIndex + 1}` : 'Vínculo anterior'}</small>
+                    </td>
+                    <td>{row.cliente || 'Sem cliente'}</td>
+                    <td><span className={`tvbox-assinaturas-status tvbox-assinaturas-status--${row.situacao}`}>{row.situacao}</span></td>
+                    <td>
+                      <div className="tvbox-assinaturas-actions">
+                        <button onClick={() => openDetails(row)}>Ver</button>
+                        {row.kind === 'active' ? (
+                          <>
+                            {tvboxPermissions.edit && <button onClick={() => abrirModalEditar(row.tvbox)}>Editar</button>}
+                          </>
+                        ) : (
+                          <button onClick={() => { setLostSearch(row.nds); setShowLostDevices(true); }}>Ocorrência</button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="tvbox-assinaturas-pagination">
+            <span>Mostrando {filtered.length === 0 ? 0 : (pagina - 1) * itensAparelhosPorPagina + 1}-{Math.min(filtered.length, pagina * itensAparelhosPorPagina)} de {filtered.length}</span>
+            <div>
+              <select value={itensAparelhosPorPagina} onChange={(event) => { setItensAparelhosPorPagina(Number(event.target.value)); setPaginaAparelhos(1); }} aria-label="Itens por página de aparelhos">
+                <option value={20}>20 por página</option>
+                <option value={30}>30 por página</option>
+                <option value={40}>40 por página</option>
+                <option value={50}>50 por página</option>
+              </select>
+              <button disabled={pagina <= 1} onClick={() => setPaginaAparelhos(1)}>«</button>
+              <button disabled={pagina <= 1} onClick={() => setPaginaAparelhos((current) => current - 1)}>‹</button>
+              <button disabled={pagina >= totalPaginas} onClick={() => setPaginaAparelhos((current) => current + 1)}>›</button>
+              <button disabled={pagina >= totalPaginas} onClick={() => setPaginaAparelhos(totalPaginas)}>»</button>
+            </div>
+          </div>
+        </section>
+
+        {showModalAparelho && aparelhoSelecionado && (
+          <div className="tvbox-assinaturas-modal-backdrop" role="presentation" onClick={() => setShowModalAparelho(false)}>
+            <section className="tvbox-assinaturas-detail-modal tvbox-aparelhos-detail-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+              <header>
+                <div><span>DETALHES DO APARELHO</span><h2>{aparelhoSelecionado.nds || 'Identificação não informada'}</h2></div>
+                <button onClick={() => setShowModalAparelho(false)} aria-label="Fechar detalhes">×</button>
+              </header>
+              <div className="tvbox-assinaturas-detail-content">
+                <h3>Identificação</h3>
+                <div className="tvbox-assinaturas-detail-grid">
+                  <div><small>NDS</small><strong>{aparelhoSelecionado.nds || 'Não informado'}</strong></div>
+                  <div><small>MAC</small><strong>{aparelhoSelecionado.mac || 'Não informado'}</strong></div>
+                  <div><small>DEVICE ID</small><strong>{aparelhoSelecionado.deviceId || 'Não informado'}</strong></div>
+                  <div><small>VERSÃO</small><strong>{aparelhoSelecionado.versao || 'Não informada'}</strong></div>
+                </div>
+                <h3>Vínculo atual</h3>
+                <div className="tvbox-aparelhos-link-summary">
+                  <span>Assinatura <b>{aparelhoSelecionado.assinatura}</b></span>
+                  <span>Slot <b>{aparelhoSelecionado.slotIndex === null ? '—' : aparelhoSelecionado.slotIndex + 1}</b></span>
+                  <span>Cliente <b>{aparelhoSelecionado.cliente || 'Sem cliente'}</b></span>
+                </div>
+                <h3>Situação</h3>
+                <span className={`tvbox-assinaturas-status tvbox-assinaturas-status--${aparelhoSelecionado.situacao}`}>{aparelhoSelecionado.situacao}</span>
+                {aparelhoSelecionado.kind === 'active' && (
+                  <>
+                    <h3>Histórico</h3>
+                    {aparelhoSelecionado.historico.length === 0 ? (
+                      <div className="tvbox-aparelhos-history-empty">Nenhum histórico registrado para este aparelho.</div>
+                    ) : (
+                      <div className="tvbox-aparelhos-history-list">
+                        {aparelhoSelecionado.historico.map((item: any, index: number) => (
+                          <div key={`${aparelhoSelecionado.key}-history-${index}`}>
+                            <b>{item.cliente_nome || item.clienteNome || item.cliente || item.nome || 'Cliente não informado'}</b>
+                            <span>{item.inicio ? 'Início registrado' : 'Período não informado'}{item.fim ? ' · encerrado' : ' · atual'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              <footer>
+                {aparelhoSelecionado.kind === 'active' ? (
+                  tvboxPermissions.edit ? <button onClick={() => { setShowModalAparelho(false); abrirModalEditar(aparelhoSelecionado.tvbox); }}>Editar vínculo</button> : <button onClick={() => setShowModalAparelho(false)}>Fechar</button>
+                ) : (
+                  <button onClick={() => { setShowModalAparelho(false); setLostSearch(aparelhoSelecionado.nds); setShowLostDevices(true); }}>Abrir ocorrência</button>
+                )}
+              </footer>
+            </section>
+          </div>
+        )}
+      </div>
+    );
+  })() : null;
+
+  const assinaturasView = view === 'assinaturas' ? (() => {
+    const ocupacao = (tvbox: TVBox) => {
+      const ocupados = tvbox.equipamentos.filter((eq) => {
+        const nome = String(eq.cliente_nome || eq.cliente || '').trim();
+        return Boolean(eq.cliente_id || eq.clienteId || (nome && !isNomeDisponivel(nome)));
+      }).length;
+      return { ocupados, disponiveis: Math.max(0, tvbox.equipamentos.length - ocupados) };
+    };
+
+    const filtered = tvboxes
+      .filter((tvbox) => filtrarPorNomeMacNds(tvbox, buscaDebounced))
+      .filter((tvbox) => {
+        if (!filtroStatus || filtroStatus === 'todos') return true;
+        if (filtroStatus === 'ativas') return tvbox.status === 'ativa';
+        return tvbox.status !== 'ativa';
+      })
+      .filter((tvbox) => {
+        if (filtroOcupacao === 'todos') return true;
+        const { ocupados, disponiveis } = ocupacao(tvbox);
+        if (filtroOcupacao === 'vagas') return disponiveis > 0;
+        if (filtroOcupacao === 'completas') return ocupados === tvbox.equipamentos.length;
+        if (filtroOcupacao === 'sem-clientes') return ocupados === 0;
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortConfig.key === 'status') return a.status.localeCompare(b.status, 'pt-BR');
+        if (sortConfig.key === 'renovacao' || sortConfig.key === 'dias') {
+          return (calcularDiasAteVencimento(a) - calcularDiasAteVencimento(b)) * (sortConfig.direction === 'asc' ? 1 : -1);
+        }
+        const aNumber = Number(a.assinatura.match(/\d+/)?.[0] || 0);
+        const bNumber = Number(b.assinatura.match(/\d+/)?.[0] || 0);
+        return (aNumber - bNumber) * (sortConfig.direction === 'asc' ? 1 : -1);
+      });
+
+    const totalPaginas = Math.max(1, Math.ceil(filtered.length / assinaturasItensPorPagina));
+    const pagina = Math.min(assinaturasPagina, totalPaginas);
+    const pageItems = filtered.slice((pagina - 1) * assinaturasItensPorPagina, pagina * assinaturasItensPorPagina);
+    const totalClientes = new Set(
+      tvboxes.flatMap((tvbox) => tvbox.equipamentos
+        .filter((eq) => eq.cliente_id || eq.clienteId)
+        .map((eq) => String(eq.cliente_id || eq.clienteId)))
+    ).size;
+    const slotsOcupados = tvboxes.reduce((total, tvbox) => total + ocupacao(tvbox).ocupados, 0);
+    const totalSlots = tvboxes.reduce((total, tvbox) => total + tvbox.equipamentos.length, 0);
+
+    const updateFilter = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
+      setter(value);
+      setAssinaturasPagina(1);
+    };
+
+    return (
+      <div className="tvbox-assinaturas-page">
+        <header className="tvbox-assinaturas-header">
+          <div>
+            <span className="tvbox-assinaturas-eyebrow">TV BOX</span>
+            <h1>Assinaturas TV Box</h1>
+            <p>Gerencie contas, acessos e vínculos das assinaturas TV Box.</p>
+          </div>
+          {tvboxPermissions.create && <button className="tvbox-assinaturas-primary" onClick={() => setShowModalNovaAssinatura(true)}>
+            <span>＋</span> Nova Assinatura
+          </button>}
+        </header>
+        <TvBoxModuleTabs active="assinaturas" />
+
+        <section className="tvbox-assinaturas-stats" aria-label="Resumo das assinaturas">
+          {[
+            ['Assinaturas', tvboxes.length, 'Total existente', 'blue'],
+            ['Ativas', tvboxes.filter((tvbox) => tvbox.status === 'ativa').length, 'Em operação', 'green'],
+            ['Clientes vinculados', totalClientes, 'Clientes atuais', 'violet'],
+            ['Slots ocupados', slotsOcupados, `${totalSlots ? Math.round((slotsOcupados / totalSlots) * 100) : 0}% da capacidade`, 'amber'],
+            ['Slots disponíveis', Math.max(0, totalSlots - slotsOcupados), 'Vagas atuais', 'slate'],
+          ].map(([label, value, helper, tone]) => (
+            <div className={`tvbox-assinaturas-stat tvbox-assinaturas-stat--${tone}`} key={String(label)}>
+              <span>{label}</span>
+              <strong>{value}</strong>
+              <small>{helper}</small>
+            </div>
+          ))}
+        </section>
+
+        <section className="tvbox-assinaturas-toolbar">
+          <div className="tvbox-assinaturas-search">
+            <span>⌕</span>
+            <input
+              value={busca}
+              onChange={(event) => { setBusca(event.target.value); setAssinaturasPagina(1); }}
+              placeholder="Buscar assinatura, cliente, login ou NDS..."
+              aria-label="Buscar assinatura, cliente, login ou NDS"
+            />
+          </div>
+          <select value={filtroStatus || 'todos'} onChange={(event) => updateFilter(setFiltroStatus, event.target.value)} aria-label="Filtrar status">
+            <option value="todos">Status: Todas</option>
+            <option value="ativas">Ativas</option>
+            <option value="inativas">Inativas</option>
+          </select>
+          <select value={filtroOcupacao} onChange={(event) => updateFilter(setFiltroOcupacao, event.target.value)} aria-label="Filtrar ocupação">
+            <option value="todos">Ocupação: Todas</option>
+            <option value="vagas">Com vagas</option>
+            <option value="completas">Completas</option>
+            <option value="sem-clientes">Sem clientes</option>
+          </select>
+          <select
+            value={sortConfig.key === 'assinatura' ? 'numero' : sortConfig.key}
+            onChange={(event) => toggleSort(event.target.value === 'numero' ? 'assinatura' : event.target.value as typeof sortConfig.key)}
+            aria-label="Ordenar assinaturas"
+          >
+            <option value="numero">Ordenar: Número/nome</option>
+            <option value="status">Status</option>
+            <option value="renovacao">Vencimento</option>
+          </select>
+        </section>
+
+        <section className="tvbox-assinaturas-table-card">
+          <div className="tvbox-assinaturas-table-heading">
+            <div>
+              <h2>Contas e vínculos</h2>
+              <p>{filtered.length} assinatura(s) encontrada(s)</p>
+            </div>
+            <span className="tvbox-assinaturas-page-indicator">Página {pagina} de {totalPaginas}</span>
+          </div>
+          <div className="tvbox-assinaturas-table-scroll">
+            <table className="tvbox-assinaturas-table">
+              <thead>
+                <tr>
+                  <th>Assinatura</th>
+                  <th>Acesso</th>
+                  <th>Clientes</th>
+                  <th>Aparelhos</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageItems.length === 0 ? (
+                  <tr><td colSpan={6} className="tvbox-assinaturas-empty">Nenhuma assinatura encontrada com os filtros atuais.</td></tr>
+                ) : pageItems.map((tvbox) => {
+                  const { ocupados, disponiveis } = ocupacao(tvbox);
+                  return (
+                    <tr key={tvbox.id}>
+                      <td>
+                        <button className="tvbox-assinaturas-name" onClick={() => { setTvboxSelecionado(tvbox); setShowModalVisualizar(true); }}>
+                          {tvbox.assinatura}
+                        </button>
+                        <small>{tvbox.tipo} · vencimento dia {tvbox.renovacaoDia || '—'}</small>
+                      </td>
+                      <td>
+                        <div className="tvbox-assinaturas-access"><b>Login:</b> {tvbox.login}</div>
+                        <div className="tvbox-assinaturas-access tvbox-assinaturas-password-access">
+                          <b>Senha:</b>
+                          <span>{senhasVisiveis.has(tvbox.id) ? tvbox.senha : '••••••••'}</span>
+                          <button
+                            type="button"
+                            className="tvbox-table-password-toggle"
+                            onClick={() => alternarVisibilidadeSenha(tvbox.id)}
+                            aria-label={senhasVisiveis.has(tvbox.id) ? 'Ocultar senha' : 'Mostrar senha'}
+                            title={senhasVisiveis.has(tvbox.id) ? 'Ocultar senha' : 'Mostrar senha'}
+                          >
+                            {senhasVisiveis.has(tvbox.id) ? '◉' : '◌'}
+                          </button>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="tvbox-assinaturas-chip-list">
+                          {tvbox.equipamentos.map((eq, index) => (
+                            <span key={`${tvbox.id}-client-${index}`} className={eq.cliente_id || eq.clienteId ? '' : 'is-muted'}>
+                              {eq.cliente_nome || eq.cliente || 'Disponível'}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td>
+                        <strong>{ocupados} ocupados</strong>
+                        <small>{disponiveis} disponíveis</small>
+                      </td>
+                      <td><span className={`tvbox-assinaturas-status tvbox-assinaturas-status--${tvbox.status}`}>{tvbox.status === 'ativa' ? 'Ativa' : tvbox.status}</span></td>
+                      <td>
+                        <div className="tvbox-assinaturas-actions">
+                          <button onClick={() => { setTvboxSelecionado(tvbox); setShowModalVisualizar(true); }}>Ver</button>
+                          {tvboxPermissions.edit && <button onClick={() => abrirModalEditar(tvbox)}>Editar</button>}
+                          {tvboxPermissions.renew && <button onClick={() => abrirModalRenovar(tvbox)}>Renovar</button>}
+                          {tvboxPermissions.delete && <button onClick={() => excluirAssinaturaTvBox(tvbox)}>Excluir</button>}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="tvbox-assinaturas-pagination">
+            <span>Mostrando {filtered.length === 0 ? 0 : (pagina - 1) * assinaturasItensPorPagina + 1}-{Math.min(filtered.length, pagina * assinaturasItensPorPagina)} de {filtered.length}</span>
+            <div>
+              <select value={assinaturasItensPorPagina} onChange={(event) => { setAssinaturasItensPorPagina(Number(event.target.value)); setAssinaturasPagina(1); }} aria-label="Itens por página">
+                <option value={20}>20 por página</option>
+                <option value={30}>30 por página</option>
+                <option value={40}>40 por página</option>
+                <option value={50}>50 por página</option>
+              </select>
+              <button disabled={pagina <= 1} onClick={() => setAssinaturasPagina(1)}>«</button>
+              <button disabled={pagina <= 1} onClick={() => setAssinaturasPagina((current) => current - 1)}>‹</button>
+              <button disabled={pagina >= totalPaginas} onClick={() => setAssinaturasPagina((current) => current + 1)}>›</button>
+              <button disabled={pagina >= totalPaginas} onClick={() => setAssinaturasPagina(totalPaginas)}>»</button>
+            </div>
+          </div>
+        </section>
+
+        {showModalVisualizar && tvboxSelecionado && (
+          <div className="tvbox-assinaturas-modal-backdrop" role="presentation" onClick={() => setShowModalVisualizar(false)}>
+            <section className="tvbox-modal tvbox-assinaturas-detail-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+              <header className="tvbox-modal__header">
+                <div><span>DETALHES DA ASSINATURA</span><h2>{tvboxSelecionado.assinatura}</h2><b className={`tvbox-modal__status tvbox-modal__status--${tvboxSelecionado.status}`}>{tvboxSelecionado.status}</b></div>
+                <button onClick={() => setShowModalVisualizar(false)} aria-label="Fechar detalhes">×</button>
+              </header>
+              <div className="tvbox-modal__content tvbox-assinaturas-detail-content">
+                <div className="tvbox-assinaturas-detail-grid">
+                  <div><small>STATUS</small><strong>{tvboxSelecionado.status}</strong></div>
+                  <div><small>DIA DE VENCIMENTO</small><strong>{tvboxSelecionado.renovacaoDia || 'Não definido'}</strong></div>
+                  <div><small>LOGIN</small><strong>{tvboxSelecionado.login}</strong></div>
+                  <div>
+                    <small>SENHA</small>
+                    <div className="tvbox-detail-password">
+                      <strong>{senhasVisiveis.has(tvboxSelecionado.id) ? tvboxSelecionado.senha : '••••••••'}</strong>
+                      <button
+                        type="button"
+                        className="tvbox-table-password-toggle"
+                        onClick={() => alternarVisibilidadeSenha(tvboxSelecionado.id)}
+                        aria-label={senhasVisiveis.has(tvboxSelecionado.id) ? 'Ocultar senha' : 'Mostrar senha'}
+                        title={senhasVisiveis.has(tvboxSelecionado.id) ? 'Ocultar senha' : 'Mostrar senha'}
+                      >
+                        {senhasVisiveis.has(tvboxSelecionado.id) ? '◉' : '◌'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <h3>Vínculos e aparelhos</h3>
+                <div className="tvbox-assinaturas-slots">
+                  {tvboxSelecionado.equipamentos.map((eq, index) => (
+                    <div key={`${tvboxSelecionado.id}-slot-${index}`}>
+                      <span>Slot {index + 1}</span>
+                      <strong>{eq.cliente_nome || eq.cliente || 'Disponível'}</strong>
+                      <small>NDS: {eq.nds || 'Não informado'}</small>
+                      <small>Situação: {eq.cliente_id || eq.clienteId ? 'Ocupado' : 'Disponível'}</small>
+                    </div>
+                  ))}
+                </div>
+                <h3>Informações de renovação</h3>
+                <div className="tvbox-assinaturas-renewal-summary">
+                  <span>Próxima renovação <b>{tvboxSelecionado.dataRenovacao || 'Não definida'}</b></span>
+                  <span>Última renovação <b>{tvboxSelecionado.ultimaRenovacao || 'Não registrada'}</b></span>
+                </div>
+              </div>
+              <footer className="tvbox-modal__footer">
+                <button onClick={() => setShowModalVisualizar(false)}>Fechar</button>
+                {tvboxPermissions.edit && <button onClick={() => { setShowModalVisualizar(false); abrirModalEditar(tvboxSelecionado); }}>Editar assinatura</button>}
+                {tvboxPermissions.renew && <button onClick={() => { setShowModalVisualizar(false); abrirModalRenovar(tvboxSelecionado); }}>Renovar</button>}
+                {tvboxPermissions.delete && <button onClick={() => excluirAssinaturaTvBox(tvboxSelecionado)}>Excluir</button>}
+              </footer>
+            </section>
+          </div>
+        )}
+      </div>
+    );
+  })() : null;
 
   if (loading) {
     return (
@@ -2979,8 +3961,37 @@ export default function TvBoxPage() {
     );
   }
 
+  if (auditOnly) {
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
+        <div style={{ marginBottom: 22 }}>
+          <span className="tvbox-assinaturas-eyebrow">ADMINISTRAÇÃO</span>
+          <h1 style={{ margin: '7px 0 5px', color: '#172033' }}>Painel de Controle</h1>
+          <p style={{ margin: 0, color: '#64748b' }}>Ferramentas administrativas para diagnóstico e manutenção do módulo TV Box.</p>
+        </div>
+        <section style={{ padding: 22, border: '1px solid #e5eaf2', borderRadius: 14, background: '#fff', boxShadow: '0 5px 16px rgba(15,23,42,.04)' }}>
+          <h2 style={{ margin: 0, color: '#1e293b', fontSize: 18 }}>Manutenção TV Box</h2>
+          <p style={{ color: '#64748b', fontSize: 13 }}>Execute diagnósticos sem alterar dados. Correções identificadas exigem confirmação explícita.</p>
+          <button onClick={() => setShowAuditoriaTvBox(true)} style={{ minHeight: 40, padding: '0 14px', border: 0, borderRadius: 9, color: '#fff', background: '#2563eb', cursor: 'pointer', fontWeight: 800 }}>
+            Executar Auditoria TV Box
+          </button>
+        </section>
+        <TvBoxAuditoriaModal
+          open={showAuditoriaTvBox}
+          onClose={() => setShowAuditoriaTvBox(false)}
+          loading={auditoriaTvBoxLoading}
+          result={auditoriaTvBoxResult}
+          onRun={runAuditoriaTvBox}
+          onApplyFix={aplicarCorrecoesAuditoria}
+          fixCount={auditoriaTvBoxResult?.totals.assinaturasSemDeviceId || 0}
+        />
+      </div>
+    );
+  }
+
   return (
     <>
+      <div style={view !== 'legacy' ? { display: 'none' } : undefined}>
       <div style={{ padding: '20px', width: '100%', maxWidth: 'none' }}>
         {/* Banner Informativo */}
         <div style={{
@@ -3371,7 +4382,7 @@ export default function TvBoxPage() {
             />
           </div>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <button
+            {tvboxPermissions.create && <button
               onClick={() => setShowModalNovaAssinatura(true)}
               style={{
                 padding: '12px 16px',
@@ -3396,7 +4407,7 @@ export default function TvBoxPage() {
               }}
             >
               ➕ Nova Assinatura
-            </button>
+            </button>}
             <button
               onClick={() => setShowAuditoriaTvBox(true)}
               style={{
@@ -3425,7 +4436,7 @@ export default function TvBoxPage() {
               📋 Auditoria TV Box
             </button>
             <button
-              onClick={() => setShowModalCredito(true)}
+              onClick={abrirModalCredito}
               style={{
                 padding: '12px 16px',
                 backgroundColor: '#6b7280',
@@ -3485,6 +4496,8 @@ export default function TvBoxPage() {
           loading={auditoriaTvBoxLoading}
           result={auditoriaTvBoxResult}
           onRun={runAuditoriaTvBox}
+          onApplyFix={aplicarCorrecoesAuditoria}
+          fixCount={auditoriaTvBoxResult?.totals.assinaturasSemDeviceId || 0}
         />
 
         {/* Tabela de TV Boxes */}
@@ -3932,7 +4945,7 @@ export default function TvBoxPage() {
                       }}>
                         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
                           <button
-                            onClick={() => abrirModalEditar(tvbox)}
+                            onClick={() => tvboxPermissions.edit ? abrirModalEditar(tvbox) : (setTvboxSelecionado(tvbox), setShowModalVisualizar(true))}
                             disabled={executandoTarefa}
                             style={{
                               padding: '10px 16px',
@@ -3964,43 +4977,24 @@ export default function TvBoxPage() {
                               }
                             }}
                           >
-                            👁️ Visualizar/Editar
+                            {tvboxPermissions.edit ? '👁️ Visualizar/Editar' : '👁️ Visualizar'}
                           </button>
-                          <button
-                            onClick={() => abrirModalRenovar(tvbox)}
+                          {tvboxPermissions.delete && <button
+                            onClick={() => excluirAssinaturaTvBox(tvbox)}
                             disabled={executandoTarefa}
                             style={{
                               padding: '10px 16px',
-                              backgroundColor: executandoTarefa ? '#6b7280' : '#10b981',
+                              backgroundColor: '#dc2626',
                               color: 'white',
                               border: 'none',
                               borderRadius: '8px',
                               cursor: executandoTarefa ? 'not-allowed' : 'pointer',
                               fontSize: '13px',
-                              fontWeight: '600',
-                              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                              transition: 'all 0.2s ease',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px'
-                            }}
-                            onMouseEnter={(e) => {
-                              if (!executandoTarefa) {
-                                e.currentTarget.style.backgroundColor = '#059669';
-                                e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)';
-                                e.currentTarget.style.transform = 'translateY(-1px)';
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              if (!executandoTarefa) {
-                                e.currentTarget.style.backgroundColor = '#10b981';
-                                e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
-                                e.currentTarget.style.transform = 'translateY(0)';
-                              }
+                              fontWeight: '600'
                             }}
                           >
-                            🔄 Renovar
-                          </button>
+                            Excluir
+                          </button>}
                         </div>
                       </td>
                     </tr>
@@ -4126,10 +5120,15 @@ export default function TvBoxPage() {
         </div>
         </div>
       </div>
+      </div>
+
+      {renovacoesView}
+      {aparelhosView}
+      {assinaturasView}
 
       {/* Modal de Edição */}
       {showModalEditar && tvboxEditando && (
-        <div style={{
+        <div className="tvbox-edit-modal-backdrop" style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -4144,7 +5143,7 @@ export default function TvBoxPage() {
           fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
           padding: '20px'
         }}>
-          <div style={{
+          <div className="tvbox-modal tvbox-edit-modal" style={{
             backgroundColor: 'white',
             borderRadius: '20px',
             padding: '0',
@@ -4157,7 +5156,7 @@ export default function TvBoxPage() {
             margin: '0 auto' // Centralizar em telas pequenas
           }}>
             {/* Header */}
-            <div style={{
+            <div className="tvbox-modal__header tvbox-edit-modal__header" style={{
               background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
               padding: '32px',
               color: 'white',
@@ -4174,7 +5173,7 @@ export default function TvBoxPage() {
                 borderRadius: '50%',
                 filter: 'blur(40px)'
               }} />
-              <div style={{
+              <div className="tvbox-modal-header-row" style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -4189,7 +5188,7 @@ export default function TvBoxPage() {
                     color: 'white',
                     textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
                   }}>
-                    ✏️ Editar Assinatura
+                    Editar assinatura
                   </h2>
                   <p style={{
                     margin: 0,
@@ -4201,7 +5200,9 @@ export default function TvBoxPage() {
                   </p>
                 </div>
                 <button
+                  className="tvbox-modal-close"
                   onClick={() => setShowModalEditar(false)}
+                  aria-label="Fechar edição da assinatura"
                   style={{
                     background: 'rgba(255, 255, 255, 0.2)',
                     border: 'none',
@@ -4232,7 +5233,7 @@ export default function TvBoxPage() {
             </div>
 
             {/* Conteúdo do Modal */}
-            <div style={{
+            <div className="tvbox-modal__content tvbox-edit-modal__content" style={{
               padding: '40px',
               maxHeight: 'calc(90vh - 140px)',
               overflow: 'auto'
@@ -4241,7 +5242,7 @@ export default function TvBoxPage() {
             {/* Conteúdo */}
             <div style={{ marginBottom: '24px' }}>
               {/* Seção A: Dados da Assinatura */}
-              <div style={{ marginBottom: '24px' }}>
+              <div className="tvbox-form-section tvbox-form-section--subscription" style={{ marginBottom: '24px' }}>
                 <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#374151' }}>
                   (A) Dados da Assinatura
                 </h3>
@@ -4326,20 +5327,31 @@ export default function TvBoxPage() {
                     <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151' }}>
                       Senha
                     </label>
-                    <input
-                      type="text"
-                      value={tvboxEditando.senha}
-                      onChange={(e) => atualizarCampo('senha', e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        backgroundColor: 'white',
-                        color: '#111827'
-                      }}
-                    />
+                    <div className="tvbox-password-field">
+                      <input
+                        type={senhaEditandoVisivel ? 'text' : 'password'}
+                        value={tvboxEditando.senha}
+                        onChange={(e) => atualizarCampo('senha', e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '12px 48px 12px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          backgroundColor: 'white',
+                          color: '#111827'
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="tvbox-password-toggle"
+                        onClick={() => setSenhaEditandoVisivel((visible) => !visible)}
+                        aria-label={senhaEditandoVisivel ? 'Ocultar senha' : 'Mostrar senha'}
+                        title={senhaEditandoVisivel ? 'Ocultar senha' : 'Mostrar senha'}
+                      >
+                        {senhaEditandoVisivel ? '◉' : '◌'}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -4420,7 +5432,7 @@ export default function TvBoxPage() {
               </div>
 
               {/* Seção B: Aparelhos */}
-              <div style={{ marginBottom: '24px' }}>
+              <div className="tvbox-form-section tvbox-form-section--devices" style={{ marginBottom: '24px' }}>
                 <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#374151' }}>
                   (B) Aparelhos
                 </h3>
@@ -4729,44 +5741,49 @@ export default function TvBoxPage() {
                         }
 
                         const items = [...finalHist].reverse();
+                        const historicoAberto = historicoSlotsAbertos.has(index);
                         return (
-                          <div style={{
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '10px',
-                            overflow: 'hidden',
-                            backgroundColor: '#f8fafc'
-                          }}>
-                            {historicoLegadoLoading && (
-                              <div style={{ padding: '10px 12px', fontSize: '12px', color: '#475569', backgroundColor: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
-                                Carregando histórico do LEGADO...
+                          <div className="tvbox-history-panel">
+                            <div className="tvbox-history-summary">
+                              <span>{items.length} registro(s) preservado(s)</span>
+                              <button
+                                type="button"
+                                onClick={() => setHistoricoSlotsAbertos((current) => {
+                                  const next = new Set(current);
+                                  if (next.has(index)) next.delete(index);
+                                  else next.add(index);
+                                  return next;
+                                })}
+                                aria-expanded={historicoAberto}
+                              >
+                                {historicoAberto ? 'Ocultar histórico' : 'Ver histórico'}
+                              </button>
+                            </div>
+                            {historicoAberto && (
+                              <div className="tvbox-history-table-wrap">
+                                {historicoLegadoLoading && (
+                                  <div className="tvbox-history-loading">Carregando histórico do LEGADO...</div>
+                                )}
+                                <table>
+                                  <thead>
+                                    <tr><th>Cliente</th><th>De</th><th>Até</th></tr>
+                                  </thead>
+                                  <tbody>
+                                    {items.map((h: any, idx: number) => (
+                                      <tr key={idx}>
+                                        <td>
+                                          <strong>{String(h?.cliente_nome || '—').replace(' (LEGADO)', '')}</strong>
+                                          {String(h?.cliente_nome || '').includes('(LEGADO)') && <span className="tvbox-history-badge">LEGADO</span>}
+                                          {!String(h?.cliente_nome || '').includes('(LEGADO)') && !h?.fim && <span className="tvbox-history-badge is-current">ATUAL</span>}
+                                        </td>
+                                        <td>{toDateStr(h?.inicio)}</td>
+                                        <td>{h?.fim ? toDateStr(h?.fim) : '—'}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
                               </div>
                             )}
-                            <div style={{ maxHeight: '200px', overflow: 'auto' }}>
-                              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                <thead>
-                                  <tr style={{ backgroundColor: '#f1f5f9' }}>
-                                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '12px', color: '#475569', borderBottom: '1px solid #e2e8f0' }}>Cliente</th>
-                                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '12px', color: '#475569', borderBottom: '1px solid #e2e8f0' }}>De</th>
-                                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '12px', color: '#475569', borderBottom: '1px solid #e2e8f0' }}>Até</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {items.map((h: any, idx: number) => (
-                                    <tr key={idx} style={{ borderBottom: idx < items.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
-                                      <td style={{ padding: '10px 12px', fontSize: '13px', color: '#0f172a', fontWeight: 700 }}>
-                                        {String(h?.cliente_nome || '—')}
-                                      </td>
-                                      <td style={{ padding: '10px 12px', fontSize: '13px', color: '#334155' }}>
-                                        {toDateStr(h?.inicio)}
-                                      </td>
-                                      <td style={{ padding: '10px 12px', fontSize: '13px', color: '#334155' }}>
-                                        {h?.fim ? toDateStr(h?.fim) : 'Atual'}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
                           </div>
                         );
                       })()}
@@ -4777,7 +5794,7 @@ export default function TvBoxPage() {
             </div>
 
             {/* Botões */}
-            <div style={{
+            <div className="tvbox-modal__footer tvbox-edit-modal__footer" style={{
               display: 'flex',
               gap: '12px',
               justifyContent: 'flex-end',
@@ -4813,7 +5830,7 @@ export default function TvBoxPage() {
                   fontWeight: '600'
                 }}
               >
-                {executandoTarefa ? '💾 Salvando...' : '💾 Salvar Alterações'}
+                {executandoTarefa ? 'Salvando...' : 'Salvar alterações'}
               </button>
             </div>
             </div>
@@ -5297,7 +6314,7 @@ export default function TvBoxPage() {
                       borderRadius: '6px',
                       display: 'inline-block'
                     }}>
-                      {tvboxParaRenovar.senha}
+                      ••••••••
                     </div>
                   </div>
 
@@ -5531,98 +6548,114 @@ export default function TvBoxPage() {
 
       {/* Modal de Adicionar Créditos UniTV */}
       {showModalCredito && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}
-        onClick={() => setShowModalCredito(false)}
-        >
-          <div style={{
-            backgroundColor: 'white',
-            width: '100%',
-            maxWidth: '420px',
-            borderRadius: '12px',
-            boxShadow: '0 20px 40px rgba(0,0,0,.2)'
-          }}
-          onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{
-              padding: '16px 20px',
-              borderBottom: '1px solid #e5e7eb',
-              background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)',
-              color: 'white',
-              fontWeight: 700
-            }}>Adicionar Créditos UniTV</div>
-            <div style={{ padding: '20px' }}>
-              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Quantidade de créditos</label>
-              <input
-                type="number"
-                value={quantidadeCredito}
-                onChange={(e) => setQuantidadeCredito(e.target.value)}
-                placeholder="Ex: 10"
-                style={{ width: '100%', padding: '12px 14px', border: '1px solid #d1d5db', borderRadius: 8 }}
-              />
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 16 }}>
-                <button onClick={() => setShowModalCredito(false)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', cursor: 'pointer' }}>Cancel</button>
-                <button
-                  onClick={() => {
-                    if (quantidadeCredito && parseInt(quantidadeCredito) > 0) {
-                      const quantidade = parseInt(quantidadeCredito);
-                      // Atualiza local
-                      setCreditosDisponiveis(prev => prev + quantidade);
-                      const registro = { quantidade, data: new Date() };
-                      setHistoricoCreditos(prev => [...prev, registro]);
+        (() => {
+          const parseMoeda = (value: string) => {
+            const texto = String(value || '').replace(/[R$\s]/g, '').trim();
+            if (!texto) return 0;
+            return Number(texto.includes(',') ? texto.replace(/\./g, '').replace(',', '.') : texto);
+          };
+          const valorTotal = parseMoeda(valorTotalCredito);
+          const quantidade = Number.isFinite(valorTotal) && valorTotal > 0 && valorTotal % TVBOX_RENEWAL_EXPENSE_VALUE === 0
+            ? valorTotal / TVBOX_RENEWAL_EXPENSE_VALUE
+            : 0;
+          const custoUnitario = TVBOX_RENEWAL_EXPENSE_VALUE;
+          const novoSaldo = creditosDisponiveis + (Number.isFinite(quantidade) ? quantidade : 0);
+          const deficit = Math.max(0, creditosNecessariosAtuais - creditosDisponiveis);
+          const entradaValida = Number.isInteger(quantidade) && quantidade > 0 && Number.isFinite(valorTotal) && valorTotal > 0;
+          const moeda = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-                      // Persiste no Firestore
-                      (async () => {
-                        try {
-                          console.log('💾 Salvando créditos no Firestore...', { quantidade });
-                          const db = getDb();
-                          const ref = tenantConfigDoc(db, 'creditos_tvbox');
-                          await setDoc(
-                            ref,
-                            {
-                              disponiveis: increment(quantidade),
-                              historico: arrayUnion({ quantidade, data: Date.now() })
-                            },
-                            { merge: true }
-                          );
-                          console.log('✅ Créditos salvos no Firestore com sucesso!');
-                        } catch (e) {
-                          console.error('❌ Erro ao salvar créditos no Firestore:', e);
-                        }
-                      })();
-                      setQuantidadeCredito('');
-                      setShowModalCredito(false);
-                      setToastMessage(`✅ ${quantidadeCredito} créditos adicionados com sucesso!`);
-                      setShowToast(true);
-                      setTimeout(() => setShowToast(false), 1000);
-                    } else {
-                      setToastMessage('❌ Digite uma quantidade válida de créditos!');
-                      setShowToast(true);
-                      setTimeout(() => setShowToast(false), 1000);
-                    }
-                  }}
-                  style={{ padding: '8px 12px', borderRadius: 8, border: 'none', background: '#34d399', color: 'white', cursor: 'pointer', fontWeight: 600 }}
-                >OK</button>
-                <button
-                  onClick={() => { 
-                    setShowCredenciaisUniTV(true);
-                    window.open('https://panel-web.starhome.vip/#/login', '_blank'); 
-                    setShowModalCredito(false); 
-                  }}
-                  style={{ padding: '8px 12px', borderRadius: 8, border: 'none', background: '#a78bfa', color: 'white', cursor: 'pointer', fontWeight: 600 }}
-                >Site</button>
-              </div>
+          const salvarEntrada = async () => {
+            if (!entradaValida || salvandoCredito) {
+              setToastMessage('Informe um valor maior que zero e múltiplo de R$ 10,00. A cada R$ 10,00 é gerado 1 crédito.');
+              setShowToast(true);
+              return;
+            }
+            setSalvandoCredito(true);
+            try {
+              const db = getDb();
+              const ref = tenantConfigDoc(db, 'creditos_tvbox');
+              const registro = {
+                quantidade,
+                data: Date.now(),
+                origem: 'entrada_creditos',
+                valorTotal,
+                custoUnitario
+              };
+              await setDoc(ref, {
+                disponiveis: increment(quantidade),
+                historico: arrayUnion(registro)
+              }, { merge: true });
+              setCreditosDisponiveis((prev) => prev + quantidade);
+              setHistoricoCreditos((prev) => [...prev, { ...registro, data: new Date(registro.data) }]);
+              setQuantidadeCredito('');
+              setValorTotalCredito('');
+              setShowModalCredito(false);
+              setToastMessage(`${quantidade} créditos adicionados com sucesso.`);
+              setShowToast(true);
+              setTimeout(() => setShowToast(false), 2500);
+            } catch (error: any) {
+              setToastMessage(error?.message || 'Não foi possível registrar a entrada de créditos.');
+              setShowToast(true);
+            } finally {
+              setSalvandoCredito(false);
+            }
+          };
+
+          return (
+            <div className="tvbox-credit-modal-backdrop" onClick={() => !salvandoCredito && setShowModalCredito(false)}>
+              <section className="tvbox-modal tvbox-credit-modal" role="dialog" aria-modal="true" aria-labelledby="tvbox-credit-modal-title" onClick={(event) => event.stopPropagation()}>
+                <header className="tvbox-modal__header">
+                  <div>
+                    <span>CRÉDITOS TV BOX</span>
+                    <h2 id="tvbox-credit-modal-title">Adicionar créditos TV Box</h2>
+                    <p>Registre uma nova entrada de créditos para as renovações.</p>
+                  </div>
+                  <button type="button" onClick={() => !salvandoCredito && setShowModalCredito(false)} aria-label="Fechar modal de créditos">×</button>
+                </header>
+                <div className="tvbox-modal__content tvbox-credit-modal__content">
+                  <div className="tvbox-credit-current-summary">
+                    <div><small>Saldo atual</small><strong>{creditosDisponiveis} créditos</strong></div>
+                    <div><small>Necessários agora</small><strong>{creditosNecessariosAtuais} créditos</strong></div>
+                    <div><small>Déficit atual</small><strong>{deficit} créditos</strong></div>
+                  </div>
+                  <section className="tvbox-credit-form-section">
+                    <h3>Dados da entrada</h3>
+                    <div className="tvbox-credit-form-grid">
+                      <label>Valor total da compra *
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={valorTotalCredito}
+                          onChange={(event) => setValorTotalCredito(event.target.value)}
+                          onBlur={() => {
+                            const valor = parseMoeda(valorTotalCredito);
+                            if (valor > 0) setValorTotalCredito(moeda(valor));
+                          }}
+                          placeholder="R$ 500,00"
+                        />
+                      </label>
+                    </div>
+                    <div className="tvbox-credit-unit-cost"><span>Conversão automática</span><strong>{entradaValida ? `${quantidade} créditos` : '—'}</strong><small>1 crédito a cada R$ 10,00. O sistema calcula a quantidade automaticamente.</small></div>
+                  </section>
+                  <section className="tvbox-credit-entry-summary">
+                    <h3>Resumo da entrada</h3>
+                    <div><span>Créditos adicionados</span><strong>{Number.isFinite(quantidade) ? quantidade : 0}</strong></div>
+                    <div><span>Valor informado</span><strong>{Number.isFinite(valorTotal) && valorTotal > 0 ? moeda(valorTotal) : '—'}</strong></div>
+                    <div><span>Novo saldo</span><strong>{novoSaldo} créditos</strong></div>
+                    <div><span>Saldo estimado após atender a prioridade</span><strong>{Math.max(0, novoSaldo - creditosNecessariosAtuais)} créditos</strong></div>
+                  </section>
+                  <p className="tvbox-credit-accounting-note">A entrada registra quantidade e custo no histórico de créditos. Não cria despesa de compra e não altera o custo fixo de R$ 10,00 das despesas de renovação.</p>
+                </div>
+                <footer className="tvbox-modal__footer tvbox-credit-modal__footer">
+                  <button type="button" className="tvbox-credit-panel-button" onClick={() => window.open('https://panel-web.revenda.watch/#/account/list', '_blank')}>↗ Abrir painel UniTV</button>
+                  <span />
+                  <button type="button" onClick={() => setShowModalCredito(false)} disabled={salvandoCredito}>Cancelar</button>
+                  <button type="button" onClick={salvarEntrada} disabled={salvandoCredito || !entradaValida}>{salvandoCredito ? 'Adicionando...' : `Adicionar ${Number.isFinite(quantidade) ? quantidade : ''} créditos`}</button>
+                </footer>
+              </section>
             </div>
-          </div>
-        </div>
+          );
+        })()
       )}
 
       {/* Modal: Aparelhos Extraviados/Defeito */}
@@ -6024,7 +7057,7 @@ export default function TvBoxPage() {
             ) : (
               <div>
                 <div style={{ marginBottom: '16px' }}>
-                  <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '8px' }}>Total de créditos adicionados: <strong>{historicoCreditos.reduce((sum, item) => sum + item.quantidade, 0)}</strong></div>
+                  <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '8px' }}>Saldo líquido movimentado: <strong>{historicoCreditos.reduce((sum, item) => sum + Number(item.quantidade || 0), 0)}</strong></div>
                   <div style={{ fontSize: '14px', color: '#6b7280' }}>Créditos disponíveis atualmente: <strong>{creditosDisponiveis}</strong></div>
                 </div>
                 
@@ -6042,22 +7075,35 @@ export default function TvBoxPage() {
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <div style={{
-                          backgroundColor: '#10b981',
+                          backgroundColor: Number(item.quantidade) >= 0 ? '#10b981' : '#dc2626',
                           color: 'white',
                           padding: '8px 12px',
                           borderRadius: '20px',
                           fontSize: '14px',
                           fontWeight: '600'
                         }}>
-                          +{item.quantidade}
+                          {Number(item.quantidade) >= 0 ? '+' : ''}{item.quantidade}
                         </div>
                         <div>
                           <div style={{ fontSize: '16px', fontWeight: '500', color: '#111827' }}>
-                            {item.quantidade} crédito{item.quantidade > 1 ? 's' : ''} adicionado{item.quantidade > 1 ? 's' : ''}
+                            {Number(item.quantidade) >= 0 ? 'ENTRADA' : 'CONSUMO'} · {Math.abs(Number(item.quantidade))} crédito{Math.abs(Number(item.quantidade)) !== 1 ? 's' : ''}
                           </div>
                           <div style={{ fontSize: '14px', color: '#6b7280' }}>
                             {item.data.toLocaleDateString('pt-BR')} às {item.data.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
+                            {item.assinaturaId ? ` · Assinatura ${item.assinaturaId}` : ''}
+                            {item.competencia ? ` · ${item.competencia}` : ''}
                           </div>
+                          {Number(item.quantidade) > 0 && (
+                            <div style={{ marginTop: 4, color: '#64748b', fontSize: 12 }}>
+                              Valor da compra: {typeof item.valorTotal === 'number' ? item.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'não informado'}
+                              {typeof item.custoUnitario === 'number' && ` · ${item.custoUnitario.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/crédito`}
+                            </div>
+                          )}
+                          {Number(item.quantidade) < 0 && (
+                            <div style={{ marginTop: 4, color: '#64748b', fontSize: 12 }}>
+                              Custo apropriado: R$ {TVBOX_RENEWAL_EXPENSE_VALUE.toFixed(2).replace('.', ',')}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

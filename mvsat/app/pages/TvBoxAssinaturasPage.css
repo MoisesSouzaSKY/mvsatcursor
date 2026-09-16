@@ -1,0 +1,2347 @@
+.tvbox-assinaturas-page {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 28px 32px 48px;
+  color: #172033;
+  box-sizing: border-box;
+}
+
+.tvbox-assinaturas-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.tvbox-assinaturas-eyebrow {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+
+.tvbox-assinaturas-header h1 {
+  margin: 6px 0 5px;
+  color: #172033;
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1.1;
+}
+
+.tvbox-assinaturas-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.tvbox-module-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: -6px 0 20px;
+  padding: 4px;
+  border: 1px solid #e5eaf2;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.tvbox-module-tabs a {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  border-radius: 7px;
+  color: #64748b;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.tvbox-module-tabs a:hover {
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.tvbox-module-tabs a.is-active {
+  color: #1d4ed8;
+  background: #fff;
+  box-shadow: 0 2px 7px rgba(15, 23, 42, .08);
+}
+
+.tvbox-assinaturas-primary {
+  min-height: 42px;
+  padding: 0 17px;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  background: #2563eb;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, .2);
+  cursor: pointer;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.tvbox-assinaturas-primary:hover {
+  background: #1d4ed8;
+}
+
+.tvbox-assinaturas-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.tvbox-assinaturas-stat {
+  min-height: 112px;
+  padding: 17px;
+  border: 1px solid #e5eaf2;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 5px 16px rgba(15, 23, 42, .05);
+}
+
+.tvbox-assinaturas-stat span,
+.tvbox-assinaturas-stat small {
+  display: block;
+}
+
+.tvbox-assinaturas-stat span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+
+.tvbox-assinaturas-stat strong {
+  display: block;
+  margin: 9px 0 3px;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.tvbox-assinaturas-stat small {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.tvbox-assinaturas-stat--blue strong { color: #2563eb; }
+.tvbox-assinaturas-stat--green strong { color: #059669; }
+.tvbox-assinaturas-stat--violet strong { color: #7c3aed; }
+.tvbox-assinaturas-stat--amber strong { color: #d97706; }
+.tvbox-assinaturas-stat--slate strong { color: #475569; }
+.tvbox-assinaturas-stat--red strong { color: #dc2626; }
+
+.tvbox-aparelhos-page {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 28px 32px 48px;
+  color: #172033;
+  box-sizing: border-box;
+}
+
+.tvbox-aparelhos-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.tvbox-aparelhos-header h1 {
+  margin: 6px 0 5px;
+  color: #172033;
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1.1;
+}
+
+.tvbox-aparelhos-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.tvbox-aparelhos-occurrences-button {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  color: #991b1b;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.tvbox-aparelhos-occurrences-button:hover {
+  background: #fef2f2;
+}
+
+.tvbox-aparelhos-stats {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.tvbox-aparelhos-toolbar {
+  margin-top: 20px;
+}
+
+.tvbox-aparelhos-table td {
+  min-width: 140px;
+}
+
+.tvbox-aparelhos-identifier {
+  color: #334155;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  white-space: nowrap;
+}
+
+.tvbox-aparelhos-identifier b {
+  display: inline-block;
+  width: 35px;
+  color: #94a3b8;
+  font-family: inherit;
+  font-size: 10px;
+}
+
+.tvbox-assinaturas-status--alugado {
+  color: #92400e;
+  background: #fffbeb;
+}
+
+.tvbox-assinaturas-status--disponivel {
+  color: #475569;
+  background: #f1f5f9;
+}
+
+.tvbox-assinaturas-status--extraviado {
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+.tvbox-assinaturas-status--defeituoso {
+  color: #6d28d9;
+  background: #f5f3ff;
+}
+
+.tvbox-aparelhos-link-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tvbox-aparelhos-link-summary span {
+  padding: 12px;
+  border: 1px solid #e5eaf2;
+  border-radius: 10px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.tvbox-aparelhos-link-summary b {
+  display: block;
+  margin-top: 5px;
+  overflow: hidden;
+  color: #1e293b;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tvbox-aparelhos-history-empty {
+  padding: 13px;
+  border-radius: 9px;
+  color: #64748b;
+  background: #f8fafc;
+  font-size: 12px;
+}
+
+.tvbox-aparelhos-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tvbox-aparelhos-history-list > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 13px;
+  border-left: 3px solid #93c5fd;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.tvbox-aparelhos-history-list b {
+  color: #334155;
+  font-size: 12px;
+}
+
+.tvbox-aparelhos-history-list span {
+  color: #64748b;
+  font-size: 11px;
+}
+
+@media (max-width: 1050px) {
+  .tvbox-aparelhos-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .tvbox-aparelhos-page {
+    padding: 20px 14px 36px;
+  }
+
+  .tvbox-aparelhos-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tvbox-aparelhos-occurrences-button {
+    align-self: flex-start;
+  }
+
+  .tvbox-aparelhos-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tvbox-aparelhos-link-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .tvbox-aparelhos-history-list > div {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+.tvbox-renovacoes-rich-card {
+  position: relative;
+  min-height: 142px;
+  padding: 16px;
+  border: 1px solid #e5eaf2;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 5px 16px rgba(15, 23, 42, .05);
+}
+
+.tvbox-renovacoes-rich-card > span {
+  display: block;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.tvbox-renovacoes-rich-card > strong {
+  display: block;
+  margin: 9px 0 7px;
+  color: #172033;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.tvbox-renovacoes-rich-card > div {
+  color: #475569;
+  font-size: 11px;
+}
+
+.tvbox-renovacoes-rich-card > small {
+  display: block;
+  margin-top: 10px;
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+.tvbox-renovacoes-rich-card.is-warning {
+  border-color: #fed7aa;
+  background: #fffaf5;
+}
+
+.tvbox-renovacoes-rich-card.is-warning > strong {
+  color: #c2410c;
+}
+
+.tvbox-renovacoes-rich-card.is-credit {
+  border-color: #bfdbfe;
+  background: #f8fbff;
+}
+
+.tvbox-renovacoes-rich-card.is-credit > strong {
+  color: #2563eb;
+}
+
+.tvbox-renovacoes-rich-card.is-neutral {
+  background: #f8fafc;
+}
+
+.tvbox-renovacoes-rich-card button {
+  min-height: 29px;
+  margin-top: 9px;
+  padding: 0 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 7px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.tvbox-renovacoes-progress {
+  height: 5px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.tvbox-renovacoes-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #059669;
+}
+
+.tvbox-renovacoes-alerts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tvbox-renovacoes-alerts > div {
+  display: flex;
+  min-height: 118px;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 12px;
+}
+
+.tvbox-renovacoes-alerts > div strong {
+  font-size: 23px;
+  line-height: 1;
+}
+
+.tvbox-renovacoes-alerts > div span {
+  color: inherit;
+  font-size: 11px;
+}
+
+.tvbox-renovacoes-alerts > div button {
+  min-height: 28px;
+  margin-top: auto;
+  padding: 0 9px;
+  border: 1px solid currentColor;
+  border-radius: 7px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.tvbox-renovacoes-clear-filter {
+  min-height: 38px;
+  padding: 0 11px;
+  border: 1px solid #dbe2ec;
+  border-radius: 8px;
+  color: #64748b;
+  background: #fff;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.tvbox-renovacoes-clear-filter:hover {
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.tvbox-renovacoes-filter-chips button b {
+  margin-left: 4px;
+  color: inherit;
+}
+
+.tvbox-renovacoes-due-context {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 10px;
+}
+
+.tvbox-renovacoes-login {
+  display: block;
+  max-width: 150px;
+  overflow: hidden;
+  color: #334155;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tvbox-credit-modal-backdrop {
+  position: fixed;
+  z-index: 1000001;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, .56);
+  backdrop-filter: blur(4px);
+}
+
+.tvbox-credit-modal {
+  width: min(720px, 100%) !important;
+  max-height: min(88vh, 760px) !important;
+}
+
+.tvbox-credit-modal__content {
+  background: #f8fafc;
+}
+
+.tvbox-credit-current-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.tvbox-credit-current-summary > div,
+.tvbox-credit-form-section,
+.tvbox-credit-entry-summary {
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.tvbox-credit-current-summary small {
+  display: block;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.tvbox-credit-current-summary strong {
+  display: block;
+  margin-top: 7px;
+  color: #172033;
+  font-size: 19px;
+}
+
+.tvbox-credit-form-section h3,
+.tvbox-credit-entry-summary h3 {
+  margin: 0 0 12px;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.tvbox-credit-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.tvbox-credit-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.tvbox-credit-form-grid > label:only-child {
+  grid-column: 1 / -1;
+}
+
+.tvbox-credit-form-grid input {
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  border: 1px solid #dbe2ec;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.tvbox-credit-form-grid input:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .1);
+  outline: none;
+}
+
+.tvbox-credit-unit-cost {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.tvbox-credit-unit-cost span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.tvbox-credit-unit-cost strong {
+  color: #1d4ed8;
+  font-size: 17px;
+}
+
+.tvbox-credit-unit-cost small {
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+.tvbox-credit-entry-summary {
+  margin-top: 12px;
+}
+
+.tvbox-credit-entry-summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid #eef2f7;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.tvbox-credit-entry-summary > div:last-child {
+  border-bottom: 0;
+}
+
+.tvbox-credit-entry-summary strong {
+  color: #172033;
+}
+
+.tvbox-credit-accounting-note {
+  margin: 12px 2px 0;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.tvbox-credit-modal__footer {
+  display: grid !important;
+  grid-template-columns: auto 1fr auto auto;
+}
+
+.tvbox-credit-modal__footer .tvbox-credit-panel-button {
+  border-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
+  background: #eff6ff !important;
+}
+
+.tvbox-credit-modal__footer button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+@media (max-width: 900px) {
+  .tvbox-renovacoes-alerts {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .tvbox-credit-current-summary,
+  .tvbox-credit-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tvbox-credit-unit-cost {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .tvbox-credit-modal__footer {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .tvbox-credit-modal__footer .tvbox-credit-panel-button {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Central operacional: prioridade por uso sem expor nomes de clientes. */
+.tvbox-renovacoes-filter-chips {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.tvbox-renovacoes-filter-chips button {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid #dbe2ec;
+  border-radius: 999px;
+  color: #64748b;
+  background: #fff;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.tvbox-renovacoes-filter-chips button:hover,
+.tvbox-renovacoes-filter-chips button.is-active {
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.tvbox-renovacoes-credit-overview {
+  min-width: 0;
+  flex: 1;
+}
+
+.tvbox-renovacoes-credit-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  margin: 9px 0 2px;
+}
+
+.tvbox-renovacoes-credit-metrics strong {
+  display: flex !important;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0 !important;
+  color: #172033 !important;
+  font-size: 21px;
+}
+
+.tvbox-renovacoes-credit-metrics small {
+  margin: 0 !important;
+  color: #64748b !important;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.tvbox-renovacoes-alerts .is-info {
+  border-color: #cbd5e1;
+  color: #475569;
+  background: #f8fafc;
+}
+
+.tvbox-renovacoes-usage {
+  display: inline-flex;
+  min-height: 27px;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 999px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.tvbox-renovacoes-usage--completo {
+  color: #047857;
+  background: #ecfdf5;
+}
+
+.tvbox-renovacoes-usage--sem-clientes {
+  color: #64748b;
+  background: #f1f5f9;
+}
+
+.tvbox-renovacoes-standby-note {
+  display: block;
+  margin-top: 5px;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.tvbox-renovacoes-status--standby {
+  color: #64748b;
+  background: #f1f5f9;
+}
+
+.tvbox-renovacoes-action.is-secondary {
+  border-color: #cbd5e1;
+  color: #64748b;
+  background: #f8fafc;
+}
+
+.tvbox-renovacoes-action.is-secondary:hover {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+}
+
+.tvbox-renovacoes-confirm-usage,
+.tvbox-renovacoes-confirm-warning {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 18px;
+  padding: 13px;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  color: #1e40af;
+  background: #eff6ff;
+}
+
+.tvbox-renovacoes-confirm-usage small,
+.tvbox-renovacoes-confirm-warning small {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+
+.tvbox-renovacoes-confirm-usage strong,
+.tvbox-renovacoes-confirm-warning strong {
+  font-size: 15px;
+}
+
+.tvbox-renovacoes-confirm-warning {
+  border-color: #e2e8f0;
+  color: #475569;
+  background: #f8fafc;
+}
+
+.tvbox-renovacoes-confirm-warning span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .tvbox-renovacoes-filter-chips {
+    margin-top: 8px;
+  }
+
+  .tvbox-renovacoes-filter-chips button {
+    flex: 1 1 130px;
+  }
+
+  .tvbox-renovacoes-credit-metrics {
+    gap: 14px;
+  }
+}
+
+.tvbox-renovacoes-page {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 28px 32px 48px;
+  color: #172033;
+  box-sizing: border-box;
+}
+
+.tvbox-renovacoes-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.tvbox-renovacoes-header h1 {
+  margin: 6px 0 5px;
+  color: #172033;
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1.1;
+}
+
+.tvbox-renovacoes-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.tvbox-renovacoes-credit-button,
+.tvbox-renovacoes-credit-actions button,
+.tvbox-renovacoes-action {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 9px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.tvbox-renovacoes-credit-button:hover,
+.tvbox-renovacoes-credit-actions button:hover {
+  background: #dbeafe;
+}
+
+.tvbox-renovacoes-competencia {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.tvbox-renovacoes-competencia > button {
+  min-width: 34px;
+  min-height: 34px;
+  border: 1px solid #dbe2ec;
+  border-radius: 8px;
+  color: #334155;
+  background: #fff;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.tvbox-renovacoes-competencia > strong {
+  min-width: 170px;
+  color: #334155;
+  font-size: 15px;
+  text-align: center;
+  text-transform: capitalize;
+}
+
+.tvbox-renovacoes-competencia > .is-current {
+  min-width: auto;
+  margin-left: 8px;
+  padding: 0 10px;
+  color: #2563eb;
+  background: #eff6ff;
+  font-size: 11px;
+}
+
+.tvbox-renovacoes-stats {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.tvbox-renovacoes-alerts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.tvbox-renovacoes-alerts > div {
+  display: flex;
+  min-height: 88px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.tvbox-renovacoes-alerts b {
+  font-size: 10px;
+  letter-spacing: .08em;
+}
+
+.tvbox-renovacoes-alerts > div strong {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.tvbox-renovacoes-alerts > div span {
+  text-align: center;
+}
+
+.tvbox-renovacoes-alerts > div button {
+  min-height: 24px;
+  margin-top: 4px;
+}
+
+.tvbox-renovacoes-alerts .is-danger {
+  border-color: #fecaca;
+  color: #991b1b;
+  background: #fef2f2;
+}
+
+.tvbox-renovacoes-alerts .is-warning {
+  border-color: #fed7aa;
+  color: #9a3412;
+  background: #fff7ed;
+}
+
+.tvbox-renovacoes-credit-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 16px 0;
+  padding: 15px 18px;
+  border: 1px solid #e5eaf2;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 5px 16px rgba(15, 23, 42, .04);
+}
+
+.tvbox-renovacoes-credit-strip span,
+.tvbox-renovacoes-credit-strip strong,
+.tvbox-renovacoes-credit-strip small {
+  display: block;
+}
+
+.tvbox-renovacoes-credit-strip span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .1em;
+}
+
+.tvbox-renovacoes-credit-strip strong {
+  margin-top: 4px;
+  color: #2563eb;
+  font-size: 20px;
+}
+
+.tvbox-renovacoes-credit-strip small {
+  margin-top: 3px;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.tvbox-renovacoes-credit-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tvbox-renovacoes-credit-actions button:last-child {
+  border-color: #dbe2ec;
+  color: #475569;
+  background: #fff;
+}
+
+.tvbox-renovacoes-table td {
+  min-width: 130px;
+  color: #475569;
+  font-weight: 400;
+}
+
+.tvbox-renovacoes-table td strong {
+  color: #334155;
+  font-weight: 500;
+}
+
+.tvbox-renovacoes-table td:first-child strong {
+  color: #1e293b;
+  font-weight: 650;
+}
+
+.tvbox-renovacoes-table td:nth-child(2) strong,
+.tvbox-renovacoes-table td:nth-child(4) strong {
+  font-weight: 500;
+}
+
+.tvbox-renovacoes-table td:nth-child(4) {
+  max-width: 210px;
+}
+
+.tvbox-renovacoes-clients {
+  overflow: hidden;
+  color: #334155;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tvbox-renovacoes-status--renovada {
+  color: #047857;
+  background: #ecfdf5;
+}
+
+.tvbox-renovacoes-status--atrasada,
+.tvbox-renovacoes-status--vence-hoje {
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+.tvbox-renovacoes-status--proximos {
+  color: #c2410c;
+  background: #fff7ed;
+}
+
+.tvbox-renovacoes-status--pendente {
+  color: #475569;
+  background: #f1f5f9;
+}
+
+.tvbox-renovacoes-action {
+  min-height: 32px;
+  border-color: #bbf7d0;
+  color: #047857;
+  background: #ecfdf5;
+}
+
+.tvbox-renovacoes-action:hover {
+  background: #d1fae5;
+}
+
+.tvbox-renovacoes-action:disabled {
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  background: #f8fafc;
+  cursor: not-allowed;
+}
+
+.tvbox-renovacoes-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 170px;
+  padding: 20px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.tvbox-renovacoes-state.is-error {
+  flex-direction: column;
+  gap: 8px;
+  color: #991b1b;
+}
+
+.tvbox-renovacoes-state button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #991b1b;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.tvbox-renovacoes-confirm-modal {
+  width: min(620px, 100%);
+  max-height: min(760px, calc(100vh - 40px));
+  overflow: auto;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, .28);
+}
+
+.tvbox-renovacoes-confirm-modal > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px;
+  color: #fff;
+  background: linear-gradient(135deg, #1d4ed8, #3730a3);
+}
+
+.tvbox-renovacoes-confirm-modal > header span {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  opacity: .78;
+}
+
+.tvbox-renovacoes-confirm-modal > header h2 {
+  margin: 7px 0 4px;
+  font-size: 23px;
+}
+
+.tvbox-renovacoes-confirm-modal > header p {
+  margin: 0;
+  opacity: .9;
+}
+
+.tvbox-renovacoes-confirm-modal > header button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  background: rgba(255, 255, 255, .16);
+  cursor: pointer;
+  font-size: 22px;
+}
+
+.tvbox-renovacoes-confirm-content {
+  padding: 24px;
+}
+
+.tvbox-renovacoes-confirm-grid,
+.tvbox-renovacoes-cost {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tvbox-renovacoes-confirm-grid > div {
+  padding: 13px;
+  border: 1px solid #e5eaf2;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.tvbox-renovacoes-confirm-grid small {
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.tvbox-renovacoes-confirm-grid strong {
+  display: block;
+  margin-top: 6px;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.tvbox-renovacoes-confirm-content h3 {
+  margin: 20px 0 8px;
+  color: #334155;
+  font-size: 14px;
+}
+
+.tvbox-renovacoes-confirm-clients {
+  margin: 0;
+  padding: 12px;
+  border-radius: 9px;
+  color: #334155;
+  background: #eff6ff;
+  font-size: 13px;
+}
+
+.tvbox-renovacoes-cost {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 18px;
+}
+
+.tvbox-renovacoes-cost span {
+  padding: 11px;
+  border: 1px solid #e5eaf2;
+  border-radius: 9px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.tvbox-renovacoes-cost b {
+  display: block;
+  margin-top: 4px;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.tvbox-renovacoes-insufficient {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid #fecaca;
+  border-radius: 9px;
+  color: #991b1b;
+  background: #fef2f2;
+  font-size: 12px;
+}
+
+.tvbox-renovacoes-insufficient button {
+  align-self: flex-start;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #fecaca;
+  border-radius: 7px;
+  color: #991b1b;
+  background: #fff;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.tvbox-renovacoes-confirm-modal > footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 16px 24px;
+  border-top: 1px solid #eef2f7;
+}
+
+.tvbox-renovacoes-confirm-modal > footer button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid #dbe2ec;
+  border-radius: 8px;
+  color: #475569;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.tvbox-renovacoes-confirm-modal > footer .is-primary {
+  border-color: #2563eb;
+  color: #fff;
+  background: #2563eb;
+}
+
+.tvbox-renovacoes-confirm-modal > footer button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+@media (max-width: 1100px) {
+  .tvbox-renovacoes-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .tvbox-renovacoes-page {
+    padding: 20px 14px 36px;
+  }
+
+  .tvbox-renovacoes-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tvbox-renovacoes-credit-button {
+    align-self: flex-start;
+  }
+
+  .tvbox-renovacoes-competencia {
+    flex-wrap: wrap;
+  }
+
+  .tvbox-renovacoes-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tvbox-renovacoes-credit-strip {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tvbox-renovacoes-confirm-grid,
+  .tvbox-renovacoes-cost {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tvbox-assinaturas-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.tvbox-assinaturas-search {
+  display: flex;
+  align-items: center;
+  flex: 1 1 330px;
+  min-height: 42px;
+  gap: 9px;
+  padding: 0 12px;
+  border: 1px solid #dbe2ec;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.tvbox-assinaturas-search span {
+  color: #64748b;
+  font-size: 22px;
+}
+
+.tvbox-assinaturas-search input,
+.tvbox-assinaturas-toolbar select,
+.tvbox-assinaturas-pagination select {
+  min-height: 40px;
+  border: 1px solid #dbe2ec;
+  border-radius: 9px;
+  color: #334155;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+}
+
+.tvbox-assinaturas-search input {
+  width: 100%;
+  min-height: 36px;
+  border: 0;
+  outline: 0;
+}
+
+.tvbox-assinaturas-toolbar select {
+  padding: 0 10px;
+}
+
+.tvbox-assinaturas-table-card {
+  overflow: hidden;
+  border: 1px solid #e5eaf2;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, .05);
+}
+
+.tvbox-assinaturas-table-heading,
+.tvbox-assinaturas-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 17px 20px;
+}
+
+.tvbox-assinaturas-table-heading {
+  border-bottom: 1px solid #eef2f7;
+}
+
+.tvbox-assinaturas-table-heading h2 {
+  margin: 0 0 3px;
+  font-size: 17px;
+}
+
+.tvbox-assinaturas-table-heading p,
+.tvbox-assinaturas-page-indicator,
+.tvbox-assinaturas-pagination {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.tvbox-assinaturas-table-heading p {
+  margin: 0;
+}
+
+.tvbox-assinaturas-page-indicator {
+  white-space: nowrap;
+}
+
+.tvbox-assinaturas-table-scroll {
+  overflow-x: auto;
+}
+
+.tvbox-assinaturas-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+}
+
+.tvbox-assinaturas-table th {
+  padding: 12px 16px;
+  color: #64748b;
+  background: #f8fafc;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.tvbox-assinaturas-table td {
+  padding: 15px 16px;
+  border-top: 1px solid #eef2f7;
+  vertical-align: middle;
+  font-size: 13px;
+}
+
+.tvbox-assinaturas-table tbody tr:hover {
+  background: #f8fbff;
+}
+
+.tvbox-assinaturas-table td small {
+  display: block;
+  margin-top: 5px;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.tvbox-assinaturas-name {
+  display: block;
+  padding: 0;
+  border: 0;
+  color: #1d4ed8;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.tvbox-assinaturas-access {
+  color: #334155;
+  line-height: 1.65;
+  white-space: nowrap;
+}
+
+.tvbox-assinaturas-access b {
+  color: #94a3b8;
+  font-size: 10px;
+  letter-spacing: .05em;
+}
+
+.tvbox-assinaturas-chip-list {
+  display: flex;
+  max-width: 190px;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tvbox-assinaturas-chip-list span {
+  overflow: hidden;
+  padding: 5px 8px;
+  border: 1px solid #dbeafe;
+  border-radius: 7px;
+  color: #1e3a8a;
+  background: #eff6ff;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tvbox-assinaturas-chip-list span.is-muted {
+  border-style: dashed;
+  color: #94a3b8;
+  background: #f8fafc;
+}
+
+.tvbox-assinaturas-status {
+  display: inline-flex;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.tvbox-assinaturas-status--ativa {
+  color: #047857;
+  background: #ecfdf5;
+}
+
+.tvbox-assinaturas-status--pendente {
+  color: #b45309;
+  background: #fffbeb;
+}
+
+.tvbox-assinaturas-status--cancelada {
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+.tvbox-assinaturas-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.tvbox-assinaturas-actions button,
+.tvbox-assinaturas-pagination button,
+.tvbox-assinaturas-detail-modal footer button {
+  min-height: 32px;
+  padding: 0 9px;
+  border: 1px solid #dbe2ec;
+  border-radius: 7px;
+  color: #334155;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tvbox-assinaturas-actions button:hover,
+.tvbox-assinaturas-detail-modal footer button:hover {
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.tvbox-assinaturas-actions .is-more {
+  color: #64748b;
+  letter-spacing: 2px;
+}
+
+.tvbox-assinaturas-empty {
+  padding: 46px 20px !important;
+  color: #64748b;
+  text-align: center;
+}
+
+.tvbox-assinaturas-pagination {
+  border-top: 1px solid #eef2f7;
+}
+
+.tvbox-assinaturas-pagination > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tvbox-assinaturas-pagination select {
+  padding: 0 8px;
+}
+
+.tvbox-assinaturas-pagination button:disabled {
+  color: #cbd5e1;
+  background: #f8fafc;
+  cursor: not-allowed;
+}
+
+.tvbox-assinaturas-modal-backdrop {
+  position: fixed;
+  z-index: 1000001;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, .58);
+  backdrop-filter: blur(4px);
+}
+
+.tvbox-assinaturas-detail-modal {
+  width: min(720px, 100%);
+  max-height: min(760px, calc(100vh - 40px));
+  overflow: auto;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, .28);
+}
+
+.tvbox-assinaturas-detail-modal > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px;
+  color: #fff;
+  background: linear-gradient(135deg, #1d4ed8, #3730a3);
+}
+
+.tvbox-assinaturas-detail-modal > header span {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  opacity: .78;
+}
+
+.tvbox-assinaturas-detail-modal > header h2 {
+  margin: 7px 0 0;
+  font-size: 24px;
+}
+
+.tvbox-assinaturas-detail-modal > header button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  background: rgba(255, 255, 255, .16);
+  cursor: pointer;
+  font-size: 22px;
+}
+
+.tvbox-assinaturas-detail-content {
+  padding: 24px;
+}
+
+.tvbox-assinaturas-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.tvbox-assinaturas-detail-grid > div {
+  padding: 13px;
+  border: 1px solid #e5eaf2;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.tvbox-assinaturas-detail-grid small,
+.tvbox-assinaturas-detail-grid strong {
+  display: block;
+}
+
+.tvbox-assinaturas-detail-grid small {
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.tvbox-assinaturas-detail-grid strong {
+  margin-top: 6px;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.tvbox-assinaturas-detail-content h3 {
+  margin: 20px 0 10px;
+  color: #334155;
+  font-size: 14px;
+}
+
+.tvbox-assinaturas-slots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.tvbox-assinaturas-slots > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #eff6ff;
+}
+
+.tvbox-assinaturas-slots span,
+.tvbox-assinaturas-slots small {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.tvbox-assinaturas-slots strong {
+  color: #1e3a8a;
+  font-size: 14px;
+}
+
+.tvbox-assinaturas-renewal-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 14px;
+  border-radius: 10px;
+  color: #64748b;
+  background: #f8fafc;
+  font-size: 12px;
+}
+
+.tvbox-assinaturas-renewal-summary b {
+  display: block;
+  margin-top: 4px;
+  color: #1e293b;
+}
+
+.tvbox-assinaturas-detail-modal footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 16px 24px;
+  border-top: 1px solid #eef2f7;
+}
+
+.tvbox-assinaturas-detail-modal footer .is-primary {
+  border-color: #2563eb;
+  color: #fff;
+  background: #2563eb;
+}
+
+@media (max-width: 1050px) {
+  .tvbox-assinaturas-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .tvbox-assinaturas-page {
+    padding: 20px 14px 36px;
+  }
+
+  .tvbox-assinaturas-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tvbox-assinaturas-primary {
+    align-self: flex-start;
+  }
+
+  .tvbox-assinaturas-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tvbox-assinaturas-toolbar > select {
+    flex: 1 1 145px;
+  }
+
+  .tvbox-assinaturas-table-heading,
+  .tvbox-assinaturas-pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tvbox-assinaturas-pagination > div {
+    flex-wrap: wrap;
+  }
+
+  .tvbox-assinaturas-detail-grid,
+  .tvbox-assinaturas-slots {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Container padrão das áreas TV Box, alinhado às páginas SKY. */
+.tvbox-assinaturas-page,
+.tvbox-aparelhos-page,
+.tvbox-renovacoes-page {
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 28px 32px 48px;
+}
+
+@media (max-width: 700px) {
+  .tvbox-module-tabs {
+    width: 100%;
+    margin-bottom: 16px;
+  }
+
+  .tvbox-module-tabs a {
+    flex: 1 1 50%;
+    justify-content: center;
+  }
+
+  .tvbox-assinaturas-page,
+  .tvbox-aparelhos-page,
+  .tvbox-renovacoes-page {
+    padding: 20px 14px 36px;
+  }
+}
+
+.tvbox-assinaturas-pagination > div {
+  gap: 8px;
+}
+
+.tvbox-assinaturas-pagination button {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 11px;
+  border-radius: 9px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.tvbox-assinaturas-pagination select {
+  min-height: 40px;
+  padding: 0 11px;
+  font-size: 12px;
+}
+
+.tvbox-edit-modal-backdrop,
+.tvbox-new-modal-backdrop {
+  padding: 16px !important;
+}
+
+.tvbox-edit-modal,
+.tvbox-new-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(920px, 100%) !important;
+  max-width: 920px !important;
+  max-height: calc(100vh - 32px) !important;
+  box-sizing: border-box;
+}
+
+.tvbox-edit-modal__header,
+.tvbox-new-modal__header {
+  flex: 0 0 auto;
+  padding: 24px 28px !important;
+}
+
+.tvbox-edit-modal__content,
+.tvbox-new-modal__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none !important;
+  overflow: auto;
+  padding: 26px 28px !important;
+  box-sizing: border-box;
+}
+
+.tvbox-edit-modal__footer,
+.tvbox-new-modal__footer {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px !important;
+  padding: 16px 28px !important;
+  background: #fff;
+}
+
+.tvbox-edit-modal__footer button,
+.tvbox-new-modal__footer button {
+  min-height: 42px;
+  padding: 0 18px !important;
+  border-radius: 9px !important;
+}
+
+.tvbox-password-field {
+  position: relative;
+  width: 100%;
+}
+
+.tvbox-password-field input {
+  box-sizing: border-box;
+}
+
+.tvbox-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-50%);
+  border: 1px solid #dbe2ec;
+  border-radius: 7px;
+  background: #f8fafc;
+  color: #475569;
+  cursor: pointer;
+  font-size: 19px;
+  line-height: 1;
+  transition: background .2s ease, color .2s ease, border-color .2s ease;
+}
+
+.tvbox-password-toggle:hover,
+.tvbox-password-toggle:focus-visible {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+  outline: none;
+}
+
+.tvbox-assinaturas-password-access {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.tvbox-table-password-toggle {
+  width: 23px;
+  height: 23px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid #dbe2ec;
+  border-radius: 6px;
+  color: #64748b;
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.tvbox-table-password-toggle:hover,
+.tvbox-table-password-toggle:focus-visible {
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  background: #eff6ff;
+  outline: none;
+}
+
+.tvbox-detail-password {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* Design system único dos modais TV Box. */
+.tvbox-modal {
+  width: min(960px, 100%) !important;
+  max-width: 960px !important;
+  max-height: min(88vh, 840px) !important;
+  display: flex !important;
+  flex-direction: column;
+  overflow: hidden !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, .22) !important;
+}
+
+.tvbox-modal__header {
+  flex: 0 0 auto;
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 76px;
+  padding: 18px 24px !important;
+  border-bottom: 1px solid #e5eaf2;
+  background: #fff !important;
+  color: #172033 !important;
+}
+
+.tvbox-modal__header > div {
+  min-width: 0;
+}
+
+.tvbox-modal-header-row {
+  width: 100%;
+}
+
+.tvbox-modal__header span:first-child {
+  display: block;
+  color: #64748b !important;
+  font-size: 10px !important;
+  font-weight: 800;
+  letter-spacing: .13em;
+}
+
+.tvbox-modal__header h2 {
+  margin: 5px 0 4px !important;
+  color: #172033 !important;
+  font-size: 21px !important;
+  font-weight: 800 !important;
+  line-height: 1.2;
+  text-shadow: none !important;
+}
+
+.tvbox-modal__header p {
+  margin: 0 !important;
+  color: #64748b !important;
+  font-size: 13px !important;
+}
+
+.tvbox-modal__header > button {
+  flex: 0 0 auto;
+  width: 36px !important;
+  height: 36px !important;
+  border: 1px solid #dbe2ec !important;
+  border-radius: 9px !important;
+  background: #fff !important;
+  color: #64748b !important;
+  font-size: 21px !important;
+  cursor: pointer;
+}
+
+.tvbox-modal__header > button:hover,
+.tvbox-modal__header > button:focus-visible {
+  border-color: #93c5fd !important;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  outline: none;
+}
+
+.tvbox-modal__header .tvbox-modal-close {
+  flex: 0 0 36px;
+  width: 36px !important;
+  height: 36px !important;
+  margin-left: auto;
+  border: 1px solid #dbe2ec !important;
+  border-radius: 9px !important;
+  background: #fff !important;
+  color: #475569 !important;
+  cursor: pointer;
+  font-size: 21px !important;
+  line-height: 1;
+}
+
+.tvbox-modal__header .tvbox-modal-close:hover,
+.tvbox-modal__header .tvbox-modal-close:focus-visible {
+  border-color: #93c5fd !important;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  outline: none;
+}
+
+.tvbox-modal__status {
+  display: inline-block !important;
+  width: fit-content;
+  padding: 4px 9px !important;
+  border-radius: 999px;
+  color: #047857 !important;
+  background: #ecfdf5 !important;
+  font-size: 10px !important;
+  letter-spacing: .04em !important;
+  text-transform: uppercase;
+}
+
+.tvbox-modal__status--pendente {
+  color: #b45309 !important;
+  background: #fffbeb !important;
+}
+
+.tvbox-modal__status--cancelada {
+  color: #b91c1c !important;
+  background: #fef2f2 !important;
+}
+
+.tvbox-modal__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto !important;
+  padding: 24px !important;
+  background: #fff;
+}
+
+.tvbox-modal__footer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px !important;
+  min-height: 68px;
+  padding: 13px 24px !important;
+  border-top: 1px solid #e5eaf2;
+  background: #fff;
+}
+
+.tvbox-modal__footer button {
+  min-height: 40px !important;
+  padding: 0 16px !important;
+  border: 1px solid #dbe2ec !important;
+  border-radius: 9px !important;
+  background: #fff !important;
+  color: #334155 !important;
+  cursor: pointer;
+  font-size: 13px !important;
+  font-weight: 750 !important;
+}
+
+.tvbox-modal__footer button:hover {
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+
+.tvbox-modal__footer button:last-child {
+  border-color: #2563eb !important;
+  background: #2563eb !important;
+  color: #fff !important;
+}
+
+.tvbox-form-section {
+  margin-bottom: 20px !important;
+  padding: 18px !important;
+  border: 1px solid #e5eaf2 !important;
+  border-radius: 12px !important;
+  background: #f8fafc !important;
+}
+
+.tvbox-form-section h3 {
+  margin: 0 0 14px !important;
+  color: #1e293b !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+}
+
+.tvbox-form-section label {
+  margin-bottom: 6px !important;
+  color: #475569 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+.tvbox-form-section input,
+.tvbox-form-section select,
+.tvbox-edit-modal__content input,
+.tvbox-edit-modal__content select {
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 9px 11px !important;
+  border: 1px solid #dbe2ec !important;
+  border-radius: 8px !important;
+  color: #1e293b !important;
+  background: #fff !important;
+  font-size: 13px !important;
+}
+
+.tvbox-form-section input:focus,
+.tvbox-form-section select:focus,
+.tvbox-edit-modal__content input:focus,
+.tvbox-edit-modal__content select:focus {
+  border-color: #60a5fa !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .1);
+  outline: none;
+}
+
+.tvbox-slot-card {
+  margin-bottom: 12px !important;
+  padding: 14px !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 11px !important;
+  background: #fff !important;
+}
+
+.tvbox-slot-card h4 {
+  margin: 0 0 12px !important;
+  color: #1e293b !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase;
+}
+
+.tvbox-edit-modal__content > div > div > h3 {
+  padding-bottom: 9px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.tvbox-history-panel {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #f8fafc;
+}
+
+.tvbox-history-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.tvbox-history-summary button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 7px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.tvbox-history-table-wrap {
+  max-height: 220px;
+  overflow: auto;
+  border-top: 1px solid #e2e8f0;
+}
+
+.tvbox-history-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tvbox-history-table-wrap th,
+.tvbox-history-table-wrap td {
+  padding: 9px 11px;
+  border-bottom: 1px solid #eef2f7;
+  color: #334155;
+  font-size: 12px;
+  text-align: left;
+}
+
+.tvbox-history-table-wrap th {
+  color: #64748b;
+  background: #f1f5f9;
+  font-size: 10px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.tvbox-history-table-wrap tr:last-child td {
+  border-bottom: 0;
+}
+
+.tvbox-history-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 5px;
+  border-radius: 999px;
+  color: #92400e;
+  background: #fef3c7;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.tvbox-history-badge.is-current {
+  color: #047857;
+  background: #d1fae5;
+}
+
+.tvbox-history-loading {
+  padding: 8px 11px;
+  color: #64748b;
+  background: #f1f5f9;
+  font-size: 11px;
+}
+
+@media (max-width: 700px) {
+  .tvbox-modal {
+    width: 100% !important;
+    max-height: calc(100vh - 20px) !important;
+    border-radius: 13px !important;
+  }
+
+  .tvbox-modal__header {
+    min-height: 64px;
+    padding: 15px 17px !important;
+  }
+
+  .tvbox-modal__content {
+    padding: 17px !important;
+  }
+
+  .tvbox-modal__footer {
+    padding: 11px 17px !important;
+  }
+
+  .tvbox-modal__footer button {
+    flex: 1 1 140px;
+  }
+
+  .tvbox-form-section {
+    padding: 14px !important;
+  }
+
+  .tvbox-form-section > div[style*="grid-template-columns"],
+  .tvbox-edit-modal__content div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .tvbox-assinaturas-pagination {
+    align-items: stretch;
+  }
+
+  .tvbox-assinaturas-pagination > div {
+    width: 100%;
+  }
+
+  .tvbox-assinaturas-pagination button {
+    flex: 1 1 40px;
+  }
+
+  .tvbox-edit-modal,
+  .tvbox-new-modal {
+    max-height: calc(100vh - 20px) !important;
+    border-radius: 14px !important;
+  }
+
+  .tvbox-edit-modal__header,
+  .tvbox-new-modal__header {
+    padding: 18px 18px !important;
+  }
+
+  .tvbox-edit-modal__content,
+  .tvbox-new-modal__content {
+    padding: 18px !important;
+  }
+
+  .tvbox-edit-modal__footer,
+  .tvbox-new-modal__footer {
+    padding: 12px 18px !important;
+  }
+
+  .tvbox-edit-modal__footer button,
+  .tvbox-new-modal__footer button {
+    flex: 1 1 140px;
+  }
+}
+

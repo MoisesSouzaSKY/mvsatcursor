@@ -25,7 +25,7 @@ export function CobrancasHeader({
   return (
     <>
       {/* Banner Informativo */}
-      <div style={{
+      <div className="cobrancas-header-banner" style={{
         background: 'linear-gradient(135deg, #1e3a8a 0%, #e5e7eb 100%)',
         borderRadius: '16px',
         padding: '40px 32px',
@@ -93,7 +93,7 @@ export function CobrancasHeader({
       </div>
 
       {/* Header com ações */}
-      <div style={{
+      <div className="cobrancas-header-actions" style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
@@ -194,7 +194,7 @@ export function CobrancasHeader({
               }}
             >
               <span style={{ fontSize: '16px' }}>➕</span>
-              Nova Cobrança
+              Gerar Cobranças
             </button>
           )}
         </div>

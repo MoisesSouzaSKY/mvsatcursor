@@ -12,6 +12,34 @@ import {
 import { tenantCollection, tenantDoc } from '../shared/saas/firestoreTenant';
 
 /**
+ * Move uma cobrança paga para o histórico usando o mesmo ID.
+ * É idempotente: se o documento já estiver arquivado, não duplica registros.
+ */
+export async function arquivarCobrancaPagaPorId(id: string) {
+  const db = getDb();
+  const cobrancaRef = tenantDoc(db, 'cobrancas', id);
+  const snap = await getDoc(cobrancaRef);
+  if (!snap.exists()) return { arquivada: false, motivo: 'nao_encontrada' };
+
+  const cobranca = { id: snap.id, ...snap.data() } as any;
+  const status = String(cobranca.status || '').toUpperCase();
+  if (status !== 'PAGO' && status !== 'PAGA' && status !== 'PAGO') {
+    return { arquivada: false, motivo: 'nao_paga' };
+  }
+
+  const dataPagamento = cobranca.pagoEm || cobranca.data_pagamento || cobranca.dataPagamento || new Date();
+  await setDoc(tenantDoc(db, 'cobrancas_arquivadas', id), {
+    ...cobranca,
+    arquivadoEm: new Date(),
+    arquivadoPor: 'sistema_automatico',
+    motivoArquivamento: 'cobranca_paga',
+    dataOriginalPagamento: dataPagamento
+  }, { merge: true });
+  await deleteDoc(cobrancaRef);
+  return { arquivada: true, id };
+}
+
+/**
  * Arquiva cobranças pagas em lotes ultra pequenos (modo ultra conservador)
  * Para usar quando o Firebase está muito sobrecarregado
  */

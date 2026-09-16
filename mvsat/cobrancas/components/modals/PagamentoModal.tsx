@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Modal } from '../../../shared/components/ui/Modal';
 import { Button } from '../../../shared/components/ui/Button';
 import { Input } from '../../../shared/components/ui/Input';
 import { OptimizedCobranca } from '../../utils/dataProcessing';
 import { uploadFileToStorage } from '../../../shared/services/storageUpload';
+import { parseCivilDateInput } from '../../../shared/utils/civilDate';
 
 interface PagamentoModalProps {
   open: boolean;
@@ -39,6 +40,8 @@ export const PagamentoModal: React.FC<PagamentoModalProps> = ({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Initialize form when modal opens
   useEffect(() => {
@@ -80,9 +83,24 @@ export const PagamentoModal: React.FC<PagamentoModalProps> = ({
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
+  const handleFileSelection = (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+      setErrors((prev) => ({ ...prev, comprovante: 'Formato não permitido. Envie um arquivo PDF, JPG ou PNG.' }));
+      return;
+    }
+    setErrors((prev) => ({ ...prev, comprovante: '' }));
     handleInputChange('comprovante', file);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleFileSelection(e.target.files?.[0] || null);
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    setIsDragging(false);
+    handleFileSelection(event.dataTransfer.files?.[0] || null);
   };
 
   const validateForm = (): boolean => {
@@ -107,10 +125,10 @@ export const PagamentoModal: React.FC<PagamentoModalProps> = ({
   const calculateCharges = () => {
     if (!cobranca || !formData.dataPagamento) return { juros: 0, multa: 0, diasAtraso: 0 };
 
-    const dataPagamento = new Date(formData.dataPagamento);
+    const dataPagamento = parseCivilDateInput(formData.dataPagamento);
     const dataVencimento = cobranca._parsedDate;
     
-    if (!dataVencimento) return { juros: 0, multa: 0, diasAtraso: 0 };
+    if (!dataPagamento || !dataVencimento) return { juros: 0, multa: 0, diasAtraso: 0 };
 
     const diffTime = dataPagamento.getTime() - dataVencimento.getTime();
     const diasAtraso = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
@@ -160,7 +178,9 @@ export const PagamentoModal: React.FC<PagamentoModalProps> = ({
       const dadosPagamento = {
         valorTotalPago: parseFloat(formData.valorRecebido),
         formaPagamento: formData.metodoPagamento,
-        pagoEm: new Date(formData.dataPagamento),
+        // Data do input é civil (sem horário); não usar new Date('YYYY-MM-DD'),
+        // pois o JavaScript interpreta essa forma como UTC e desloca para o dia anterior no Brasil.
+        pagoEm: parseCivilDateInput(formData.dataPagamento),
         juros: juros > 0 ? juros : undefined,
         multa: multa > 0 ? multa : undefined,
         diasAtraso: diasAtraso > 0 ? diasAtraso : undefined,
@@ -190,48 +210,34 @@ export const PagamentoModal: React.FC<PagamentoModalProps> = ({
   const { juros, multa, diasAtraso } = calculateCharges();
   const valorOriginal = cobranca?.valor || 0;
   const valorTotal = valorOriginal + juros + multa;
+  const valorRecebido = Number(formData.valorRecebido || 0);
+  const diferenca = valorTotal - valorRecebido;
 
   return (
     <Modal
       open={open}
       onClose={handleClose}
-      title="Registrar Pagamento"
+      title="✓ Registrar pagamento"
+      size="lg"
+      className="cobrancas-modal cobrancas-modal--payment"
+      maskClosable={!isSubmitting}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div className="cobrancas-modal__body">
+        <p className="cobrancas-modal__description">Confirme os valores e informe como o pagamento foi recebido.</p>
         {/* Informações da Cobrança */}
-        <div style={{
-          padding: '16px',
-          backgroundColor: 'var(--color-gray-50)',
-          borderRadius: '8px',
-          border: '1px solid var(--border-primary)'
-        }}>
-          <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600' }}>
-            Cobrança: {cobranca?.cliente_nome}
-          </h4>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px' }}>
-            <div>
-              <strong>Valor Original:</strong> R$ {valorOriginal.toFixed(2)}
-            </div>
-            <div>
-              <strong>Tipo:</strong> {cobranca?.tipo}
-            </div>
-            {diasAtraso > 0 && (
-              <>
-                <div style={{ color: 'var(--color-warning-600)' }}>
-                  <strong>Dias em Atraso:</strong> {diasAtraso}
-                </div>
-                <div style={{ color: 'var(--color-warning-600)' }}>
-                  <strong>Multa (2%):</strong> R$ {multa.toFixed(2)}
-                </div>
-                <div style={{ color: 'var(--color-warning-600)' }}>
-                  <strong>Juros (0,1%/dia):</strong> R$ {juros.toFixed(2)}
-                </div>
-                <div style={{ color: 'var(--color-error-600)', fontWeight: '600' }}>
-                  <strong>Total com Encargos:</strong> R$ {valorTotal.toFixed(2)}
-                </div>
-              </>
-            )}
-          </div>
+        <div className="cobrancas-modal__customer-card">
+          <span className="cobrancas-modal__summary-label">Cliente</span>
+          <strong>{cobranca?.cliente_nome || 'Não informado'}</strong>
+          <span>{cobranca?.bairro || 'Bairro não informado'} · {cobranca?.tipo || 'Cobrança'}</span>
+        </div>
+        <span className="cobrancas-modal__section-title">Resumo do pagamento</span>
+        <div className="cobrancas-modal__financial-card">
+          <div className="cobrancas-modal__financial-row"><span>Valor original</span><strong>R$ {valorOriginal.toFixed(2)}</strong></div>
+          {diasAtraso > 0 && <div className="cobrancas-modal__financial-row"><span>Dias em atraso</span><strong>{diasAtraso} dias</strong></div>}
+          {multa > 0 && <div className="cobrancas-modal__financial-row"><span>Multa (2%)</span><strong>R$ {multa.toFixed(2)}</strong></div>}
+          {juros > 0 && <div className="cobrancas-modal__financial-row"><span>Juros (0,1%/dia)</span><strong>R$ {juros.toFixed(2)}</strong></div>}
+          <div className="cobrancas-modal__financial-total"><span>Total atualizado</span><strong>R$ {valorTotal.toFixed(2)}</strong></div>
+          {(multa + juros) > 0 && <div className="cobrancas-modal__difference">Inclui R$ {(multa + juros).toFixed(2)} em encargos.</div>}
         </div>
 
         {/* Data de Pagamento */}
@@ -308,6 +314,11 @@ export const PagamentoModal: React.FC<PagamentoModalProps> = ({
               {errors.valorRecebido}
             </span>
           )}
+          {!errors.valorRecebido && formData.valorRecebido && diferenca !== 0 && (
+            <div className="cobrancas-modal__difference">
+              ⚠ O valor informado é {diferenca > 0 ? `R$ ${diferenca.toFixed(2)} menor` : `R$ ${Math.abs(diferenca).toFixed(2)} maior`} que o total atualizado.
+            </div>
+          )}
         </div>
 
         {/* Mês/Ano do Comprovante */}
@@ -324,29 +335,30 @@ export const PagamentoModal: React.FC<PagamentoModalProps> = ({
           />
         </div>
 
-        {/* Comprovante */}
         <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-            Comprovante (opcional)
-          </label>
-          <input
-            type="file"
-            accept="image/*,.pdf"
-            onChange={handleFileChange}
-            disabled={isSubmitting}
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: '1px solid var(--border-primary)',
-              borderRadius: '8px',
-              fontSize: '14px'
-            }}
-          />
-          {formData.comprovante && (
-            <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-              Arquivo selecionado: {formData.comprovante.name}
+          <span className="cobrancas-modal__section-title">Comprovante <small>(opcional)</small></span>
+          {!formData.comprovante ? (
+            <label
+              className={`cobrancas-upload ${isDragging ? 'is-dragging' : ''}`}
+              onDragEnter={(event) => { event.preventDefault(); setIsDragging(true); }}
+              onDragOver={(event) => event.preventDefault()}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+            >
+              <input ref={fileInputRef} type="file" accept="image/*,.pdf" onChange={handleFileChange} disabled={isSubmitting} />
+              <span><strong>{isDragging ? 'Solte o comprovante aqui' : '↑ Anexar comprovante'}</strong><small>PDF, JPG ou PNG · clique ou arraste o arquivo</small></span>
+            </label>
+          ) : (
+            <div className="cobrancas-file-card">
+              <div><strong>📄 {formData.comprovante.name}</strong><small>{formData.comprovante.type || 'Arquivo'} · {(formData.comprovante.size / 1024).toFixed(0)} KB · ✓ pronto para envio</small></div>
+              <div className="cobrancas-file-card__actions">
+                <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isSubmitting}>Trocar</Button>
+                <Button variant="outline" size="sm" onClick={() => handleInputChange('comprovante', null)} disabled={isSubmitting}>Remover</Button>
+              </div>
+              <input ref={fileInputRef} type="file" accept="image/*,.pdf" onChange={handleFileChange} disabled={isSubmitting} style={{ display: 'none' }} />
             </div>
           )}
+          {errors.comprovante && <div className="cobrancas-modal__error">{errors.comprovante}</div>}
         </div>
 
         {/* Observações */}
@@ -386,7 +398,7 @@ export const PagamentoModal: React.FC<PagamentoModalProps> = ({
         )}
 
         {/* Buttons */}
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
+        <div className="cobrancas-modal__footer">
           <Button 
             variant="outline" 
             onClick={handleClose}
@@ -400,7 +412,7 @@ export const PagamentoModal: React.FC<PagamentoModalProps> = ({
             disabled={isSubmitting || loading}
             style={{ backgroundColor: 'var(--color-success-600)' }}
           >
-            {isSubmitting ? 'Processando...' : 'Registrar Pagamento'}
+            {isSubmitting ? '⏳ Registrando...' : 'Confirmar pagamento'}
           </Button>
         </div>
       </div>

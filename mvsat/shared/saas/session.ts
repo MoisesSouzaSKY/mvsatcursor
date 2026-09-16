@@ -7,6 +7,7 @@ export interface TenantSession {
   empresaId: string;
   tipo: TipoUsuario;
   ativo: boolean;
+  mustChangePassword?: boolean;
   loadedAt: number; // epoch ms
 }
 

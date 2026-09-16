@@ -1,0 +1,181 @@
+.editar-assinatura-modal {
+  padding: 24px !important;
+  background: rgba(15, 23, 42, 0.62) !important;
+}
+
+.editar-assinatura-modal .mvsat-modal {
+  width: min(760px, 94vw) !important;
+  max-height: min(88vh, 820px) !important;
+  overflow: hidden;
+  border: 1px solid #e5eaf0;
+  border-radius: 16px !important;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+}
+
+.editar-assinatura-modal .mvsat-modal > div:first-child {
+  min-height: 70px;
+  padding: 20px 28px !important;
+  background: #fff;
+  border-bottom: 1px solid #e8eef5 !important;
+}
+
+.editar-assinatura-modal .mvsat-modal > div:first-child h2 {
+  color: #243b53 !important;
+  font-size: 18px !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.02em;
+}
+
+.editar-assinatura-modal .mvsat-modal > div:first-child button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e5eaf0 !important;
+  border-radius: 9px !important;
+  color: #627d98 !important;
+  background: #f7f9fc !important;
+  font-size: 18px !important;
+}
+
+.editar-assinatura-form {
+  display: block;
+  padding: 24px 28px 28px !important;
+  color: #243b53;
+  background: #fff;
+  overflow: auto;
+}
+
+.editar-assinatura-form > div {
+  margin-bottom: 16px !important;
+}
+
+.editar-assinatura-form label {
+  display: block !important;
+  margin-bottom: 7px !important;
+  color: #486581 !important;
+  font-size: 11px !important;
+  font-weight: 750 !important;
+  letter-spacing: 0.02em;
+}
+
+.editar-assinatura-form input,
+.editar-assinatura-form select {
+  box-sizing: border-box;
+  width: 100% !important;
+  min-height: 40px;
+  height: 40px !important;
+  padding: 0 12px !important;
+  border: 1px solid #d9e2ec !important;
+  border-radius: 9px !important;
+  outline: none !important;
+  color: #243b53 !important;
+  background: #fbfdff !important;
+  font-size: 13px !important;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.editar-assinatura-form input::placeholder {
+  color: #9fb3c8;
+}
+
+.editar-assinatura-form input:focus,
+.editar-assinatura-form select:focus {
+  border-color: #4c8bf5 !important;
+  background: #fff !important;
+  box-shadow: 0 0 0 3px rgba(76, 139, 245, 0.14);
+}
+
+.editar-assinatura-form > div > div[style*="display: grid"],
+.editar-assinatura-form div[style*="display: grid"] {
+  gap: 14px !important;
+}
+
+.editar-assinatura-form h4 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 24px 0 16px !important;
+  padding: 0 0 11px !important;
+  border-bottom: 1px solid #e8eef5 !important;
+  color: #243b53 !important;
+  font-size: 13px !important;
+  font-weight: 750 !important;
+}
+
+.editar-assinatura-form h4::before {
+  width: 4px;
+  height: 18px;
+  border-radius: 5px;
+  background: #2f80ed;
+  content: '';
+}
+
+.editar-assinatura-form > div:last-child {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-end !important;
+  gap: 9px !important;
+  margin: 24px 0 0 !important;
+  padding-top: 18px !important;
+  border-top: 1px solid #e8eef5 !important;
+}
+
+.editar-assinatura-form > div:last-child button {
+  height: 40px !important;
+  padding: 0 18px !important;
+  border-radius: 9px !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.editar-assinatura-form > div:last-child button[type='button'] {
+  border: 1px solid #d9e2ec !important;
+  color: #486581 !important;
+  background: #fff !important;
+}
+
+.editar-assinatura-form > div:last-child button[type='submit'] {
+  background: #2167d5 !important;
+  box-shadow: 0 6px 14px rgba(33, 103, 213, 0.2);
+}
+
+.editar-assinatura-form > div:last-child button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.editar-assinatura-form > div:last-child button[type='button']:hover:not(:disabled) {
+  background: #f7f9fc !important;
+}
+
+.editar-assinatura-form > div:last-child button[type='submit']:hover:not(:disabled) {
+  background: #185abc !important;
+}
+
+@media (max-width: 640px) {
+  .editar-assinatura-modal {
+    padding: 10px !important;
+  }
+
+  .editar-assinatura-modal .mvsat-modal {
+    width: 100% !important;
+    max-height: 94vh !important;
+  }
+
+  .editar-assinatura-modal .mvsat-modal > div:first-child,
+  .editar-assinatura-form {
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+  }
+
+  .editar-assinatura-form div[style*="display: grid"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .editar-assinatura-form > div:last-child {
+    flex-direction: column-reverse;
+  }
+
+  .editar-assinatura-form > div:last-child button {
+    width: 100%;
+  }
+}

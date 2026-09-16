@@ -31,6 +31,30 @@
         { "fieldPath": "email", "order": "ASCENDING" },
         { "fieldPath": "cargo", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "faturas_sky",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "assinaturaId", "order": "ASCENDING" },
+        { "fieldPath": "vencimento", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "faturas_sky",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "competencia", "order": "ASCENDING" },
+        { "fieldPath": "vencimento", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "audit_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "module", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

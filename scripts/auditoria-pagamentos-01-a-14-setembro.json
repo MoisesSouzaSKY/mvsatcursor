@@ -1,0 +1,1300 @@
+{
+  "mode": "READ_ONLY",
+  "period": "01/09/2026 a 14/09/2026",
+  "totalRecords": 111,
+  "totalPaid": 12710,
+  "byCollection": {
+    "active": 0,
+    "archived": 111
+  },
+  "details": [
+    {
+      "id": "0TNql8Tk5vHhnA22XJrh",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Renee de Abreu",
+      "paymentDate": "2026-09-02T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1788307200,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "13aRVRG60lxbDvnQpy6T",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Robson Alexandre",
+      "paymentDate": "2026-09-12T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1789171200,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "2MTSbhUCfx2b7b09VSFh",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Edgar Henrique",
+      "paymentDate": "2026-09-04T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 150,
+      "valorTotalPago": 150,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1788480000,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "2WgYUGEosAEG4JWodsBb",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Mauro Marcelo",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1789084800,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "2bFQgi0ycfigBUyUA3YN",
+      "collection": "cobrancas_arquivadas",
+      "cliente": " Carlos Adriano capela ",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1789084800,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "2j9woVHdWy2Fwi9WJttv",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Jorge Damião",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 100,
+      "valorTotalPago": 100,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1788998400,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "5Jx3xD0uJrcBbdUPeJMP",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Robson Gonçalves",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 110,
+      "valorTotalPago": 110,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1788998400,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "5ZngQITzf1HlaTk0lZp7",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Adrienne Freitas",
+      "paymentDate": "2026-09-12T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1789171200,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "5gA8sH50CwTNlqurGfPz",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Núbia de Araújo",
+      "paymentDate": "2026-09-05T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 110,
+      "valorTotalPago": 110,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1788566400,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "661FPq5jxek3XveMFxZN",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Luiz Carlos",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1789084800,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "8C3DfdDBsL6YlMXb2B2U",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Paulo PatricK",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 240,
+      "valorTotalPago": 240,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1789084800,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "96n90okfTnYhm8WMLwVM",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Mauro",
+      "paymentDate": "2026-09-08T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1788825600,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "9fTLW5W8aPMRxSsHkgHk",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Reginaldo Salinas",
+      "paymentDate": "2026-09-12T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1789171200,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "9tOLyYfxGRfKWpUtxhHq",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Julia Carvalho",
+      "paymentDate": "2026-09-12T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1789171200,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "AaOMJRzVWZzKf196fLxa",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Rafael de Vilhena",
+      "paymentDate": "2026-09-09T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1788912000,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "B3cUApfHDVXNyMCtFnL0",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Vania Pampolha",
+      "paymentDate": "2026-09-08T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1788825600,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "BIBm5kW1Y9liJkKoAkUt",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Jean Silva",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1789084800,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "BM9xrbDuNrZLgyhY0zdo",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Antônio Batista",
+      "paymentDate": "2026-09-05T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 150,
+      "valorTotalPago": 150,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1788566400,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "BeFOePSvytsG5yllA05T",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Andrey Miranda",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 400,
+      "valorTotalPago": 400,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1789084800,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "BiJqmr83LIYSvISuBngh",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Rayza Torres ",
+      "paymentDate": "2026-09-08T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1788825600,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "BjbXXtFMKkUWn1ydFK0k",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Francisco (Pai samia)",
+      "paymentDate": "2026-09-02T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 220,
+      "valorTotalPago": 220,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1788307200,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "By25wZ3zZcJU2ZrrNK3C",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Carlos Alberto",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": {
+        "_seconds": 1789084800,
+        "_nanoseconds": 0
+      }
+    },
+    {
+      "id": "DEIqGSoBkVdvjecRYqF9",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Dona Joana",
+      "paymentDate": "2026-09-02T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 0,
+      "valorTotalPago": 10,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "DfFb8o3yrzteiW7aOtVU",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Jonas Farias (tilo)",
+      "paymentDate": "2026-09-02T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 100,
+      "valorTotalPago": 100,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "EenhH3MiHHGfD2lNkvra",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Jose Santana",
+      "paymentDate": "2026-09-09T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 140,
+      "valorTotalPago": 140,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "F5i6AhZIQslspF7HIPI9",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Marcos Antonio",
+      "paymentDate": "2026-09-09T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "F8egoBkpTlZcrJZMiWWV",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Walter Damasceno",
+      "paymentDate": "2026-09-04T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "FWFn5OMt0ZD7LQreOowb",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Lauro Tavares",
+      "paymentDate": "2026-09-03T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "GZ38mAmBZ2zBbYrEzYQz",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Paulo André",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 390,
+      "valorTotalPago": 230,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "GxDzEOSeDGCqQrhpLuAn",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Osiel Lima",
+      "paymentDate": "2026-09-05T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "I2pavQ2fy4u9ZcM2UtHg",
+      "collection": "cobrancas_arquivadas",
+      "cliente": " Carlos Arthur ",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "IIL5HnORrceZ9HDv8J6L",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Vinicius Gouveia",
+      "paymentDate": "2026-09-08T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 110,
+      "valorTotalPago": 110,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "INy987c0UJmyZJM5oV9V",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Claudia Coelho",
+      "paymentDate": "2026-09-14T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 100,
+      "valorTotalPago": 100,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "IRH4vNovD9fjyWoZkRGv",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Sandres",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 150,
+      "valorTotalPago": 100,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "Ih71qZTCpRNyxzW2oYsP",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Marcelo",
+      "paymentDate": "2026-09-02T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 110,
+      "valorTotalPago": 110,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "IpF23IlxhVyIUvMLFPxs",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Angela Maria",
+      "paymentDate": "2026-09-02T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 150,
+      "valorTotalPago": 150,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "JJ79iWhdhOahLnxhB8ga",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Hailo Rodrigo",
+      "paymentDate": "2026-09-14T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "KGzieiGuIuDyohUsSWfS",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Dirceu Rodrigo",
+      "paymentDate": "2026-09-05T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 140,
+      "valorTotalPago": 140,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "Kd9lGk9SEvWlx4ABjkko",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Ariadna Corrêa ",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "KufaZd9D78D3a99FqLRN",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Robson",
+      "paymentDate": "2026-09-04T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 100,
+      "valorTotalPago": 130,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "LWx3E3qGOvlSoeZvwHMY",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Rita Bairro",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "LynftrARaKHt28CW2Cx8",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Julio Cezar",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 500,
+      "valorTotalPago": 500,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "N8wzDEzbxJIS32HH1C8Z",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Rafaela Nascimento",
+      "paymentDate": "2026-09-03T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "NINLFLmrWxA6OzpsAuPn",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Guilherme (Cunhado Teka)",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "NKHP7KR339xUV1s3tgNz",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Rubens Drago",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "NL3WbrIqISdMQFqkfSf8",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Fábio Secco",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 139.99,
+      "valorTotalPago": 70,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "Oygbz1tyxZt4q8qet4rf",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Sandro Oliveira",
+      "paymentDate": "2026-09-08T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "PsEdqpVowXMqehUjENvJ",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Vanderlei Do Socorro",
+      "paymentDate": "2026-09-04T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "QBQ2Fw15QNkS3XF8gLrO",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Jair",
+      "paymentDate": "2026-09-05T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "QiFisnNzaJz4doJTiIOO",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Ricardo Junior",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 100,
+      "valorTotalPago": 100,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "REWVaCYylIHu56rhXbW0",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Ricardo de Assis",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "RR96v6SgL2M41D6zhpvX",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Raimundo Nonato",
+      "paymentDate": "2026-09-04T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 150,
+      "valorTotalPago": 150,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "SErrfCYdDizKHriIMpjn",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Fábio Anderson",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 130,
+      "valorTotalPago": 130,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "TXzPqqYYSMUjop1hJUy5",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Gabriel Gonçalves Pantoja ",
+      "paymentDate": "2026-09-08T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "UAM3XzOQqBTGRd2neIpu",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Carlos Eduardo",
+      "paymentDate": "2026-09-02T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "UQaEWq9awxeUGpsYYsCQ",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Gilvani Colares",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "VVQMIwb9uNimZiIo2y54",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Adailton Costa",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "WMO24myYmRri3zFZRi7c",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Ailton Souza",
+      "paymentDate": "2026-09-08T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 100,
+      "valorTotalPago": 100,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "WZVMuimkeHStTsykhYQu",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Milton Richardson",
+      "paymentDate": "2026-09-08T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "WpmPZgYfM2GE9H97IsD4",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Benedito Nunes",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 110,
+      "valorTotalPago": 110,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "XCPER7RPlEwR6BQLvH7p",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Gustavo Ramos",
+      "paymentDate": "2026-09-04T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "XHkgtkbYygItF74JIR7j",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Aline cristina",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "YB4SYaTcyxLY2k8YqwPz",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Jhony da gama",
+      "paymentDate": "2026-09-12T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "YX4Ang5F2kof70oapBy5",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Gabriel",
+      "paymentDate": "2026-09-14T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 100,
+      "valorTotalPago": 100,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "YdkugLey0hp0O1bhCAuH",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Kauel Lisboa",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 150,
+      "valorTotalPago": 150,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "ZCPfwslOHJypLZ7ULMGE",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Luciana Carvalho (tilo)",
+      "paymentDate": "2026-09-03T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 100,
+      "valorTotalPago": 100,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "Zh5NRYVcfLJgxmblMPL2",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Antônio Raimundo",
+      "paymentDate": "2026-09-12T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 110,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "aTmpWKiuvMrKwlulpR4s",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Lucimar",
+      "paymentDate": "2026-09-02T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "aYqJaH2sBebvpUBCikHb",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Artur dos Santos",
+      "paymentDate": "2026-09-04T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "ahEAUtbNXjcnPDcii2vB",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Wladimir Viegas",
+      "paymentDate": "2026-09-05T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 200,
+      "valorTotalPago": 100,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "auiuWIFvylrjfszMcWlw",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Evaristo Porfirio",
+      "paymentDate": "2026-09-05T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "cYR9QHGOgvItS5Fs5zPS",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Alisson",
+      "paymentDate": "2026-09-08T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 150,
+      "valorTotalPago": 150,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "e6eLtdXa5vCAkWAlrrLJ",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Roberto",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "epbiEq1BYEhixZQCtxNR",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Yan iury Mendonça",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 60,
+      "valorTotalPago": 60,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "f5X4elLoOcUxjfwGaOD6",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Reginaldo Dias",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 100,
+      "valorTotalPago": 100,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "faTp119RyAtIk2Ng0OtO",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Alexandre",
+      "paymentDate": "2026-09-09T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 200,
+      "valorTotalPago": 200,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "h0H6lcZAwZH1rO5RBbmM",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Luciano",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "iX7F8HZ7tjqa5JPxRLex",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Orivaldo Amaral",
+      "paymentDate": "2026-09-04T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 130,
+      "valorTotalPago": 130,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "jq4cSQJdPADm26vZYuUL",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Sidney",
+      "paymentDate": "2026-09-04T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 360,
+      "valorTotalPago": 360,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "kMPl39u6zoq8LVg7cAp8",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Junio Ucho",
+      "paymentDate": "2026-09-04T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "lRcCZN1qTsWGvrY9ZCSY",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Izac Do Nascimento",
+      "paymentDate": "2026-09-02T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "lxovIHze7rv5HA26C0Q7",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Beraldo Seixas",
+      "paymentDate": "2026-09-03T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "mm1AhuJJGedhGxl3a3ox",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Aldenour",
+      "paymentDate": "2026-09-08T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "muHZ2b9hi4y9zogMGtJ3",
+      "collection": "cobrancas_arquivadas",
+      "cliente": " Carlisson Dias",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "nEpPqdv4qsFM0Z6cKm7g",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Elmerson Da Silva Broni ",
+      "paymentDate": "2026-09-03T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "nxXuLSmZGdUibFUeRAj3",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Charles dos Santos",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "nxdjm7yfDgGHmzyix2SN",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Juscelino Pereira",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "oy3zZRRcRw49NSHIx3r1",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Cleudilene Louzada",
+      "paymentDate": "2026-09-03T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "pjtKw7ZkxbVXJVb9zXP3",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Mariane Morais",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "q9EZ58SVclXnx707GmiS",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Ruth",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 110,
+      "valorTotalPago": 110,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "qpqtkwKPEsdVA0BSEDaD",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Maria da Conceição",
+      "paymentDate": "2026-09-08T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "sCwegZNyiVwKQIUrdA9M",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Salomão Goes",
+      "paymentDate": "2026-09-04T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "stRoVCoACjLMf5DyKCWn",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Ricardo",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "tFtSocaAnxaUWxN98Eny",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Maria Antônia",
+      "paymentDate": "2026-09-05T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 150,
+      "valorTotalPago": 150,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "tor0aFdUPcOaGrfsGlRU",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Tailana",
+      "paymentDate": "2026-09-04T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 100,
+      "valorTotalPago": 100,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "twXYgiPNDR2gpqvB4thW",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Diogo Silva",
+      "paymentDate": "2026-09-08T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "uMIbJCc00Y96qEf4Ygmw",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Gerson Matos",
+      "paymentDate": "2026-09-14T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 130,
+      "valorTotalPago": 130,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "v0b3tAaJx3XbQAuqijDT",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Roberto daivit ",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 110,
+      "valorTotalPago": 110,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "vpp8HkrViBXCu44ypUUa",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Diego Rocha ",
+      "paymentDate": "2026-09-10T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 240,
+      "valorTotalPago": 240,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "wM0nZ7oHDBRLcnHPw70h",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Roberto Guimarães",
+      "paymentDate": "2026-09-08T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 100,
+      "valorTotalPago": 100,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "wUbaYOt1mKzQAH45G46O",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Renan Maia",
+      "paymentDate": "2026-09-02T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "wnfUvF7zdpmnYgORP9i6",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Edilson Cunha",
+      "paymentDate": "2026-09-05T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 140,
+      "valorTotalPago": 140,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "xCZeldI8ghxjjyCswBnq",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Robson Coqueiro",
+      "paymentDate": "2026-09-09T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "yBlFqRlHjjXAmoK4ZYgR",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Fabio",
+      "paymentDate": "2026-09-09T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 100,
+      "valorTotalPago": 100,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "ye40gbmHmJ28WIzOWIp7",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Carlos Alberto Veiga",
+      "paymentDate": "2026-09-05T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "z0j4ryq60OsvMbeXQk7j",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Jose Ribeiro",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 50,
+      "valorTotalPago": 50,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "z7o4YPcBA8Wa1NfWJZFs",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Marcio Abreu",
+      "paymentDate": "2026-09-09T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 100,
+      "valorTotalPago": 100,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "zGpTcJSkMHUN5382CkAp",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Regina Leão",
+      "paymentDate": "2026-09-04T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 150,
+      "valorTotalPago": 150,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "zQ3ZaGn4jGxFJ77480dN",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Capiroto Tor",
+      "paymentDate": "2026-09-03T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 60,
+      "valorTotalPago": 60,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "zZfJcLi8Q37qDVGWmUmn",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "João Fernandes",
+      "paymentDate": "2026-09-11T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 120,
+      "valorTotalPago": 120,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    },
+    {
+      "id": "zg7UcVpQCyX343IagGEQ",
+      "collection": "cobrancas_arquivadas",
+      "cliente": "Bare",
+      "paymentDate": "2026-09-03T00:00:00.000Z",
+      "status": "PAGO",
+      "valor": 130,
+      "valorTotalPago": 130,
+      "valor_pago": null,
+      "dataOriginalPagamento": null
+    }
+  ],
+  "writes": 0
+}

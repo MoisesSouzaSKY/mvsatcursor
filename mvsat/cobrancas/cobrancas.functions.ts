@@ -2,6 +2,8 @@ import { getDb } from '../config/database.config';
 import { addDoc, collection, doc, getDoc, getDocs, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { adjustDueDate, adjustDueDateString } from './utils/dateAdjustment';
 import { tenantCollection, tenantDoc } from '../shared/saas/firestoreTenant';
+import { loadTenantSession } from '../shared/saas/session';
+import { writeCobrancaAudit } from './services/cobrancasAuditService';
 
 export async function criarCobranca(payload: any) {
   // Apply date adjustment to data_vencimento if present
@@ -22,8 +24,15 @@ export async function criarCobranca(payload: any) {
     console.log('[CRIAR COBRANÇA] Campo vencimento ajustado:', payload.vencimento);
   }
   
+  const session = loadTenantSession();
+  payload.usuarioIdUltimaAcao = session?.uid || payload.usuarioIdUltimaAcao || null;
   const ref = await addDoc(tenantCollection(getDb(), 'cobrancas'), payload);
   const snap = await getDoc(ref);
+  await writeCobrancaAudit({
+    action: 'COBRANCA_CREATE',
+    target: { id: ref.id, cliente_nome: payload.cliente_nome, valor: payload.valor },
+    after: { ...payload, id: ref.id },
+  });
   return { ok: true, id: ref.id, cobranca: snap.data() };
 }
 
@@ -64,11 +73,22 @@ export async function atualizarCobranca(id: string, dados: any) {
     console.log('[ATUALIZAR COBRANÇA] Campo vencimento ajustado:', dados.vencimento);
   }
   
-  await updateDoc(tenantDoc(getDb(), 'cobrancas', id), { 
-    ...dados, 
+  const cobrancaRef = tenantDoc(getDb(), 'cobrancas', id);
+  const beforeSnap = await getDoc(cobrancaRef);
+  const before = beforeSnap.data() || {};
+  const session = loadTenantSession();
+  await updateDoc(cobrancaRef, { 
+    ...dados,
+    usuarioIdUltimaAcao: session?.uid || before.usuarioIdUltimaAcao || null,
     data_atualizacao: new Date() 
   });
-  const snap = await getDoc(tenantDoc(getDb(), 'cobrancas', id));
+  const snap = await getDoc(cobrancaRef);
+  await writeCobrancaAudit({
+    action: 'COBRANCA_EDIT',
+    target: { id, cliente_nome: dados.cliente_nome || before.cliente_nome, valor: dados.valor ?? before.valor },
+    before,
+    after: { ...before, ...dados },
+  });
   return { ok: true, id, cobranca: snap.data() };
 }
 
@@ -185,6 +205,7 @@ export async function marcarComoPaga(
   const before = snapBefore.data() || {};
 
   const pagoEm = data.pagoEm || new Date();
+  const session = loadTenantSession();
 
   // Atualizar cobrança atual como PAGO com campos padronizados
   await updateDoc(cobrancaRef, {
@@ -213,14 +234,38 @@ export async function marcarComoPaga(
         }
       : {}),
     data_atualizacao: new Date(),
+    usuarioIdUltimaAcao: session?.uid || before.usuarioIdUltimaAcao || null,
     historicoEventos: [...(before.historicoEventos || []), {
       tipo: 'BAIXA',
       dataHora: new Date(),
-      usuarioId: (before.usuarioIdUltimaAcao || null),
+      usuarioId: session?.uid || before.usuarioIdUltimaAcao || null,
+      usuarioNome: session?.nome || null,
       detalhes: { cobrancaId: id, valorTotalPago: data.valorTotalPago, formaPagamento: data.formaPagamento }
     }]
   } as any);
 
+  await writeCobrancaAudit({
+    action: 'COBRANCA_PAYMENT',
+    target: { id, cliente_nome: before.cliente_nome, valor: data.valorTotalPago ?? before.valor },
+    before,
+    after: {
+      ...before,
+      status: 'PAGO',
+      pagoEm,
+      valorTotalPago: data.valorTotalPago,
+      formaPagamento: data.formaPagamento,
+      juros: data.juros ?? null,
+      multa: data.multa ?? null,
+      diasAtraso: data.diasAtraso ?? null,
+    },
+  });
+
+  // A cobrança paga permanece ativa durante a janela operacional de três meses.
+  // O agendador arquiva somente quando a competência sair dessa janela.
+  // A próxima cobrança não é criada durante a baixa.
+  // A rotina agendada gera somente quando faltarem até 7 dias para o vencimento.
+  const gerarProximaImediatamente = false;
+  if (gerarProximaImediatamente) {
   // Calcular próxima cobrança (idempotência por consulta)
   // Usar sempre a data de vencimento original, nunca a data atual
   console.log('🔍 [PRÓXIMA FATURA] Iniciando cálculo para cobrança:', id);
@@ -378,8 +423,13 @@ export async function marcarComoPaga(
     console.log('ℹ️ [PRÓXIMA FATURA] Cobrança já existe, não criando duplicata');
   }
 
-  const snap = await getDoc(cobrancaRef);
-  return { ok: true, id, cobranca: snap.data() };
+  }
+
+  return {
+    ok: true,
+    id,
+    cobranca: { ...before, ...data, status: 'PAGO' }
+  };
 }
 
 export async function reabrirCobranca(
@@ -391,6 +441,7 @@ export async function reabrirCobranca(
   const snapBefore = await getDoc(cobrancaRef);
   const before = snapBefore.data() || {};
 
+  const session = loadTenantSession();
   // Atualiza status removendo campos de pagamento
   await updateDoc(cobrancaRef, {
     status: novoStatus,
@@ -400,14 +451,23 @@ export async function reabrirCobranca(
     juros: null,
     multa: null,
     diasAtraso: null,
+    usuarioIdUltimaAcao: session?.uid || before.usuarioIdUltimaAcao || null,
     data_atualizacao: new Date(),
     historicoEventos: [...(before.historicoEventos || []), {
       tipo: 'REABERTURA',
       dataHora: new Date(),
-      usuarioId: (before.usuarioIdUltimaAcao || null),
+      usuarioId: session?.uid || before.usuarioIdUltimaAcao || null,
+      usuarioNome: session?.nome || null,
       detalhes: { cobrancaId: id, de: 'PAGO', para: novoStatus }
     }]
   } as any);
+
+  await writeCobrancaAudit({
+    action: 'COBRANCA_REOPEN',
+    target: { id, cliente_nome: before.cliente_nome, valor: before.valor },
+    before,
+    after: { ...before, status: novoStatus, pagoEm: null, valorTotalPago: null, formaPagamento: null },
+  });
 
   // Encontrar e excluir apenas a próxima do ciclo se estiver em aberto e gerada automaticamente
   // Usar sempre a data de vencimento original, nunca a data atual
@@ -459,7 +519,15 @@ export async function reabrirCobranca(
 }
 
 export async function removerCobranca(id: string) {
-  await deleteDoc(tenantDoc(getDb(), 'cobrancas', id));
+  const cobrancaRef = tenantDoc(getDb(), 'cobrancas', id);
+  const snap = await getDoc(cobrancaRef);
+  const before = snap.data() || {};
+  await deleteDoc(cobrancaRef);
+  await writeCobrancaAudit({
+    action: 'COBRANCA_DELETE',
+    target: { id, cliente_nome: before.cliente_nome, valor: before.valor },
+    before,
+  });
   return { ok: true, id };
 }
 

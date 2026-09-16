@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '../../shared/components/ui/Button';
 import { Card } from '../../shared/components/ui/Card';
 import { Input } from '../../shared/components/ui/Input';
@@ -9,6 +9,8 @@ import {
   obterEstatisticasArquivo 
 } from '../cobrancas.archive.functions';
 import { useToastHelpers } from '../../shared/contexts/ToastContext';
+import { listarCobrancasArquivadasPagina, obterEstatisticasArquivadasLeves } from '../services/cobrancasReadService';
+import type { DocumentSnapshot } from 'firebase/firestore';
 
 interface CobrancaArquivada {
   id: string;
@@ -39,25 +41,26 @@ export default function HistoricoCobrancas() {
   const [searchTerm, setSearchTerm] = useState('');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
+  const cursors = useRef<Record<number, DocumentSnapshot | null>>({ 1: null });
   
   // Carregar dados
   const carregarDados = async () => {
     try {
       setLoading(true);
       
-      const filtros = {
-        clienteNome: searchTerm,
-        dataInicio: dataInicio ? new Date(dataInicio) : undefined,
-        dataFim: dataFim ? new Date(dataFim) : undefined,
-        limite: undefined // REMOVER LIMITE: Mostrar TODAS
-      };
-      
-      const [arquivadas, stats] = await Promise.all([
-        listarCobrancasArquivadas(filtros),
-        obterEstatisticasArquivo()
+      const [pageResult, stats] = await Promise.all([
+        listarCobrancasArquivadasPagina(pageSize, cursors.current[page] || null),
+        obterEstatisticasArquivadasLeves()
       ]);
       
-      setCobrancasArquivadas(arquivadas as CobrancaArquivada[]);
+      setCobrancasArquivadas(pageResult.items as CobrancaArquivada[]);
+      if (pageResult.lastDoc && cursors.current[page + 1] === undefined) {
+        cursors.current[page + 1] = pageResult.lastDoc;
+      }
+      setTotal(stats.totalArquivadas);
       setEstatisticas(stats);
       
     } catch (err) {
@@ -68,19 +71,15 @@ export default function HistoricoCobrancas() {
     }
   };
   
-  // Carregar ao montar
   useEffect(() => {
-    carregarDados();
-  }, []);
-  
-  // Recarregar quando filtros mudarem (com debounce)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      carregarDados();
-    }, 500);
-    
-    return () => clearTimeout(timer);
+    setPage(1);
+    cursors.current = { 1: null };
   }, [searchTerm, dataInicio, dataFim]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => carregarDados(), 300);
+    return () => clearTimeout(timer);
+  }, [page, pageSize, searchTerm, dataInicio, dataFim]);
   
   // Restaurar cobrança
   const handleRestaurar = async (cobranca: CobrancaArquivada) => {
@@ -310,7 +309,18 @@ export default function HistoricoCobrancas() {
           color: 'var(--text-secondary)',
           fontSize: '14px'
         }}>
-          Mostrando {dadosFiltrados.length} de {cobrancasArquivadas.length} cobranças arquivadas
+          Mostrando {(page - 1) * pageSize + 1} a {Math.min(page * pageSize, total)} de {total} cobranças arquivadas
+          <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'center', gap: '8px' }}>
+            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>Anterior</Button>
+            <span style={{ alignSelf: 'center' }}>Página {page} de {Math.max(1, Math.ceil(total / pageSize))}</span>
+            <Button variant="outline" size="sm" disabled={page >= Math.ceil(total / pageSize)} onClick={() => setPage((current) => current + 1)}>Próxima</Button>
+            <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))} aria-label="Itens por página">
+              <option value={20}>20</option>
+              <option value={30}>30</option>
+              <option value={40}>40</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
         </div>
       )}
     </div>

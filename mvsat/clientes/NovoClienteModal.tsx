@@ -386,7 +386,7 @@ export default function NovoClienteModal({ isOpen, onClose, onSave }: NovoClient
   if (!isOpen) return null;
 
   return (
-    <div style={{
+    <div className="clientes-modal-overlay" style={{
       position: 'fixed',
       inset: 0,
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -395,7 +395,7 @@ export default function NovoClienteModal({ isOpen, onClose, onSave }: NovoClient
       justifyContent: 'center',
       zIndex: 1000
     }}>
-      <div style={{
+      <div className="clientes-modal" style={{
         backgroundColor: 'white',
         borderRadius: '12px',
         width: '90%',

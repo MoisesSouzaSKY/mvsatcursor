@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { getDb } from '../../config/database.config';
 import { getEmpresaIdFromSession } from '../../shared/saas/session';
+import './modals/EquipmentModals.css';
 
 interface Equipamento {
   id: string;
@@ -34,51 +35,22 @@ interface Cliente {
 
 interface ModalHeaderProps {
   title: string;
+  subtitle?: string;
   onClose: () => void;
 }
 
-const ModalHeader: React.FC<ModalHeaderProps> = ({ title, onClose }) => {
+const ModalHeader: React.FC<ModalHeaderProps> = ({ title, subtitle, onClose }) => {
   return (
-    <div style={{ 
-      display: 'flex', 
-      justifyContent: 'space-between', 
-      alignItems: 'center', 
-      marginBottom: '24px',
-      paddingBottom: '16px',
-      borderBottom: '1px solid #e5e7eb'
-    }}>
-      <h3 style={{ 
-        margin: 0,
-        fontSize: '20px',
-        fontWeight: '600',
-        color: '#111827'
-      }}>
-        {title}
-      </h3>
-      <button 
-        onClick={onClose} 
-        style={{ 
-          background: 'none', 
-          border: 'none', 
-          fontSize: '24px', 
-          cursor: 'pointer',
-          color: '#6b7280',
-          padding: '4px',
-          borderRadius: '4px',
-          transition: 'all 0.2s ease'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = '#f3f4f6';
-          e.currentTarget.style.color = '#374151';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = 'transparent';
-          e.currentTarget.style.color = '#6b7280';
-        }}
-      >
-        ✕
-      </button>
-    </div>
+    <header className="eq-modal__header">
+      <div className="eq-modal__header-main">
+        <div className="eq-modal__icon" aria-hidden="true">✎</div>
+        <div>
+          <h2 id="editar-equipamento-title" className="eq-modal__title">{title}</h2>
+          {subtitle && <p className="eq-modal__subtitle">{subtitle}</p>}
+        </div>
+      </div>
+      <button type="button" className="eq-modal__close" onClick={onClose} aria-label="Fechar">✕</button>
+    </header>
   );
 };
 
@@ -91,31 +63,13 @@ interface FormFieldProps {
 
 const FormField: React.FC<FormFieldProps> = ({ label, required, error, children }) => {
   return (
-    <div style={{ marginBottom: '20px' }}>
-      <label style={{ 
-        display: 'block', 
-        marginBottom: '6px', 
-        fontWeight: '600',
-        fontSize: '14px',
-        color: '#374151'
-      }}>
+    <div className="eq-field">
+      <label className="eq-label">
         {label}
-        {required && <span style={{ color: '#ef4444', marginLeft: '4px' }}>*</span>}
+        {required && <span> *</span>}
       </label>
       {children}
-      {error && (
-        <div style={{
-          color: '#ef4444',
-          fontSize: '12px',
-          marginTop: '4px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px'
-        }}>
-          <span>⚠️</span>
-          {error}
-        </div>
-      )}
+      {error && <div className="eq-alert eq-alert--error">{error}</div>}
     </div>
   );
 };
@@ -129,32 +83,12 @@ interface InputProps {
 
 const Input: React.FC<InputProps> = ({ value, onChange, placeholder, disabled }) => {
   return (
-    <input 
-      value={value} 
-      onChange={(e) => onChange(e.target.value)} 
+    <input
+      className="eq-input"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       disabled={disabled}
-      style={{ 
-        width: '100%', 
-        padding: '12px 16px', 
-        border: '1px solid #d1d5db', 
-        borderRadius: '8px',
-        fontSize: '14px',
-        backgroundColor: disabled ? '#f9fafb' : 'white',
-        color: disabled ? '#6b7280' : '#111827',
-        transition: 'all 0.2s ease',
-        outline: 'none'
-      }}
-      onFocus={(e) => {
-        if (!disabled) {
-          e.target.style.borderColor = '#3b82f6';
-          e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-        }
-      }}
-      onBlur={(e) => {
-        e.target.style.borderColor = '#d1d5db';
-        e.target.style.boxShadow = 'none';
-      }}
     />
   );
 };
@@ -168,32 +102,11 @@ interface SelectProps {
 
 const Select: React.FC<SelectProps> = ({ value, onChange, options, disabled }) => {
   return (
-    <select 
-      value={value} 
-      onChange={(e) => onChange(e.target.value)} 
+    <select
+      className="eq-select"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
-      style={{ 
-        width: '100%', 
-        padding: '12px 16px', 
-        border: '1px solid #d1d5db', 
-        borderRadius: '8px',
-        fontSize: '14px',
-        backgroundColor: disabled ? '#f9fafb' : 'white',
-        color: disabled ? '#6b7280' : '#111827',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        transition: 'all 0.2s ease',
-        outline: 'none'
-      }}
-      onFocus={(e) => {
-        if (!disabled) {
-          e.target.style.borderColor = '#3b82f6';
-          e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-        }
-      }}
-      onBlur={(e) => {
-        e.target.style.borderColor = '#d1d5db';
-        e.target.style.boxShadow = 'none';
-      }}
     >
       {options.map(option => (
         <option key={option.value} value={option.value}>
@@ -213,82 +126,10 @@ interface ModalFooterProps {
 
 const ModalFooter: React.FC<ModalFooterProps> = ({ onCancel, onSave, saving, canSave = true }) => {
   return (
-    <div style={{ 
-      display: 'flex', 
-      gap: '12px', 
-      justifyContent: 'flex-end',
-      paddingTop: '20px',
-      borderTop: '1px solid #e5e7eb',
-      marginTop: '24px'
-    }}>
-      <button 
-        onClick={onCancel}
-        disabled={saving}
-        style={{ 
-          padding: '12px 24px', 
-          border: '1px solid #d1d5db', 
-          borderRadius: '8px', 
-          backgroundColor: 'white',
-          color: '#374151',
-          cursor: saving ? 'not-allowed' : 'pointer',
-          fontWeight: '500',
-          fontSize: '14px',
-          transition: 'all 0.2s ease'
-        }}
-        onMouseEnter={(e) => {
-          if (!saving) {
-            e.currentTarget.style.backgroundColor = '#f9fafb';
-            e.currentTarget.style.borderColor = '#9ca3af';
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!saving) {
-            e.currentTarget.style.backgroundColor = 'white';
-            e.currentTarget.style.borderColor = '#d1d5db';
-          }
-        }}
-      >
-        Cancelar
-      </button>
-      <button 
-        onClick={onSave}
-        disabled={saving || !canSave}
-        style={{ 
-          padding: '12px 24px', 
-          border: 'none', 
-          borderRadius: '8px', 
-          backgroundColor: canSave && !saving ? '#3b82f6' : '#9ca3af',
-          color: 'white',
-          cursor: (saving || !canSave) ? 'not-allowed' : 'pointer',
-          fontWeight: '500',
-          fontSize: '14px',
-          transition: 'all 0.2s ease',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}
-        onMouseEnter={(e) => {
-          if (canSave && !saving) {
-            e.currentTarget.style.backgroundColor = '#2563eb';
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (canSave && !saving) {
-            e.currentTarget.style.backgroundColor = '#3b82f6';
-          }
-        }}
-      >
-        {saving && (
-          <div style={{
-            width: '16px',
-            height: '16px',
-            border: '2px solid transparent',
-            borderTop: '2px solid white',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
-          }} />
-        )}
-        {saving ? 'Salvando...' : 'Salvar'}
+    <div className="eq-modal__footer">
+      <button type="button" className="eq-btn eq-btn--secondary" onClick={onCancel} disabled={saving}>Cancelar</button>
+      <button type="button" className="eq-btn eq-btn--primary" onClick={onSave} disabled={saving || !canSave}>
+        {saving ? 'Salvando...' : 'Salvar alterações'}
       </button>
     </div>
   );
@@ -458,18 +299,6 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
       return '—';
     }
   };
-
-  const tabButtonStyle = (active: boolean): React.CSSProperties => ({
-    padding: '10px 12px',
-    borderRadius: 10,
-    border: active ? '1px solid #111827' : '1px solid #e5e7eb',
-    background: active ? '#111827' : 'white',
-    color: active ? 'white' : '#111827',
-    fontWeight: 800,
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    fontSize: 13,
-  });
 
   // Filtrar assinaturas baseado no cliente selecionado
   useEffect(() => {
@@ -652,298 +481,147 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
   ];
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      animation: 'fadeIn 0.2s ease-out'
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        padding: '32px',
-        width: '90%',
-        maxWidth: '800px',
-        maxHeight: '90vh',
-        overflow: 'auto',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-        animation: 'slideInUp 0.3s ease-out'
-      }}>
-        <ModalHeader 
+    <div className="eq-modal-overlay" role="presentation">
+      <div className="eq-modal eq-modal--edit" role="dialog" aria-modal="true" aria-labelledby="editar-equipamento-title">
+        <ModalHeader
           title={editingEquipment.id ? 'Editar Equipamento' : 'Cadastrar Novo Equipamento'}
+          subtitle={editingEquipment.id
+            ? 'Atualize as informações cadastrais e operacionais do equipamento.'
+            : 'Cadastre um equipamento para uso operacional.'}
           onClose={onClose}
         />
 
-        <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
-          <button
-            type="button"
-            onClick={() => setActiveTab('dados')}
-            style={tabButtonStyle(activeTab === 'dados')}
-          >
-            Dados
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('trocas')}
-            disabled={!canLoadTrocas}
-            style={{
-              ...tabButtonStyle(activeTab === 'trocas'),
-              opacity: canLoadTrocas ? 1 : 0.5,
-              cursor: canLoadTrocas ? 'pointer' : 'not-allowed',
-            }}
-            title={!canLoadTrocas ? 'Salve o equipamento para ver histórico' : 'Ver histórico de trocas'}
-          >
-            Histórico de Trocas
-          </button>
-        </div>
-
-        {activeTab === 'dados' && (
-          <>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-          <FormField label="Número do NDS" required error={errors.nds}>
-            <Input
-              value={editingEquipment.nds}
-              onChange={(value) => updateField('nds', value)}
-              placeholder="Ex: CE0A01255759583B"
-            />
-          </FormField>
-
-          <FormField label="Smart Card" required error={errors.smartcard}>
-            <Input
-              value={editingEquipment.smartcard}
-              onChange={(value) => updateField('smartcard', value)}
-              placeholder="Ex: 001221762261"
-            />
-          </FormField>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-          <FormField label="Status do Aparelho" required>
-            <Select
-              value={editingEquipment.status}
-              onChange={(value) => updateField('status', value)}
-              options={statusOptions}
-            />
-          </FormField>
-
-          <FormField label="Cliente">
-            <Select
-              value={editingEquipment.clienteId || (editingEquipment.cliente && !editingEquipment.clienteId ? 'current_client' : '')}
-              onChange={(value) => {
-                console.log('🔄 Cliente selecionado:', value);
-                
-                if (value === 'current_client') {
-                  // Manter o cliente atual sem ID
-                  console.log('📌 Mantendo cliente atual sem ID');
-                  return;
-                }
-                
-                if (value === '' || !value) {
-                  // Limpar cliente - mas PRESERVAR a assinatura
-                  console.log('🗑️ Limpando cliente mas preservando assinatura');
-                  updateField('clienteId', null);
-                  updateField('cliente', '');
-                  updateField('nomeCompleto', '');
-                  // NÃO limpar assinatura - deixar o usuário decidir
-                  console.log('📌 Assinatura preservada:', editingEquipment.assinaturaId);
-                  return;
-                }
-                
-                const cliente = clientes.find(c => c.id === value);
-                console.log('👤 Cliente encontrado:', cliente);
-                
-                if (cliente) {
-                  const clienteNome = cliente.nomeCompleto || cliente.nome;
-                  updateField('clienteId', value);
-                  updateField('cliente', clienteNome);
-                  updateField('nomeCompleto', clienteNome);
-                  
-                  // SEMPRE manter a assinatura atual - não limpar automaticamente
-                  console.log('📌 Assinatura preservada durante mudança de cliente:', editingEquipment.assinaturaId);
-                  
-                  console.log('✅ Cliente atualizado:', clienteNome);
-                }
-              }}
-              options={clienteOptions}
-            />
-
-          </FormField>
-        </div>
-
-        <FormField label="Pertence à Assinatura">
-          <Select
-            value={editingEquipment.assinaturaId || ''}
-            onChange={(value) => {
-              console.log('🔄 Assinatura selecionada:', value);
-              
-              if (value === '' || !value) {
-                console.log('🗑️ Limpando assinatura');
-                updateField('assinaturaId', null);
-                updateField('codigo', '');
-                updateField('assinatura', null);
-                return;
-              }
-              
-              const assinatura = filteredAssinaturas.find(a => a.id === value);
-              console.log('📄 Assinatura encontrada:', assinatura);
-              
-              if (assinatura) {
-                updateField('assinaturaId', value);
-                updateField('codigo', assinatura.codigo);
-                updateField('assinatura', {
-                  codigo: assinatura.codigo,
-                  nomeAssinatura: assinatura.nomeCompleto
-                });
-                console.log('✅ Assinatura atualizada:', assinatura.codigo);
-              }
-            }}
-            options={[
-              { 
-                value: '', 
-                label: 'Nenhuma assinatura' 
-              },
-              ...filteredAssinaturas.map(a => ({ 
-                value: a.id, 
-                label: `${a.codigo} - ${a.nomeCompleto}${a.id === editingEquipment.assinaturaId ? ' ✓ (ATUAL)' : ''}` 
-              }))
-            ]}
-            disabled={filteredAssinaturas.length === 0 && !editingEquipment.assinatura}
-          />
-
-          {!editingEquipment.assinaturaId && (
-            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-              {editingEquipment.clienteId 
-                ? 'Selecione uma assinatura ou deixe em branco' 
-                : 'Você pode vincular a qualquer assinatura ou deixar em branco'
-              }
-            </div>
-          )}
-        </FormField>
-
-        {Object.keys(errors).length > 0 && (
-          <div style={{
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
-            borderRadius: '8px',
-            padding: '12px',
-            marginBottom: '20px'
-          }}>
-            <div style={{
-              color: '#dc2626',
-              fontSize: '14px',
-              fontWeight: '600',
-              marginBottom: '8px'
-            }}>
-              Por favor, corrija os seguintes erros:
-            </div>
-            <ul style={{
-              margin: 0,
-              paddingLeft: '20px',
-              color: '#dc2626',
-              fontSize: '12px'
-            }}>
-              {Object.entries(errors).map(([field, error]) => (
-                <li key={field}>{error}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        <ModalFooter 
-          onCancel={onClose}
-          onSave={handleSave}
-          saving={saving}
-          canSave={editingEquipment.nds.trim() !== '' && editingEquipment.smartcard.trim() !== ''}
-        />
-          </>
-        )}
-
-        {activeTab === 'trocas' && (
-          <div style={{ marginTop: 6 }}>
-            <div
-              style={{
-                background: '#f9fafb',
-                border: '1px solid #e5e7eb',
-                borderRadius: 12,
-                padding: 14,
-              }}
+        <div className="eq-modal__body">
+          <div className="eq-tabs" role="tablist" aria-label="Seções do equipamento">
+            <button type="button" className={activeTab === 'dados' ? 'is-active' : ''} onClick={() => setActiveTab('dados')}>Dados do equipamento</button>
+            <button
+              type="button"
+              className={activeTab === 'trocas' ? 'is-active' : ''}
+              onClick={() => setActiveTab('trocas')}
+              disabled={!canLoadTrocas}
+              title={!canLoadTrocas ? 'Salve o equipamento para ver histórico' : 'Ver histórico de trocas'}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                <div style={{ fontWeight: 800, color: '#111827' }}>Histórico de trocas</div>
-                <button
-                  type="button"
-                  onClick={loadTrocas}
-                  disabled={trocasLoading}
-                  style={{
-                    background: trocasLoading ? '#9ca3af' : '#111827',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 10,
-                    padding: '10px 12px',
-                    cursor: trocasLoading ? 'not-allowed' : 'pointer',
-                    fontWeight: 800,
-                    fontSize: 13,
+              Histórico de trocas
+            </button>
+          </div>
+
+          {activeTab === 'dados' && (
+            <>
+              <div className="eq-form-grid">
+                <FormField label="Número do NDS" required error={errors.nds}>
+                  <Input value={editingEquipment.nds} onChange={(value) => updateField('nds', value)} placeholder="Ex: CE0A01255759583B" />
+                </FormField>
+                <FormField label="Smart Card" required error={errors.smartcard}>
+                  <Input value={editingEquipment.smartcard} onChange={(value) => updateField('smartcard', value)} placeholder="Ex: 001221762261" />
+                </FormField>
+                <FormField label="Status do Aparelho" required>
+                  <Select value={editingEquipment.status} onChange={(value) => updateField('status', value)} options={statusOptions} />
+                </FormField>
+                <FormField label="Cliente">
+                  <Select
+                    value={editingEquipment.clienteId || (editingEquipment.cliente && !editingEquipment.clienteId ? 'current_client' : '')}
+                    onChange={(value) => {
+                      if (value === 'current_client') return;
+                      if (value === '' || !value) {
+                        updateField('clienteId', null);
+                        updateField('cliente', '');
+                        updateField('nomeCompleto', '');
+                        return;
+                      }
+                      const cliente = clientes.find(c => c.id === value);
+                      if (cliente) {
+                        const clienteNome = cliente.nomeCompleto || cliente.nome;
+                        updateField('clienteId', value);
+                        updateField('cliente', clienteNome);
+                        updateField('nomeCompleto', clienteNome);
+                      }
+                    }}
+                    options={clienteOptions}
+                  />
+                </FormField>
+              </div>
+              <FormField label="Assinatura">
+                <Select
+                  value={editingEquipment.assinaturaId || ''}
+                  onChange={(value) => {
+                    if (value === '' || !value) {
+                      updateField('assinaturaId', null);
+                      updateField('codigo', '');
+                      updateField('assinatura', null);
+                      return;
+                    }
+                    const assinatura = filteredAssinaturas.find(a => a.id === value);
+                    if (assinatura) {
+                      updateField('assinaturaId', value);
+                      updateField('codigo', assinatura.codigo);
+                      updateField('assinatura', {
+                        codigo: assinatura.codigo,
+                        nomeAssinatura: assinatura.nomeCompleto
+                      });
+                    }
                   }}
-                >
-                  {trocasLoading ? 'Atualizando...' : 'Atualizar'}
+                  options={[
+                    { value: '', label: 'Nenhuma assinatura' },
+                    ...filteredAssinaturas.map(a => ({
+                      value: a.id,
+                      label: `${a.codigo} · ${a.nomeCompleto}${a.id === editingEquipment.assinaturaId ? ' (Atual)' : ''}`
+                    }))
+                  ]}
+                  disabled={filteredAssinaturas.length === 0 && !editingEquipment.assinatura}
+                />
+                {!editingEquipment.assinaturaId && (
+                  <p className="eq-hint">
+                    {editingEquipment.clienteId
+                      ? 'Selecione uma assinatura ou deixe em branco'
+                      : 'Você pode vincular a qualquer assinatura ou deixar em branco'}
+                  </p>
+                )}
+              </FormField>
+            </>
+          )}
+
+          {activeTab === 'trocas' && (
+            <div>
+              <div className="eq-history-head">
+                <div>
+                  <strong>Histórico de trocas</strong>
+                  <span>Consulte as substituições registradas para este equipamento.</span>
+                </div>
+                <button type="button" className="eq-btn eq-btn--secondary" onClick={loadTrocas} disabled={trocasLoading}>
+                  {trocasLoading ? 'Atualizando...' : '↻ Atualizar'}
                 </button>
               </div>
-
-              {trocasError && (
-                <div style={{ marginTop: 12, background: '#fee2e2', border: '1px solid #fecaca', color: '#991b1b', padding: 10, borderRadius: 10, fontWeight: 700 }}>
-                  {trocasError}
-                </div>
-              )}
-
-              {trocasLoading && (
-                <div style={{ marginTop: 12, color: '#6b7280', fontWeight: 700 }}>Carregando histórico...</div>
-              )}
-
+              {trocasError && <div className="eq-alert eq-alert--error">{trocasError}</div>}
+              {trocasLoading && <div className="eq-history-empty">Carregando histórico...</div>}
               {!trocasLoading && !trocasError && trocas.length === 0 && (
-                <div style={{ marginTop: 12, color: '#6b7280', fontWeight: 700 }}>
-                  Nenhuma troca registrada para este equipamento.
+                <div className="eq-history-empty">
+                  <b>Nenhuma troca registrada</b>
+                  <span>Este equipamento ainda não possui histórico de substituições.</span>
                 </div>
               )}
-
               {!trocasLoading && !trocasError && trocas.length > 0 && (
-                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div className="eq-timeline">
                   {trocas.map((t) => (
-                    <div
-                      key={t.id}
-                      style={{
-                        border: '1px solid #e5e7eb',
-                        borderRadius: 12,
-                        padding: 12,
-                        background: 'white',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                        <div style={{ fontWeight: 900, color: '#111827' }}>{formatDateTime(t.createdAt)}</div>
-                        <div style={{ fontWeight: 800, color: '#374151' }}>
-                          {String(t?.performedBy?.nome || 'Usuário')} {t?.performedBy?.tipo ? `(${t.performedBy.tipo})` : ''}
-                        </div>
+                    <div className="eq-event" key={t.id}>
+                      <div className="eq-event__meta">
+                        <strong>{formatDateTime(t.createdAt)}</strong>
+                        <span>{String(t?.performedBy?.nome || 'Usuário')} {t?.performedBy?.tipo ? `(${t.performedBy.tipo})` : ''}</span>
                       </div>
-
-                      <div style={{ marginTop: 8, fontSize: 13, color: '#111827' }}>
-                        <div><strong>Cliente:</strong> {t.clienteNome || '—'}</div>
-                        <div><strong>Assinatura:</strong> {t.assinaturaCodigo || '—'}</div>
-                        <div><strong>Motivo:</strong> {t.motivo}{t.motivoOutroTexto ? ` — ${t.motivoOutroTexto}` : ''}</div>
+                      <div>
+                        <div>Motivo: {t.motivo}{t.motivoOutroTexto ? ` — ${t.motivoOutroTexto}` : ''}</div>
+                        <div>Cliente: {t.clienteNome || '—'}</div>
+                        <div>Assinatura: {t.assinaturaCodigo || '—'}</div>
                       </div>
-
-                      <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                        <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: 10 }}>
-                          <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 800 }}>Equipamento antigo</div>
-                          <div style={{ fontWeight: 900, color: '#111827' }}>{t.equipamentoAntigoNds || '—'}</div>
-                          <div style={{ fontSize: 12, color: '#374151', fontWeight: 800 }}>{t.equipamentoAntigoSmartcard || '—'}</div>
+                      <div className="eq-event__pair">
+                        <div className="eq-event__box">
+                          <span>Equipamento anterior</span>
+                          <strong>{t.equipamentoAntigoNds || '—'}</strong>
+                          <em>{t.equipamentoAntigoSmartcard || '—'}</em>
                         </div>
-                        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: 10 }}>
-                          <div style={{ fontSize: 12, color: '#065f46', fontWeight: 800 }}>Equipamento novo</div>
-                          <div style={{ fontWeight: 900, color: '#064e3b' }}>{t.equipamentoNovoNds || '—'}</div>
-                          <div style={{ fontSize: 12, color: '#065f46', fontWeight: 800 }}>{t.equipamentoNovoSmartcard || '—'}</div>
+                        <div className="eq-event__box">
+                          <span>Equipamento novo</span>
+                          <strong>{t.equipamentoNovoNds || '—'}</strong>
+                          <em>{t.equipamentoNovoSmartcard || '—'}</em>
                         </div>
                       </div>
                     </div>
@@ -951,24 +629,21 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
                 </div>
               )}
             </div>
+          )}
+        </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
-              <button
-                type="button"
-                onClick={onClose}
-                style={{
-                  padding: '12px 24px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: 10,
-                  background: 'white',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                }}
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
+        {activeTab === 'dados' ? (
+          <ModalFooter
+            onCancel={onClose}
+            onSave={handleSave}
+            saving={saving}
+            canSave={editingEquipment.nds.trim() !== '' && editingEquipment.smartcard.trim() !== ''}
+          />
+        ) : (
+          <footer className="eq-modal__footer">
+            <span />
+            <button type="button" className="eq-btn eq-btn--secondary" onClick={onClose}>Fechar</button>
+          </footer>
         )}
       </div>
     </div>

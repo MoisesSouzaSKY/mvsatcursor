@@ -2,12 +2,14 @@ import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
+import { getFunctions as getFirebaseFunctions, Functions } from 'firebase/functions';
 import { firebaseConfig as localFirebaseConfig } from './environment';
 
 let app: FirebaseApp | null = null;
 let authInstance: Auth | null = null;
 let dbInstance: Firestore | null = null;
 let storageInstance: FirebaseStorage | null = null;
+let functionsInstance: Functions | null = null;
 
 function ensureInitializedSync(): void {
   if (!app) {
@@ -26,6 +28,9 @@ function ensureInitializedSync(): void {
   }
   if (!storageInstance && app) {
     storageInstance = getStorage(app);
+  }
+  if (!functionsInstance && app) {
+    functionsInstance = getFirebaseFunctions(app, 'southamerica-east1');
   }
 }
 
@@ -87,6 +92,11 @@ export function getDb(): Firestore {
 export function getStorageInstance(): FirebaseStorage {
   if (!storageInstance) ensureInitializedSync();
   return storageInstance!;
+}
+
+export function getFunctions(): Functions {
+  if (!functionsInstance) ensureInitializedSync();
+  return functionsInstance!;
 }
 
 
