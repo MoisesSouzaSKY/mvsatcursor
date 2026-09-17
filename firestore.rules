@@ -203,8 +203,14 @@ service cloud.firestore {
       }
 
       match /despesas/{docId} {
-        allow read: if hasPermission(empresaId, 'despesas', 'view');
-        allow create: if hasPermission(empresaId, 'despesas', 'create');
+        // A renovação de TV Box precisa consultar a despesa determinística
+        // antes de criá-la, para manter a operação idempotente. O perfil
+        // TV BOX não deve ganhar acesso geral ao módulo financeiro.
+        allow get: if hasPermission(empresaId, 'despesas', 'view')
+          || hasPermission(empresaId, 'tvbox', 'renew');
+        allow list: if hasPermission(empresaId, 'despesas', 'view');
+        allow create: if hasPermission(empresaId, 'despesas', 'create')
+          || hasPermission(empresaId, 'tvbox', 'renew');
         allow update: if hasPermission(empresaId, 'despesas', 'edit');
         allow delete: if hasPermission(empresaId, 'despesas', 'delete');
       }
